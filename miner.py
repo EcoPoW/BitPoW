@@ -28,102 +28,6 @@ frozen_nodes_in_chain = {}
 highest_block_hash = None
 recent_longest = []
 nodes_in_chain = {}
-# def longest_chain2(from_hash = '0'*64):
-#     roots = database.get_conn().query("SELECT * FROM chain"+tree.current_port+" WHERE prev_hash = %s ORDER BY nonce", from_hash)
-
-#     chains = []
-#     prev_hashs = []
-#     for root in roots:
-#         # chains.append([root.hash])
-#         chains.append([root])
-#         prev_hashs.append(root.hash)
-
-#     t0 = time.time()
-#     n = 0
-#     while True:
-#         if prev_hashs:
-#             prev_hash = prev_hashs.pop(0)
-#         else:
-#             break
-
-#         leaves = database.get_conn().query("SELECT * FROM chain"+tree.current_port+" WHERE prev_hash = %s ORDER BY nonce", prev_hash)
-#         n += 1
-#         if len(leaves) > 0:
-#             if leaves[0]['height'] % 1000 == 0:
-#                 print('longest height', leaves[0]['height'])
-#             for leaf in leaves:
-#                 for c in chains:
-#                     if c[-1].hash == prev_hash:
-#                         chain = copy.copy(c)
-#                         # chain.append(leaf.hash)
-#                         chain.append(leaf)
-#                         chains.append(chain)
-#                         break
-#                 if leaf.hash not in prev_hashs and leaf.hash:
-#                     prev_hashs.append(leaf.hash)
-#     t1 = time.time()
-#     # print(tree.current_port, "query time", t1-t0, n)
-
-#     longest = []
-#     for i in chains:
-#         # print(i)
-#         if not longest:
-#             longest = i
-#         if len(longest) < len(i):
-#             longest = i
-#     return longest
-
-# def longest_chain(from_hash = '0'*64):
-#     roots = database.get_conn().query("SELECT * FROM chain"+tree.current_port+" WHERE prev_hash = %s", from_hash)
-#     if not roots:
-#         return []
-
-#     assert([root for root in roots if root['height'] == roots[0]['height']])
-#     height = roots[0]['height']
-
-#     # return [h['height'] for h in heights]
-#     chains = [[root] for root in roots]
-
-#     t0 = time.time()
-#     n = height
-#     while True:
-#         # print(n, height)
-#         if n == height:
-#             heights = database.get_conn().query("SELECT * FROM chain"+tree.current_port+" WHERE height > %s AND height <= %s ORDER BY height", height, height+10)
-#             # print('>>>', [i['height'] for i in heights])
-#             height += 10
-#         n += 1
-
-#         new_chains = []
-#         for chain in chains:
-#             # print('...', [i['height'] for i in chain])
-#             leaves = [i for i in heights if i['height'] == n and i['prev_hash'] == chain[-1]['hash']]
-#             # print([i['height'] for i in leaves])
-
-#             if len(leaves) > 0:
-#                 for leaf in leaves:
-#                     new_chain = copy.copy(chain)
-#                     new_chain.append(leaf)
-#                     new_chains.append(new_chain)
-
-#         if new_chains:
-#             chains = new_chains
-#         else:
-#             break
-
-
-#     t1 = time.time()
-#     print(tree.current_port, "query time", t1-t0, n)
-#     return chains[0]
-
-#     # longest = []
-#     # for i in chains:
-#     #     # print(i)
-#     #     if not longest:
-#     #         longest = i
-#     #     if len(longest) < len(i):
-#     #         longest = i
-#     # return longest
 
 
 def longest_chain(from_hash = '0'*64):
@@ -243,7 +147,10 @@ class GetHighestBlockHandler(tornado.web.RequestHandler):
 class GetBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
-        block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", block_hash)
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
+        block = c.fetchone()
         self.finish({"block": block})
 
 
@@ -275,11 +182,14 @@ def fetch_chain(nodeid):
         return
     print("get highest block", block_hash)
     while block_hash != '0'*64:
-        block = database.get_conn2().get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", block_hash)
+        conn = database.get_conn2()
+        c = conn.cursor()
+        c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
+        block = c.fetchone()
         if block:
-            if block['height'] % 1000 == 0:
-                print('block height', block['height'])
-            block_hash = block['prev_hash']
+            if block[3] % 1000 == 0: #.height
+                print('block height', block[3])#.height
+            block_hash = block[2]#.prev_hash
             continue
         try:
             response = urllib.request.urlopen("http://%s:%s/get_block?hash=%s" % (host, port, block_hash))
@@ -288,11 +198,14 @@ def fetch_chain(nodeid):
         result = tornado.escape.json_decode(response.read())
         block = result["block"]
         # if block['height'] % 1000 == 0:
-        print("fetch block", block['height'])
-        block_hash = block['prev_hash']
+        print("fetch block", block[1])
+        block_hash = block[2]
+        conn = database.get_conn2()
+        c = conn.cursor()
         try:
-            database.get_conn2().execute("INSERT INTO chain"+tree.current_port+" (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                block["hash"], block["prev_hash"], block["height"], block["nonce"], block["difficulty"], block["identity"], block["timestamp"], block["data"])
+            c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (block[1], block[2], block[3], block[4], block[5], block[6], block[7], block[8]))
+            conn.commit()
         except Exception as e:
             print("fetch_chain Error: %s" % e)
 
@@ -315,7 +228,7 @@ def mining():
             highest_block_height = longest[-1][3]#.height
 
     if len(longest) > setting.FROZEN_BLOCK_NO:
-        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO].prev_hash
+        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
         frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
         recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
     else:
@@ -323,11 +236,11 @@ def mining():
         recent_longest = longest
 
     for i in frozen_longest:
-        print("frozen longest", i.height)
-        data = tornado.escape.json_decode(i.data)
+        print("frozen longest", i[3]) #.height
+        data = tornado.escape.json_decode(i[8])#.data
         frozen_nodes_in_chain.update(data.get("nodes", {}))
-        if i.hash not in frozen_chain:
-            frozen_chain.append(i.hash)
+        if i[1] not in frozen_chain:#.hash
+            frozen_chain.append(i[1])#.hash
 
     nodes_in_chain = copy.copy(frozen_nodes_in_chain)
     for i in recent_longest:
@@ -422,7 +335,7 @@ def validate():
     longest = longest_chain(frozen_block_hash)
     print(longest)
     if len(longest) >= setting.FROZEN_BLOCK_NO:
-        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO].prev_hash
+        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
         frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
     #     recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
     else:
