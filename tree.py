@@ -213,9 +213,10 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             print("NEW_CHAIN_BLOCK", seq)
             miner.new_block(seq)
 
-        # elif seq[0] == "NEW_TX_BLOCK":
-        #     leader.new_tx_block(seq)
-        #     msg.WaitMsgHandler.new_block(seq)
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            pass
+            # leader.new_tx_block(seq)
+            # msg.WaitMsgHandler.new_block(seq)
 
         # elif seq[0] == "NEW_TX":
         #     txid = seq[1]["transaction"]["txid"]
@@ -451,9 +452,10 @@ class NodeConnector(object):
         elif seq[0] == "NEW_CHAIN_BLOCK":
             miner.new_block(seq)
 
-        # elif seq[0] == "NEW_TX_BLOCK":
-        #     leader.new_tx_block(seq)
-        #     msg.WaitMsgHandler.new_block(seq)
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            pass
+            # leader.new_tx_block(seq)
+            # msg.WaitMsgHandler.new_block(seq)
 
         # elif seq[0] == "NEW_TX":
         #     txid = seq[1]["transaction"]["txid"]

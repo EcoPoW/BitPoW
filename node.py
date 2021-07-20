@@ -28,14 +28,13 @@ import database
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [(r"/node", tree.NodeHandler),
-                    # (r"/leader", leader.LeaderHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_highest_block", miner.GetHighestBlockHandler),
                     (r"/get_block", miner.GetBlockHandler),
                     (r"/get_node", GetNodeHandler),
                     (r"/disconnect", DisconnectHandler),
                     (r"/broadcast", BroadcastHandler),
-                    (r"/new_tx", NewTxHandler),
+                    (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
                     ]
         settings = {"debug":True}
@@ -88,12 +87,12 @@ class BroadcastHandler(tornado.web.RequestHandler):
         tree.forward(test_msg)
         self.finish({"test_msg": test_msg})
 
-class NewTxHandler(tornado.web.RequestHandler):
+class NewSubchainBlockHandler(tornado.web.RequestHandler):
     def post(self):
-        tx = tornado.escape.json_decode(self.request.body)
+        block = tornado.escape.json_decode(self.request.body)
 
-        tree.forward(["NEW_TX", tx, time.time(), uuid.uuid4().hex])
-        self.finish({"txid": tx["transaction"]["txid"]})
+        tree.forward(["NEW_SUBCHAIN_BLOCK", block, time.time(), uuid.uuid4().hex])
+        self.finish({"block": block})
 
 class DashboardHandler(tornado.web.RequestHandler):
     def get(self):
@@ -119,17 +118,9 @@ class DashboardHandler(tornado.web.RequestHandler):
             host, port = tree.node_neighborhoods[nodeid]
             self.write("%s %s:%s <a href='http://%s:%s/dashboard'>dashboard</a><br>" %(nodeid, host, port, host, port))
 
-        self.write("<br>LeaderHandler:<br>")
-        for node in leader.LeaderHandler.leader_nodes:
-            self.write("%s:%s<br>" %(node.from_host, node.from_port))
-
-        self.write("<br>LeaderConnector:<br>")
-        for node in leader.LeaderConnector.leader_nodes:
-            self.write("%s:%s<br>" %(node.host, node.port))
-
         self.write("<br>recent longest:<br>")
         for i in reversed(miner.recent_longest):
-            self.write("%s %s %s<br>" % (i['height'], i['hash'], i['identity']))
+            self.write("%s <a href='/get_block?hash=%s'>%s</a> %s<br>" % (i[3], i[1], i[1], i[6]))
 
         self.write("<br>nodes_pool:<br>")
         for nodeid in tree.nodes_pool:

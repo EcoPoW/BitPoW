@@ -18,27 +18,27 @@ def get_conn(current_name = None):
 
         # Create table
         c.execute('''CREATE TABLE "chain" (
-                "id"	    INTEGER,
-                "hash"	    TEXT NOT NULL,
-                "prev_hash"	TEXT NOT NULL,
-                "height"	INTEGER NOT NULL,
-                "nonce"	    INTEGER NOT NULL,
+                "id"	        INTEGER,
+                "hash"	        TEXT NOT NULL,
+                "prev_hash"	    TEXT NOT NULL,
+                "height"	    INTEGER NOT NULL,
+                "nonce"	        INTEGER NOT NULL,
                 "difficulty"	INTEGER NOT NULL,
-                "identity"	TEXT NOT NULL,
-                "timestamp"	INTEGER NOT NULL,
-                "data"	TEXT NOT NULL,
+                "identity"	    TEXT NOT NULL,
+                "timestamp"	    INTEGER NOT NULL,
+                "data"	        TEXT NOT NULL,
                 PRIMARY KEY("id" AUTOINCREMENT)
             )''')
 
         c.execute('''CREATE TABLE "subchains" (
-                "id"	INTEGER,
+                "id"	    INTEGER,
                 "sender"	TEXT NOT NULL,
                 "receiver"	TEXT NOT NULL,
-                "hash"	TEXT NOT NULL,
+                "hash"	    TEXT NOT NULL,
                 "prev_hash"	TEXT NOT NULL,
                 "height"	INTEGER NOT NULL,
                 "timestamp"	INTEGER NOT NULL,
-                "data"	TEXT NOT NULL,
+                "data"	    TEXT NOT NULL,
                 PRIMARY KEY("id" AUTOINCREMENT)
             )''')
 
