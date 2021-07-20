@@ -105,6 +105,9 @@ def looping():
 
 nodes_to_fetch = []
 highest_block_height = 0
+last_highest_block_height = 0
+hash_proofs = set()
+last_hash_proofs = set()
 
 @tornado.gen.coroutine
 def new_chain_block(seq):
@@ -113,7 +116,9 @@ def new_chain_block(seq):
     global recent_longest
     global worker_thread_mining
     global highest_block_height
-
+    global last_highest_block_height
+    global hash_proofs
+    global last_hash_proofs
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
     # validate
     # check difficulty
@@ -144,12 +149,25 @@ def new_chain_block(seq):
     elif highest_block_height + 1 == height:
         highest_block_height = height
 
+    if last_highest_block_height != highest_block_height:
+        if last_highest_block_height + 1 == highest_block_height:
+            last_hash_proofs = hash_proofs
+        else:
+            last_hash_proofs = set()
+        hash_proofs = set()
+        last_highest_block_height = highest_block_height
+
 @tornado.gen.coroutine
 def new_chain_proof(seq):
     global nodes_to_fetch
     global recent_longest
+    global highest_block_height
+    global last_highest_block_height
+    global hash_proofs
+    global last_hash_proofs
 
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
+    print('new_chain_proof', highest_block_height, height)
     # validate
     # check difficulty
 
@@ -167,6 +185,20 @@ def new_chain_proof(seq):
         no, pk = identity.split(":")
         if int(no) not in nodes_to_fetch:
             nodes_to_fetch.append(int(no))
+
+    if last_highest_block_height != highest_block_height:
+        if last_highest_block_height + 1 == highest_block_height:
+            last_hash_proofs = hash_proofs
+        else:
+            last_hash_proofs = set()
+        hash_proofs = set()
+        last_highest_block_height = highest_block_height
+
+    if highest_block_height + 1 == height:
+        hash_proofs.add(tuple([block_hash, height]))
+
+    print('hash_proofs', hash_proofs)
+    print('last_hash_proofs', last_hash_proofs)
 
 @tornado.gen.coroutine
 def new_subchain_block(seq):
@@ -215,7 +247,7 @@ class GetBlockHandler(tornado.web.RequestHandler):
         c = conn.cursor()
         c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
         block = c.fetchone()
-        self.finish({"block": block})
+        self.finish({"block": block[1:]})
 
 
 def fetch_chain(nodeid):
@@ -262,13 +294,13 @@ def fetch_chain(nodeid):
         result = tornado.escape.json_decode(response.read())
         block = result["block"]
         # if block['height'] % 1000 == 0:
-        print("fetch block", block[1])
-        block_hash = block[2]
+        print("fetch block", block[0])
+        block_hash = block[1]
         conn = database.get_conn2()
         c = conn.cursor()
         try:
             c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (block[1], block[2], block[3], block[4], block[5], block[6], block[7], block[8]))
+                (block[0], block[1], block[2], block[3], block[4], block[5], block[6], block[7]))
         except Exception as e:
             print("fetch_chain Error: %s" % e)
         conn.commit()
@@ -361,6 +393,7 @@ def mining():
 
     # data = {"nodes": {k:list(v) for k, v in tree.nodes_pool.items()}}
     data["nodes"] = nodes_to_update
+    data["proofs"] = list([list(p) for p in last_hash_proofs])
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)

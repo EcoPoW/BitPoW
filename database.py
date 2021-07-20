@@ -19,7 +19,7 @@ def get_conn(current_name = None):
         # Create table
         c.execute('''CREATE TABLE "chain" (
                 "id"	        INTEGER,
-                "hash"	        TEXT NOT NULL,
+                "hash"	        TEXT NOT NULL UNIQUE,
                 "prev_hash"	    TEXT NOT NULL,
                 "height"	    INTEGER NOT NULL,
                 "nonce"	        INTEGER NOT NULL,
@@ -44,7 +44,7 @@ def get_conn(current_name = None):
 
         c.execute('''CREATE TABLE "proof" (
                 "id"	        INTEGER,
-                "hash"	        TEXT NOT NULL,
+                "hash"	        TEXT NOT NULL UNIQUE,
                 "prev_hash"	    TEXT NOT NULL,
                 "height"	    INTEGER NOT NULL,
                 "nonce"	        INTEGER NOT NULL,
@@ -57,7 +57,7 @@ def get_conn(current_name = None):
 
         c.execute('''CREATE TABLE "subchains" (
                 "id"	    INTEGER,
-                "hash"	    TEXT NOT NULL,
+                "hash"	    TEXT NOT NULL UNIQUE,
                 "prev_hash"	TEXT NOT NULL,
                 "sender"	TEXT NOT NULL,
                 "receiver"	TEXT NOT NULL,
