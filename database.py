@@ -30,15 +30,41 @@ def get_conn(current_name = None):
                 PRIMARY KEY("id" AUTOINCREMENT)
             )''')
 
+        c.execute('''CREATE INDEX "hash" ON "chain" (
+	            "hash"
+            )''')
+
+        c.execute('''CREATE INDEX "prev_hash" ON "chain" (
+	            "prev_hash"
+            )''')
+
+        c.execute('''CREATE INDEX "height" ON "chain" (
+	            "height"
+            )''')
+
+        c.execute('''CREATE TABLE "proof" (
+                "id"	        INTEGER,
+                "hash"	        TEXT NOT NULL,
+                "prev_hash"	    TEXT NOT NULL,
+                "height"	    INTEGER NOT NULL,
+                "nonce"	        INTEGER NOT NULL,
+                "difficulty"	INTEGER NOT NULL,
+                "identity"	    TEXT NOT NULL,
+                "timestamp"	    INTEGER NOT NULL,
+                "data"	        TEXT NOT NULL,
+                PRIMARY KEY("id" AUTOINCREMENT)
+            )''')
+
         c.execute('''CREATE TABLE "subchains" (
                 "id"	    INTEGER,
-                "sender"	TEXT NOT NULL,
-                "receiver"	TEXT NOT NULL,
                 "hash"	    TEXT NOT NULL,
                 "prev_hash"	TEXT NOT NULL,
+                "sender"	TEXT NOT NULL,
+                "receiver"	TEXT NOT NULL,
                 "height"	INTEGER NOT NULL,
                 "timestamp"	INTEGER NOT NULL,
                 "data"	    TEXT NOT NULL,
+                "signature"	TEXT NOT NULL,
                 PRIMARY KEY("id" AUTOINCREMENT)
             )''')
 
@@ -46,7 +72,7 @@ def get_conn(current_name = None):
         # c.execute("INSERT INTO chain(hash, prev_hash, height, timestamp, data) VALUES (?, ?, 0, CURRENT_TIMESTAMP, '{}')", (uuid.uuid4().hex, uuid.uuid4().hex))
 
         # Save (commit) the changes
-        # conn.commit()
+        conn.commit()
 
         # We can also close the connection if we are done with it.
         # Just be sure any changes have been committed or they will be lost.

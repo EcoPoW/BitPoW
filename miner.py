@@ -105,8 +105,9 @@ def looping():
 
 nodes_to_fetch = []
 highest_block_height = 0
+
 @tornado.gen.coroutine
-def new_block(seq):
+def new_chain_block(seq):
     # global frozen_block_hash
     global nodes_to_fetch
     global recent_longest
@@ -114,14 +115,17 @@ def new_block(seq):
     global highest_block_height
 
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
+    # validate
+    # check difficulty
+
     conn = database.get_conn()
     c = conn.cursor()
     try:
         c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-        conn.commit()
     except Exception as e:
-        print("new_block Error: %s" % e)
+        print("new_chain_block Error: %s" % e)
+    conn.commit()
 
     # if prev_hash != '0'*64:
     #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
@@ -141,6 +145,30 @@ def new_block(seq):
         highest_block_height = height
 
 @tornado.gen.coroutine
+def new_chain_proof(seq):
+    global nodes_to_fetch
+    global recent_longest
+
+    msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
+    # validate
+    # check difficulty
+
+    conn = database.get_conn()
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO proof (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
+    except Exception as e:
+        print("new_chain_block Error: %s" % e)
+    conn.commit()
+
+    print(highest_block_height, height, identity)
+    if highest_block_height + 1 < height:
+        no, pk = identity.split(":")
+        if int(no) not in nodes_to_fetch:
+            nodes_to_fetch.append(int(no))
+
+@tornado.gen.coroutine
 def new_subchain_block(seq):
     # global frozen_block_hash
     global nodes_to_fetch
@@ -154,9 +182,9 @@ def new_subchain_block(seq):
     try:
         c.execute("INSERT INTO subchains (sender, receiver, hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (sender, receiver, block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-        conn.commit()
     except Exception as e:
-        print("new_block Error: %s" % e)
+        print("new_chain_block Error: %s" % e)
+    conn.commit()
 
     # if prev_hash != '0'*64:
     #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
@@ -241,9 +269,9 @@ def fetch_chain(nodeid):
         try:
             c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (block[1], block[2], block[3], block[4], block[5], block[6], block[7], block[8]))
-            conn.commit()
         except Exception as e:
             print("fetch_chain Error: %s" % e)
+        conn.commit()
 
 nonce = 0
 def mining():
@@ -327,11 +355,6 @@ def mining():
         #     # print([i.identity for i in leaders])
         #     return
 
-        conn = database.get_conn2()
-        c = conn.cursor()
-        c.execute("SELECT * FROM proof WHERE prev_hash = ?", (prev_hash,))
-        proofs = c.fetchall()
-
     else:
         prev_hash, height, data, identity = '0'*64, 0, {}, ":"
     new_difficulty = int(math.log(difficulty, 2))
@@ -344,7 +367,7 @@ def mining():
     new_identity = "%s:%s" % (nodeno, pk)
     new_timestamp = time.time()
     for i in range(100):
-        block_hash = hashlib.sha256((prev_hash + data_json + str(new_timestamp) + str(difficulty) + new_identity + str(nonce)).encode('utf8')).hexdigest()
+        block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         if int(block_hash, 16) < difficulty:
             if longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
@@ -356,8 +379,8 @@ def mining():
             break
 
         if int(block_hash, 16) < difficulty*2:
-            if longest:
-                print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
+            # if longest:
+            #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
             message = ["NEW_CHAIN_PROOF", block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, uuid.uuid4().hex]
             messages_out.append(message)

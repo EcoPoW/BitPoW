@@ -211,7 +211,11 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("NEW_CHAIN_BLOCK", seq)
-            miner.new_block(seq)
+            miner.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("NEW_CHAIN_PROOF", seq)
+            miner.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
             pass
@@ -236,66 +240,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         #     if msgid not in processed_message_ids:
         #         processed_message_ids.add(msgid)
         #         leader.message_queue.append(seq)
-
-        # elif seq[0] == "PBFT_O":
-        #     # is leader in NODE_DIVISION mode
-        #     pass
-
-        #     print(current_port, "PBFT_O get message", seq[1])
-        #     view = seq[1]
-        #     view_no = seq[2]
-        #     # view's no should be continuous
-        #     block = seq[3]
-        #     msgid = block["transaction"]["txid"] if "transaction" in block else block["message"]["msgid"]
-        #     # gen block
-        #     block_hash = block["block_hash"]
-        #     k = "%s_%s"%(int(view), int(view_no))
-        #     leader.view_transactions[k] = block
-        #     forward(["PBFT_P", view, view_no, msgid, block_hash])
-        #     return
-
-        # elif seq[0] == "PBFT_P":
-        #     # is leader in NODE_DIVISION mode
-        #     pass
-
-        #     view = seq[1]
-        #     view_no = seq[2]
-        #     msgid = seq[3]
-        #     block_hash = seq[4]
-        #     # verify blockhash with own blockhash for msgid
-        #     forward(["PBFT_C", view, view_no, msgid, leader.current_view])
-        #     print(current_port, "PBFT_P get message", seq[1])
-        #     return
-
-        # elif seq[0] == "PBFT_C":
-        #     # is leader in NODE_DIVISION mode
-        #     pass
-
-        #     view = seq[1]
-        #     view_no = seq[2]
-        #     msgid = seq[3]
-        #     confirm_view = seq[4]
-        #     print(current_port, "PBFT_C get message", seq[1])
-
-        #     k = "%s_%s"%(int(view), int(view_no))
-        #     block = leader.view_transactions.get(k)
-        #     leader.view_confirms.setdefault(k, set())
-        #     confirms = leader.view_confirms[k]
-        #     if confirm_view not in confirms:
-        #         confirms.add(confirm_view)
-        #         # print(current_port, leader.current_view, confirms, block)
-        #         if block and len(confirms)==2:
-        #             print(current_port, "NEW BLOCK", msgid)
-        #             if "transaction" in block:
-        #                 message = ["NEW_TX_BLOCK", block, time.time(), uuid.uuid4().hex]
-        #             else:
-        #                 message = ["NEW_MSG_BLOCK", block, time.time(), uuid.uuid4().hex]
-        #             forward(message)
-        #     return
-
-        # elif seq[0] == "PBFT_V":
-        #     # is leader in NODE_DIVISION mode
-        #     pass
 
         # elif seq[0] == "UPDATE_HOME":
         #     fs.transactions.append(seq)
@@ -450,7 +394,11 @@ class NodeConnector(object):
             # print(current_port, "NODE_NEIGHBOURHOODS", current_nodeid, nodeid, node_neighborhoods)
 
         elif seq[0] == "NEW_CHAIN_BLOCK":
-            miner.new_block(seq)
+            miner.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("NEW_CHAIN_PROOF", seq)
+            miner.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
             pass
