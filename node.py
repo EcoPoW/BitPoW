@@ -34,6 +34,8 @@ class Application(tornado.web.Application):
                     (r"/get_node", GetNodeHandler),
                     (r"/disconnect", DisconnectHandler),
                     (r"/broadcast", BroadcastHandler),
+                    (r"/get_highest_subchain_block", miner.GetHighestSubchainBlockHandler),
+                    (r"/get_subchain_block", miner.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
                     ]
@@ -91,7 +93,7 @@ class NewSubchainBlockHandler(tornado.web.RequestHandler):
     def post(self):
         block = tornado.escape.json_decode(self.request.body)
 
-        tree.forward(["NEW_SUBCHAIN_BLOCK", block, time.time(), uuid.uuid4().hex])
+        tree.forward(["NEW_SUBCHAIN_BLOCK"] + block) #, time.time(), uuid.uuid4().hex])
         self.finish({"block": block})
 
 class DashboardHandler(tornado.web.RequestHandler):

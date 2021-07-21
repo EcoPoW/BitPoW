@@ -202,38 +202,16 @@ def new_chain_proof(seq):
 
 @tornado.gen.coroutine
 def new_subchain_block(seq):
-    # global frozen_block_hash
-    global nodes_to_fetch
-    global recent_longest
-    global worker_thread_mining
-    global highest_block_height
-
-    msg_header, sender, receiver, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
+    msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
     conn = database.get_conn()
     c = conn.cursor()
     try:
-        c.execute("INSERT INTO subchains (sender, receiver, hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (sender, receiver, block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
+        c.execute("INSERT INTO subchains (hash, prev_hash, sender, receiver, height, timestamp, data, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (block_hash, prev_hash, sender, receiver, height, timestamp, tornado.escape.json_encode(data), signature))
     except Exception as e:
-        print("new_chain_block Error: %s" % e)
+        print("new_subchain_block Error: %s" % e)
     conn.commit()
 
-    # if prev_hash != '0'*64:
-    #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
-    #     if not prev_block:
-    #         no, pk = identity.split(":")
-    #         if int(no) not in nodes_to_fetch:
-    #             nodes_to_fetch.append(int(no))
-    #         worker_thread_mining = False
-
-    print(highest_block_height, height, identity)
-    if highest_block_height + 1 < height:
-        no, pk = identity.split(":")
-        if int(no) not in nodes_to_fetch:
-            nodes_to_fetch.append(int(no))
-        worker_thread_mining = False
-    elif highest_block_height + 1 == height:
-        highest_block_height = height
 
 class GetHighestBlockHandler(tornado.web.RequestHandler):
     def get(self):
@@ -249,6 +227,30 @@ class GetBlockHandler(tornado.web.RequestHandler):
         block = c.fetchone()
         self.finish({"block": block[1:]})
 
+class GetHighestSubchainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        # global highest_block_hash
+        sender = self.get_argument('sender')
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height DESC LIMIT 1", (sender,))
+        block = c.fetchone()
+        if block:
+            self.finish({"hash": block[1]})
+        else:
+            self.finish({"hash": '0'*64})
+
+class GetSubchainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM subchains WHERE hash = ?", (block_hash,))
+        block = c.fetchone()
+        if block:
+            self.finish({"block": block[1:]})
+        else:
+            self.finish({"block": None})
 
 def fetch_chain(nodeid):
     print(tree.current_nodeid, 'fetch chain', nodeid)
