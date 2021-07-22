@@ -10,6 +10,7 @@ import uuid
 import base64
 import hashlib
 import urllib
+import json
 
 import requests
 import ecdsa
@@ -49,21 +50,22 @@ def main():
         rsp = requests.get('http://127.0.0.1:8001/get_subchain_block?hash=%s' % prev_hash)
         print(rsp.json())
         block = rsp.json()['block']
-        print('block', block)
+        print('prev_block', block)
         new_timestamp = time.time()
         if block:
             height = block[4]
-            data_json = {}
+            data = {'amount': amount}
         else:
             height = 0
-            data_json = {}
+            data = {'amount': amount}
 
+        data_json = json.dumps(data)
         block_hash = hashlib.sha256((prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
         signature = base64.b32encode(sender_sk.sign(str(block_hash).encode("utf8"))).decode("utf8")
-        print(block_hash, signature)
-        block = [block_hash, prev_hash, sender, receiver, height+1, data_json, new_timestamp, signature]
+        print('signature', signature)
+        block = [block_hash, prev_hash, sender, receiver, height+1, data, new_timestamp, signature]
         rsp = requests.post('http://127.0.0.1:8001/new_subchain_block?sender=%s' % sender, json=block)
-        print("gen subchain block", n)
+        print("gen subchain block", block)
 
 
 if __name__ == '__main__':

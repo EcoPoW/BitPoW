@@ -399,7 +399,8 @@ def mining():
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
-    new_identity = "%s:%s" % (nodeno, pk)
+    # new_identity = "%s:%s" % (nodeno, pk)
+    new_identity = pk
     new_timestamp = time.time()
     for i in range(100):
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
