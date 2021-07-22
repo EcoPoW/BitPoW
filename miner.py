@@ -108,17 +108,21 @@ highest_block_height = 0
 last_highest_block_height = 0
 hash_proofs = set()
 last_hash_proofs = set()
+subchains_block = {}
+last_subchains_block = {}
 
 @tornado.gen.coroutine
 def new_chain_block(seq):
     # global frozen_block_hash
     global nodes_to_fetch
-    global recent_longest
+    # global recent_longest
     global worker_thread_mining
     global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
+    global subchains_block
+    global last_subchains_block
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
     # validate
     # check difficulty
@@ -150,6 +154,8 @@ def new_chain_block(seq):
         highest_block_height = height
 
     if last_highest_block_height != highest_block_height:
+        last_subchains_block = subchains_block
+        subchains_block = {}
         if last_highest_block_height + 1 == highest_block_height:
             last_hash_proofs = hash_proofs
         else:
@@ -160,16 +166,16 @@ def new_chain_block(seq):
 @tornado.gen.coroutine
 def new_chain_proof(seq):
     global nodes_to_fetch
-    global recent_longest
+    # global recent_longest
     global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
 
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
-    print('new_chain_proof', highest_block_height, height)
     # validate
     # check difficulty
+    print('new_chain_proof', highest_block_height, height)
 
     conn = database.get_conn()
     c = conn.cursor()
@@ -202,7 +208,13 @@ def new_chain_proof(seq):
 
 @tornado.gen.coroutine
 def new_subchain_block(seq):
+    global subchains_block
+    # global last_subchains_block
     msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
+    # validate
+    # need to ensure current subchains_block[sender] is the ancestor of block_hash
+    subchains_block[sender] = block_hash
+
     conn = database.get_conn()
     c = conn.cursor()
     try:
@@ -278,6 +290,8 @@ def fetch_chain(nodeid):
     block_hash = result['hash']
     if not block_hash:
         return
+    # validate
+
     print("get highest block", block_hash)
     while block_hash != '0'*64:
         conn = database.get_conn2()
@@ -318,6 +332,10 @@ def mining():
     global highest_block_hash
     global highest_block_height
     global messages_out
+    # global hash_proofs
+    global last_hash_proofs
+    # global subchains_block
+    global last_subchains_block
 
     longest = longest_chain(frozen_block_hash)
     if longest:
@@ -396,6 +414,7 @@ def mining():
     # data = {"nodes": {k:list(v) for k, v in tree.nodes_pool.items()}}
     data["nodes"] = nodes_to_update
     data["proofs"] = list([list(p) for p in last_hash_proofs])
+    data["subchains"] = last_subchains_block
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
