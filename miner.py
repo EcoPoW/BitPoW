@@ -1,11 +1,15 @@
 from __future__ import print_function
 
+import sys
+import os
 import math
+import argparse
 import time
 import uuid
 import hashlib
 import copy
 import base64
+import threading
 import urllib.request
 
 import tornado.web
@@ -17,10 +21,11 @@ import tornado.escape
 
 import setting
 import tree
-import node
+# import node
 # import leader
 import database
 
+import ecdsa
 
 frozen_block_hash = '0'*64
 frozen_chain = ['0'*64]
@@ -90,7 +95,8 @@ def longest_chain(from_hash = '0'*64):
 messages_out = []
 def looping():
     global messages_out
-    global recent_longest
+    # global recent_longest
+    # print(messages_out)
 
     while messages_out:
         message = messages_out.pop(0)
@@ -102,6 +108,17 @@ def looping():
     #     leader.update(leaders)
 
     tornado.ioloop.IOLoop.instance().call_later(1, looping)
+
+
+def miner_looping():
+    global messages_out
+
+    while messages_out:
+        message = messages_out.pop(0)
+        if MinerConnector.node_miner:
+            MinerConnector.node_miner.write_message(tornado.escape.json_encode(message))
+
+    tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 
 nodes_to_fetch = []
 highest_block_height = 0
@@ -524,8 +541,138 @@ def worker_thread():
 # def main():
 #     tornado.ioloop.IOLoop.instance().call_later(1, looping)
 
+class MinerHandler(tornado.websocket.WebSocketHandler):
+    child_miners = set()
+
+    def check_origin(self, origin):
+        return True
+
+    def open(self):
+        if self not in MinerHandler.child_miners:
+            MinerHandler.child_miners.add(self)
+        print(tree.current_port, "MinerHandler miner connected")
+
+    def on_close(self):
+        print(tree.current_port, "MinerHandler disconnected")
+        if self in MinerHandler.child_miners:
+            MinerHandler.child_miners.remove(self)
+
+    @tornado.gen.coroutine
+    def on_message(self, message):
+        seq = tornado.escape.json_decode(message)
+        if seq[0] == "NEW_CHAIN_BLOCK":
+            print("MinerHandler NEW_CHAIN_BLOCK", seq)
+            new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("MinerHandler NEW_CHAIN_PROOF", seq)
+            new_chain_proof(seq)
+
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
+            new_subchain_block(seq)
+
+        tree.forward(seq)
+
+
+# connector to parent node
+class MinerConnector(object):
+    """Websocket Client"""
+    node_miner = None
+
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.ws_uri = "ws://%s:%s/miner" % (self.host, self.port)
+        self.conn = None
+        self.connect()
+
+    def connect(self):
+        tornado.websocket.websocket_connect(self.ws_uri,
+                                callback = self.on_connect,
+                                on_message_callback = self.on_message,
+                                connect_timeout = 1000.0,
+                                ping_timeout = 600.0
+                            )
+
+    def close(self):
+        self.conn.close()
+        MinerConnector.node_miner = None
+        print('MinerConnector close')
+
+    @tornado.gen.coroutine
+    def on_connect(self, future):
+        try:
+            self.conn = future.result()
+            MinerConnector.node_miner = self.conn
+            print('on_connect', MinerConnector)
+        except:
+            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
+
+    @tornado.gen.coroutine
+    def on_message(self, message):
+        global current_branch
+        global current_nodeid
+        global node_parents
+        global node_neighborhoods
+        global nodes_pool
+        global parent_node_id_msg
+
+        if message is None:
+            print("MinerConnector reconnect2 ...")
+            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
+            return
+
+        seq = tornado.escape.json_decode(message)
+        if seq[0] == "NEW_CHAIN_BLOCK":
+            print("MinerConnector NEW_CHAIN_BLOCK", seq)
+            # miner.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("MinerConnector NEW_CHAIN_PROOF", seq)
+            # miner.new_chain_proof(seq)
+
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            print("MinerConnector NEW_SUBCHAIN_BLOCK", seq)
+            # miner.new_subchain_block(seq)
+            # msg.WaitMsgHandler.new_block(seq)
+
+        # else:
+        # forward(seq)
+
+
 if __name__ == '__main__':
-    print("run python node.py pls")
-    tree.current_port = "8001"
+    # print("run python node.py pls")
+    # tree.current_port = "8001"
     # longest_chain2()
-    longest_chain()
+    # longest_chain()
+
+    tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
+
+    parser = argparse.ArgumentParser(description="node.py --name=[miner name]")
+    parser.add_argument('--name')
+
+    args = parser.parse_args()
+    if not args.name:
+        print('--name reqired')
+        sys.exit()
+    tree.current_name = args.name
+    sk_filename = "%s.pem" % tree.current_name
+    if os.path.exists(sk_filename):
+        tree.node_sk = ecdsa.SigningKey.from_pem(open(sk_filename).read())
+    else:
+        tree.node_sk = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
+        open(sk_filename, "w").write(bytes.decode(node_sk.to_pem()))
+
+
+    database.main()
+
+    worker_thread_mining = True
+    MinerConnector('127.0.0.1', 8001)
+    worker_threading = threading.Thread(target=worker_thread)
+    worker_threading.start()
+
+    # server = Application()
+    # server.listen(tree.current_port, '0.0.0.0')
+    tornado.ioloop.IOLoop.instance().start()
+    worker_threading.join()

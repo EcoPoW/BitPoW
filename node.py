@@ -28,6 +28,7 @@ import database
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [(r"/node", tree.NodeHandler),
+                    (r"/miner", miner.MinerHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
                     (r"/disconnect", DisconnectHandler),
@@ -167,14 +168,14 @@ def main():
 
     # fs.main()
 
-    worker_thread = threading.Thread(target=miner.worker_thread)
-    worker_thread.start()
+    worker_threading = threading.Thread(target=miner.worker_thread)
+    worker_threading.start()
 
     server = Application()
     server.listen(tree.current_port, '0.0.0.0')
     tornado.ioloop.IOLoop.instance().start()
 
-    worker_thread.join()
+    worker_threading.join()
 
 if __name__ == '__main__':
     main()
