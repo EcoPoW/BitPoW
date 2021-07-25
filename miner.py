@@ -102,16 +102,6 @@ def looping():
         message = messages_out.pop(0)
         tree.forward(message)
 
-        if MinerHandler.child_miners:
-            msg = tornado.escape.json_encode(message)
-            for i in MinerHandler.child_miners:
-                i.write_message(msg)
-
-    # if recent_longest:
-    #     leaders = [i for i in recent_longest if i['timestamp'] < time.time()-setting.MAX_MESSAGE_DELAY_SECONDS and i['timestamp'] > time.time()-setting.MAX_MESSAGE_DELAY_SECONDS - setting.BLOCK_INTERVAL_SECONDS*20][-setting.LEADERS_NUM:]
-    #     # print(leaders)
-    #     leader.update(leaders)
-
     tornado.ioloop.IOLoop.instance().call_later(1, looping)
 
 
@@ -120,8 +110,8 @@ def miner_looping():
 
     while messages_out:
         message = messages_out.pop(0)
-        if MinerConnector.node_miner:
-            MinerConnector.node_miner.write_message(tornado.escape.json_encode(message))
+        if tree.MinerConnector.node_miner:
+            tree.MinerConnector.node_miner.write_message(tornado.escape.json_encode(message))
 
     tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 
@@ -471,6 +461,7 @@ def validate():
     global frozen_nodes_in_chain
     global frozen_chain
     global frozen_block_hash
+    global recent_longest
     global worker_thread_mining
 
     c = 0
@@ -481,14 +472,14 @@ def validate():
         fetch_chain(nodeid)
 
     longest = longest_chain(frozen_block_hash)
-    print(longest)
+    # print(longest)
     if len(longest) >= setting.FROZEN_BLOCK_NO:
         frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
         frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
-    #     recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
+        recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
     else:
         frozen_longest = []
-    #     recent_longest = longest
+        recent_longest = longest
 
     if longest:
         highest_block_hash = longest[-1][1] #.hash
@@ -532,7 +523,7 @@ def worker_thread():
         if tree.current_nodeid is None:
             continue
 
-        # print('chain validation')
+        print('chain validation')
         # if tree.current_nodeid:
         #     fetch_chain(tree.current_nodeid[:-1])
         validate()
@@ -545,101 +536,6 @@ def worker_thread():
 # @tornado.gen.coroutine
 # def main():
 #     tornado.ioloop.IOLoop.instance().call_later(1, looping)
-
-class MinerHandler(tornado.websocket.WebSocketHandler):
-    child_miners = set()
-
-    def check_origin(self, origin):
-        return True
-
-    def open(self):
-        if self not in MinerHandler.child_miners:
-            MinerHandler.child_miners.add(self)
-        print(tree.current_port, "MinerHandler miner connected")
-
-    def on_close(self):
-        print(tree.current_port, "MinerHandler disconnected")
-        if self in MinerHandler.child_miners:
-            MinerHandler.child_miners.remove(self)
-
-    @tornado.gen.coroutine
-    def on_message(self, message):
-        seq = tornado.escape.json_decode(message)
-        if seq[0] == "NEW_CHAIN_BLOCK":
-            print("MinerHandler NEW_CHAIN_BLOCK", seq)
-            new_chain_block(seq)
-
-        elif seq[0] == "NEW_CHAIN_PROOF":
-            print("MinerHandler NEW_CHAIN_PROOF", seq)
-            new_chain_proof(seq)
-
-        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
-            print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
-            new_subchain_block(seq)
-
-        tree.forward(seq)
-
-
-# connector to parent node
-class MinerConnector(object):
-    """Websocket Client"""
-    node_miner = None
-
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.ws_uri = "ws://%s:%s/miner" % (self.host, self.port)
-        self.conn = None
-        self.connect()
-
-    def connect(self):
-        tornado.websocket.websocket_connect(self.ws_uri,
-                                callback = self.on_connect,
-                                on_message_callback = self.on_message,
-                                connect_timeout = 1000.0,
-                                ping_timeout = 600.0
-                            )
-
-    def close(self):
-        self.conn.close()
-        MinerConnector.node_miner = None
-        print('MinerConnector close')
-
-    @tornado.gen.coroutine
-    def on_connect(self, future):
-        try:
-            self.conn = future.result()
-            MinerConnector.node_miner = self.conn
-            print('on_connect', MinerConnector)
-        except:
-            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
-
-    @tornado.gen.coroutine
-    def on_message(self, message):
-        # global current_branch
-        # global current_nodeid
-        # global node_parents
-        # global node_neighborhoods
-        # global nodes_pool
-        # global parent_node_id_msg
-
-        if message is None:
-            print("MinerConnector reconnect ...")
-            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
-            return
-
-        seq = tornado.escape.json_decode(message)
-        if seq[0] == "NEW_CHAIN_BLOCK":
-            print("MinerConnector got NEW_CHAIN_BLOCK", seq)
-            new_chain_block(seq)
-
-        elif seq[0] == "NEW_CHAIN_PROOF":
-            print("MinerConnector got NEW_CHAIN_PROOF", seq)
-            new_chain_proof(seq)
-
-        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
-            print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
-            new_subchain_block(seq)
 
 
 if __name__ == '__main__':
@@ -660,7 +556,6 @@ if __name__ == '__main__':
         print('--name reqired')
         sys.exit()
     tree.current_name = args.name
-    tree.current_nodeid = 0
     tree.current_host = args.host
     tree.current_port = args.port
     sk_filename = "%s.pem" % tree.current_name
@@ -672,7 +567,8 @@ if __name__ == '__main__':
     database.main()
 
     worker_thread_mining = True
-    MinerConnector(tree.current_host, tree.current_port)
+    setting.MINING = True
+    tree.MinerConnector(tree.current_host, tree.current_port)
     worker_threading = threading.Thread(target=worker_thread)
     worker_threading.start()
 

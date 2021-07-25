@@ -66,6 +66,10 @@ def forward(seq):
     if NodeConnector.node_parent:
         NodeConnector.node_parent.conn.write_message(message)
 
+    if MinerHandler.child_miners:
+        for child_miner in MinerHandler.child_miners:
+            child_miner.write_message(message)
+
 def nodeid2no(nodeid):
     if not nodeid:
         return 1
@@ -95,6 +99,109 @@ def sign_msg(message):
     signature = node_sk.sign(message_json.encode("utf8"))
     message.append(base64.b32encode(signature).decode("utf8"))
     print(current_port, "signature", message)
+
+
+class MinerHandler(tornado.websocket.WebSocketHandler):
+    child_miners = set()
+
+    def check_origin(self, origin):
+        return True
+
+    def open(self):
+        if self not in MinerHandler.child_miners:
+            MinerHandler.child_miners.add(self)
+
+        self.write_message(tornado.escape.json_encode(["NODE_ID", current_nodeid]))
+        print(current_port, "MinerHandler miner connected")
+
+    def on_close(self):
+        print(current_port, "MinerHandler disconnected")
+        if self in MinerHandler.child_miners:
+            MinerHandler.child_miners.remove(self)
+
+    @tornado.gen.coroutine
+    def on_message(self, message):
+        seq = tornado.escape.json_decode(message)
+        if seq[0] == "NEW_CHAIN_BLOCK":
+            print("MinerHandler NEW_CHAIN_BLOCK", seq)
+            miner.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("MinerHandler NEW_CHAIN_PROOF", seq)
+            miner.new_chain_proof(seq)
+
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
+            miner.new_subchain_block(seq)
+
+        forward(seq)
+
+
+# connector to parent node
+class MinerConnector(object):
+    """Websocket Client"""
+    node_miner = None
+
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.ws_uri = "ws://%s:%s/miner" % (self.host, self.port)
+        self.conn = None
+        self.connect()
+
+    def connect(self):
+        tornado.websocket.websocket_connect(self.ws_uri,
+                                callback = self.on_connect,
+                                on_message_callback = self.on_message,
+                                connect_timeout = 1000.0,
+                                ping_timeout = 600.0
+                            )
+
+    def close(self):
+        self.conn.close()
+        MinerConnector.node_miner = None
+        print('MinerConnector close')
+
+    @tornado.gen.coroutine
+    def on_connect(self, future):
+        try:
+            self.conn = future.result()
+            MinerConnector.node_miner = self.conn
+            print('on_connect', MinerConnector)
+        except:
+            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
+
+    @tornado.gen.coroutine
+    def on_message(self, message):
+        # global current_branch
+        # global current_nodeid
+        # global node_parents
+        # global node_neighborhoods
+        # global nodes_pool
+        # global parent_node_id_msg
+
+        if message is None:
+            print("MinerConnector reconnect ...")
+            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
+            return
+
+        seq = tornado.escape.json_decode(message)
+        if seq[0] == "NODE_ID":
+            print("MinerConnector got NODE_ID", seq)
+            current_nodeid = seq[1]
+
+        elif seq[0] == "NEW_CHAIN_BLOCK":
+            print("MinerConnector got NEW_CHAIN_BLOCK", seq)
+            miner.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_PROOF":
+            print("MinerConnector got NEW_CHAIN_PROOF", seq)
+            miner.new_chain_proof(seq)
+
+        elif seq[0] == "NEW_SUBCHAIN_BLOCK":
+            print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
+            miner.new_subchain_block(seq)
+
 
 # connect point from child node
 class NodeHandler(tornado.websocket.WebSocketHandler):
@@ -495,8 +602,7 @@ def connect():
     global current_nodeid
     global available_branches
 
-    # print("\n\n")
-    if dashboard_host:
+    if dashboard_host and dashboard_port:
         print(current_port, "connect dashboard", dashboard_host, "port", dashboard_port)
         tornado.websocket.websocket_connect("ws://%s:%s/control" % (dashboard_host, dashboard_port), callback=control_on_connect, on_message_callback=control_on_message)
 
@@ -514,6 +620,11 @@ def connect():
             available_branches.add(tuple([current_host, current_port, "1"]))
             current_nodeid = ""
 
+    else:
+        if parent_host and parent_port:
+            NodeConnector(parent_host, parent_port, "")
+        else:
+            current_nodeid = ""
 
 def main():
     global current_name

@@ -28,17 +28,17 @@ import database
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [(r"/node", tree.NodeHandler),
-                    (r"/miner", miner.MinerHandler),
+                    (r"/miner", tree.MinerHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
-                    (r"/disconnect", DisconnectHandler),
-                    (r"/broadcast", BroadcastHandler),
                     (r"/get_highest_block", miner.GetHighestBlockHandler),
                     (r"/get_block", miner.GetBlockHandler),
                     (r"/get_highest_subchain_block", miner.GetHighestSubchainBlockHandler),
                     (r"/get_subchain_block", miner.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
+                    # (r"/disconnect", DisconnectHandler),
+                    # (r"/broadcast", BroadcastHandler),
                     ]
         settings = {"debug":True}
 
@@ -146,7 +146,7 @@ class DashboardHandler(tornado.web.RequestHandler):
 
         self.write("<br>frozen chain:<br>")
         for i, h in enumerate(miner.frozen_chain):
-            self.write("%s %s<br>" % (i, h))
+            self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
         self.finish()
 
 def main():
