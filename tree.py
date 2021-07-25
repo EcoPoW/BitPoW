@@ -315,7 +315,7 @@ class NodeConnector(object):
         global parent_node_id_msg
 
         if message is None:
-            print("NodeConnector reconnect2 ...")
+            print("NodeConnector reconnect ...")
             # retry before choose another parent
             # if current_branch in available_branches:
             #     available_branches.remove(current_branch)

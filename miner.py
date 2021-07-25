@@ -102,6 +102,11 @@ def looping():
         message = messages_out.pop(0)
         tree.forward(message)
 
+        if MinerHandler.child_miners:
+            msg = tornado.escape.json_encode(message)
+            for i in MinerHandler.child_miners:
+                i.write_message(msg)
+
     # if recent_longest:
     #     leaders = [i for i in recent_longest if i['timestamp'] < time.time()-setting.MAX_MESSAGE_DELAY_SECONDS and i['timestamp'] > time.time()-setting.MAX_MESSAGE_DELAY_SECONDS - setting.BLOCK_INTERVAL_SECONDS*20][-setting.LEADERS_NUM:]
     #     # print(leaders)
@@ -140,7 +145,7 @@ def new_chain_block(seq):
     global last_hash_proofs
     global subchains_block
     global last_subchains_block
-    msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
+    msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno, msg_id = seq
     # validate
     # check difficulty
 
@@ -163,9 +168,9 @@ def new_chain_block(seq):
 
     print(highest_block_height, height, identity)
     if highest_block_height + 1 < height:
-        no, pk = identity.split(":")
-        if int(no) not in nodes_to_fetch:
-            nodes_to_fetch.append(int(no))
+        # no, pk = identity.split(":")
+        # if int(no) not in nodes_to_fetch:
+        nodes_to_fetch.append(int(nodeno))
         worker_thread_mining = False
     elif highest_block_height + 1 == height:
         highest_block_height = height
@@ -204,10 +209,10 @@ def new_chain_proof(seq):
     conn.commit()
 
     print(highest_block_height, height, identity)
-    if highest_block_height + 1 < height:
-        no, pk = identity.split(":")
-        if int(no) not in nodes_to_fetch:
-            nodes_to_fetch.append(int(no))
+    # if highest_block_height + 1 < height:
+    #     no, pk = identity.split(":")
+    #     if int(no) not in nodes_to_fetch:
+    #         nodes_to_fetch.append(int(no))
 
     if last_highest_block_height != highest_block_height:
         if last_highest_block_height + 1 == highest_block_height:
@@ -444,7 +449,7 @@ def mining():
             if longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
-            message = ["NEW_CHAIN_BLOCK", block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, uuid.uuid4().hex]
+            message = ["NEW_CHAIN_BLOCK", block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, uuid.uuid4().hex]
             messages_out.append(message)
             # print(tree.current_port, "mining", nonce, block_hash)
             nonce = 0
@@ -611,34 +616,30 @@ class MinerConnector(object):
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        global current_branch
-        global current_nodeid
-        global node_parents
-        global node_neighborhoods
-        global nodes_pool
-        global parent_node_id_msg
+        # global current_branch
+        # global current_nodeid
+        # global node_parents
+        # global node_neighborhoods
+        # global nodes_pool
+        # global parent_node_id_msg
 
         if message is None:
-            print("MinerConnector reconnect2 ...")
+            print("MinerConnector reconnect ...")
             tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
             return
 
         seq = tornado.escape.json_decode(message)
         if seq[0] == "NEW_CHAIN_BLOCK":
-            print("MinerConnector NEW_CHAIN_BLOCK", seq)
-            # miner.new_chain_block(seq)
+            print("MinerConnector got NEW_CHAIN_BLOCK", seq)
+            new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_PROOF":
-            print("MinerConnector NEW_CHAIN_PROOF", seq)
-            # miner.new_chain_proof(seq)
+            print("MinerConnector got NEW_CHAIN_PROOF", seq)
+            new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
-            print("MinerConnector NEW_SUBCHAIN_BLOCK", seq)
-            # miner.new_subchain_block(seq)
-            # msg.WaitMsgHandler.new_block(seq)
-
-        # else:
-        # forward(seq)
+            print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
+            new_subchain_block(seq)
 
 
 if __name__ == '__main__':
@@ -651,28 +652,29 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="node.py --name=[miner name]")
     parser.add_argument('--name')
+    parser.add_argument('--host')
+    parser.add_argument('--port')
 
     args = parser.parse_args()
     if not args.name:
         print('--name reqired')
         sys.exit()
     tree.current_name = args.name
+    tree.current_nodeid = 0
+    tree.current_host = args.host
+    tree.current_port = args.port
     sk_filename = "%s.pem" % tree.current_name
     if os.path.exists(sk_filename):
         tree.node_sk = ecdsa.SigningKey.from_pem(open(sk_filename).read())
     else:
         tree.node_sk = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
-        open(sk_filename, "w").write(bytes.decode(node_sk.to_pem()))
-
-
+        open(sk_filename, "w").write(bytes.decode(tree.node_sk.to_pem()))
     database.main()
 
     worker_thread_mining = True
-    MinerConnector('127.0.0.1', 8001)
+    MinerConnector(tree.current_host, tree.current_port)
     worker_threading = threading.Thread(target=worker_thread)
     worker_threading.start()
 
-    # server = Application()
-    # server.listen(tree.current_port, '0.0.0.0')
     tornado.ioloop.IOLoop.instance().start()
     worker_threading.join()
