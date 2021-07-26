@@ -16,7 +16,7 @@ import requests
 import ecdsa
 
 
-USER_NO = 1
+USER_NO = 10
 count = 1
 users = {}
 subchain_blocks = []
@@ -31,13 +31,13 @@ def main():
     for n in range(count):
         # user_nos = set(range(USER_NO))
         # i = random.choice(list(user_nos))
-        sender_sk = users[(n*2)%USER_NO]
+        sender_sk = random.choice(list(users.values()))
         sender_vk = sender_sk.get_verifying_key()
         sender = base64.b32encode(sender_vk.to_string()).decode("utf8")
         # sender = str(n*2)
 
         # j = random.choice(list(user_nos - set([i])))
-        receiver_sk = users[(n*2+1)%USER_NO]
+        receiver_sk = random.choice(list(users.values()))
         receiver_vk = receiver_sk.get_verifying_key()
         receiver = base64.b32encode(receiver_vk.to_string()).decode("utf8")
         # receiver = str(n*2+1)

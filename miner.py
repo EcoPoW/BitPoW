@@ -22,17 +22,17 @@ import tornado.escape
 import setting
 import tree
 # import node
-# import leader
+import chain
 import database
 
 import ecdsa
 
-frozen_block_hash = '0'*64
-frozen_chain = ['0'*64]
-frozen_nodes_in_chain = {}
-highest_block_hash = None
-recent_longest = []
-nodes_in_chain = {}
+# frozen_block_hash = '0'*64
+# frozen_chain = ['0'*64]
+# frozen_nodes_in_chain = {}
+# highest_block_hash = None
+# recent_longest = []
+# nodes_in_chain = {}
 
 
 def longest_chain(from_hash = '0'*64):
@@ -66,14 +66,14 @@ def longest_chain(from_hash = '0'*64):
             if block_height % 1000 == 0:
                 print('longest height', block_height)
             for leaf in leaves:
-                for chain in chains:
-                    prev_block = chain[-1]
+                for the_chain in chains:
+                    prev_block = the_chain[-1]
                     prev_block_hash = prev_block[1]
                     # print(prev_block_hash)
                     if prev_block_hash == prev_hash:
-                        forking_chain = copy.copy(chain)
+                        forking_chain = copy.copy(the_chain)
                         # chain.append(leaf.hash)
-                        chain.append(leaf)
+                        the_chain.append(leaf)
                         chains.append(forking_chain)
                         break
                 leaf_hash = leaf[1]
@@ -115,275 +115,66 @@ def miner_looping():
 
     tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 
-nodes_to_fetch = []
-highest_block_height = 0
-last_highest_block_height = 0
-hash_proofs = set()
-last_hash_proofs = set()
-subchains_block = {}
-last_subchains_block = {}
+# nodes_to_fetch = []
+# highest_block_height = 0
+# last_highest_block_height = 0
+# hash_proofs = set()
+# last_hash_proofs = set()
+# subchains_block = {}
+# last_subchains_block = {}
 
-@tornado.gen.coroutine
-def new_chain_block(seq):
-    # global frozen_block_hash
-    global nodes_to_fetch
-    # global recent_longest
-    global worker_thread_mining
-    global highest_block_height
-    global last_highest_block_height
-    global hash_proofs
-    global last_hash_proofs
-    global subchains_block
-    global last_subchains_block
-    msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno, msg_id = seq
-    # validate
-    # check difficulty
-
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-    except Exception as e:
-        print("new_chain_block Error: %s" % e)
-    conn.commit()
-
-    # if prev_hash != '0'*64:
-    #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
-    #     if not prev_block:
-    #         no, pk = identity.split(":")
-    #         if int(no) not in nodes_to_fetch:
-    #             nodes_to_fetch.append(int(no))
-    #         worker_thread_mining = False
-
-    print(highest_block_height, height, identity)
-    if highest_block_height + 1 < height:
-        # no, pk = identity.split(":")
-        # if int(no) not in nodes_to_fetch:
-        nodes_to_fetch.append(int(nodeno))
-        worker_thread_mining = False
-    elif highest_block_height + 1 == height:
-        highest_block_height = height
-
-    if last_highest_block_height != highest_block_height:
-        last_subchains_block = subchains_block
-        subchains_block = {}
-        if last_highest_block_height + 1 == highest_block_height:
-            last_hash_proofs = hash_proofs
-        else:
-            last_hash_proofs = set()
-        hash_proofs = set()
-        last_highest_block_height = highest_block_height
-
-@tornado.gen.coroutine
-def new_chain_proof(seq):
-    global nodes_to_fetch
-    # global recent_longest
-    global highest_block_height
-    global last_highest_block_height
-    global hash_proofs
-    global last_hash_proofs
-
-    msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
-    # validate
-    # check difficulty
-    print('new_chain_proof', highest_block_height, height)
-
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO proof (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-    except Exception as e:
-        print("new_chain_block Error: %s" % e)
-    conn.commit()
-
-    print(highest_block_height, height, identity)
-    # if highest_block_height + 1 < height:
-    #     no, pk = identity.split(":")
-    #     if int(no) not in nodes_to_fetch:
-    #         nodes_to_fetch.append(int(no))
-
-    if last_highest_block_height != highest_block_height:
-        if last_highest_block_height + 1 == highest_block_height:
-            last_hash_proofs = hash_proofs
-        else:
-            last_hash_proofs = set()
-        hash_proofs = set()
-        last_highest_block_height = highest_block_height
-
-    if highest_block_height + 1 == height:
-        hash_proofs.add(tuple([block_hash, height]))
-
-    print('hash_proofs', hash_proofs)
-    print('last_hash_proofs', last_hash_proofs)
-
-@tornado.gen.coroutine
-def new_subchain_block(seq):
-    global subchains_block
-    # global last_subchains_block
-    msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
-    # validate
-    # need to ensure current subchains_block[sender] is the ancestor of block_hash
-    subchains_block[sender] = block_hash
-
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO subchains (hash, prev_hash, sender, receiver, height, timestamp, data, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, sender, receiver, height, timestamp, tornado.escape.json_encode(data), signature))
-    except Exception as e:
-        print("new_subchain_block Error: %s" % e)
-    conn.commit()
-
-
-class GetHighestBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        global highest_block_hash
-        self.finish({"hash": highest_block_hash})
-
-class GetBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
-        block = c.fetchone()
-        self.finish({"block": block[1:]})
-
-class GetHighestSubchainBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        # global highest_block_hash
-        sender = self.get_argument('sender')
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height DESC LIMIT 1", (sender,))
-        block = c.fetchone()
-        if block:
-            self.finish({"hash": block[1]})
-        else:
-            self.finish({"hash": '0'*64})
-
-class GetSubchainBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE hash = ?", (block_hash,))
-        block = c.fetchone()
-        if block:
-            self.finish({"block": block[1:]})
-        else:
-            self.finish({"block": None})
-
-def fetch_chain(nodeid):
-    print(tree.current_nodeid, 'fetch chain', nodeid)
-    host, port = tree.current_host, tree.current_port
-    prev_nodeid = None
-    while True:
-        try:
-            response = urllib.request.urlopen("http://%s:%s/get_node?nodeid=%s" % (host, port, nodeid))
-        except:
-            break
-        result = tornado.escape.json_decode(response.read())
-        host, port = result['address']
-        if result['nodeid'] == result['current_nodeid']:
-            break
-        if prev_nodeid == result['current_nodeid']:
-            break
-        prev_nodeid = result['current_nodeid']
-        print('result >>>>>', nodeid, result)
-
-    try:
-        response = urllib.request.urlopen("http://%s:%s/get_highest_block" % (host, port))
-    except:
-        return
-    result = tornado.escape.json_decode(response.read())
-    block_hash = result['hash']
-    if not block_hash:
-        return
-    # validate
-
-    print("get highest block", block_hash)
-    while block_hash != '0'*64:
-        conn = database.get_conn2()
-        c = conn.cursor()
-        c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
-        block = c.fetchone()
-        if block:
-            if block[3] % 1000 == 0: #.height
-                print('block height', block[3])#.height
-            block_hash = block[2]#.prev_hash
-            continue
-        try:
-            response = urllib.request.urlopen("http://%s:%s/get_block?hash=%s" % (host, port, block_hash))
-        except:
-            continue
-        result = tornado.escape.json_decode(response.read())
-        block = result["block"]
-        # if block['height'] % 1000 == 0:
-        print("fetch block", block[0])
-        block_hash = block[1]
-        conn = database.get_conn2()
-        c = conn.cursor()
-        try:
-            c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (block[0], block[1], block[2], block[3], block[4], block[5], block[6], block[7]))
-        except Exception as e:
-            print("fetch_chain Error: %s" % e)
-        conn.commit()
 
 nonce = 0
 def mining():
     global nonce
-    global frozen_block_hash
-    global frozen_chain
-    global frozen_nodes_in_chain
-    global recent_longest
-    global nodes_in_chain
-    global highest_block_hash
-    global highest_block_height
+    # global frozen_block_hash
+    # global frozen_chain
+    # global frozen_nodes_in_chain
+    # global recent_longest
+    # global nodes_in_chain
+    # global highest_block_hash
+    # global highest_block_height
     global messages_out
     # global hash_proofs
-    global last_hash_proofs
+    # global last_hash_proofs
     # global subchains_block
-    global last_subchains_block
+    # global last_subchains_block
 
-    longest = longest_chain(frozen_block_hash)
+    longest = longest_chain(chain.frozen_block_hash)
     if longest:
-        highest_block_hash = longest[-1][1]#.hash
-        if highest_block_height < longest[-1][3]:#.height
-            highest_block_height = longest[-1][3]#.height
+        chain.highest_block_hash = longest[-1][1]#.hash
+        if chain.highest_block_height < longest[-1][3]:#.height
+            chain.highest_block_height = longest[-1][3]#.height
 
     if len(longest) > setting.FROZEN_BLOCK_NO:
-        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
-        frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
-        recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
+        chain.frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
+        chain.frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
+        chain.recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
     else:
-        frozen_longest = []
-        recent_longest = longest
+        chain.frozen_longest = []
+        chain.recent_longest = longest
 
-    for i in frozen_longest:
+    for i in chain.frozen_longest:
         print("frozen longest", i[3]) #.height
         data = tornado.escape.json_decode(i[8])#.data
-        frozen_nodes_in_chain.update(data.get("nodes", {}))
-        if i[1] not in frozen_chain:#.hash
-            frozen_chain.append(i[1])#.hash
+        chain.frozen_nodes_in_chain.update(data.get("nodes", {}))
+        if i[1] not in chain.frozen_chain:#.hash
+            chain.frozen_chain.append(i[1])#.hash
 
-    nodes_in_chain = copy.copy(frozen_nodes_in_chain)
-    for i in recent_longest:
+    chain.nodes_in_chain = copy.copy(chain.frozen_nodes_in_chain)
+    for i in chain.recent_longest:
         data = tornado.escape.json_decode(i[8])#.data
         # for j in data.get("nodes", {}):
         #     print("recent longest", i.height, j, data["nodes"][j])
-        nodes_in_chain.update(data.get("nodes", {}))
+        chain.nodes_in_chain.update(data.get("nodes", {}))
 
     # if tree.current_nodeid not in nodes_in_chain and tree.parent_node_id_msg:
     #     tree.forward(tree.parent_node_id_msg)
     #     print(tree.current_port, 'parent_node_id_msg', tree.parent_node_id_msg)
 
-    if len(recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:
-        height_in_cycle = recent_longest[-1][3] % setting.BLOCK_DIFFICULTY_CYCLE #.height
-        timecost = recent_longest[-1-height_in_cycle][7] - recent_longest[-height_in_cycle-setting.BLOCK_DIFFICULTY_CYCLE][7]
+    if len(chain.recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:
+        height_in_cycle = chain.recent_longest[-1][3] % setting.BLOCK_DIFFICULTY_CYCLE #.height
+        timecost = chain.recent_longest[-1-height_in_cycle][7] - chain.recent_longest[-height_in_cycle-setting.BLOCK_DIFFICULTY_CYCLE][7]
         difficulty = 2**248 * timecost / (setting.BLOCK_INTERVAL_SECONDS * setting.BLOCK_DIFFICULTY_CYCLE)#.timestamp
     else:
         difficulty = 2**248
@@ -393,7 +184,7 @@ def mining():
     nodes_to_update = {}
     for nodeid in tree.nodes_pool:
         if tree.nodes_pool[nodeid][1] < last_synctime:
-            if nodeid not in nodes_in_chain or nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][1]:
+            if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][1]:
                 # print("nodes_to_update", nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][1], last_synctime)
                 nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
 
@@ -425,14 +216,15 @@ def mining():
 
     # data = {"nodes": {k:list(v) for k, v in tree.nodes_pool.items()}}
     data["nodes"] = nodes_to_update
-    data["proofs"] = list([list(p) for p in last_hash_proofs])
-    data["subchains"] = last_subchains_block
+    data["proofs"] = list([list(p) for p in chain.last_hash_proofs])
+    data["subchains"] = chain.last_subchains_block
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
     # new_identity = "%s:%s" % (nodeno, pk)
     new_identity = pk
     new_timestamp = time.time()
+    print(tree.current_port, "mining", nonce, int(math.log(difficulty, 2)), len(chain.subchains_block), len(chain.last_subchains_block))
     for i in range(100):
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         if int(block_hash, 16) < difficulty:
@@ -455,67 +247,69 @@ def mining():
         nonce += 1
 
 def validate():
-    global highest_block_hash
-    global highest_block_height
-    global nodes_to_fetch
-    global frozen_nodes_in_chain
-    global frozen_chain
-    global frozen_block_hash
-    global recent_longest
-    global worker_thread_mining
+    # global highest_block_hash
+    # global highest_block_height
+    # global nodes_to_fetch
+    # global frozen_nodes_in_chain
+    # global frozen_chain
+    # global frozen_block_hash
+    # global recent_longest
+    # global worker_thread_mining
 
     c = 0
-    for no in nodes_to_fetch:
+    for no in chain.nodes_to_fetch:
         c += 1
         # no = nodes_to_fetch[0]
         nodeid = tree.nodeno2id(no)
-        fetch_chain(nodeid)
+        chain.fetch_chain(nodeid)
 
-    longest = longest_chain(frozen_block_hash)
+    longest = longest_chain(chain.frozen_block_hash)
     # print(longest)
     if len(longest) >= setting.FROZEN_BLOCK_NO:
-        frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
-        frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
-        recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
+        chain.frozen_block_hash = longest[-setting.FROZEN_BLOCK_NO][2]#.prev_hash
+        chain.frozen_longest = longest[:-setting.FROZEN_BLOCK_NO]
+        chain.recent_longest = longest[-setting.FROZEN_BLOCK_NO:]
     else:
-        frozen_longest = []
-        recent_longest = longest
+        chain.frozen_longest = []
+        chain.recent_longest = longest
 
     if longest:
-        highest_block_hash = longest[-1][1] #.hash
-        if highest_block_height < longest[-1][3]: #.height
-            highest_block_height = longest[-1][3] #.height
+        chain.highest_block_hash = longest[-1][1] #.hash
+        if chain.highest_block_height < longest[-1][3]: #.height
+            chain.highest_block_height = longest[-1][3] #.height
     else:
-        highest_block_hash = '0'*64
+        chain.highest_block_hash = '0'*64
 
-    for i in frozen_longest:
+    for i in chain.frozen_longest:
         if i[3] % 1000 == 0: #.height
             print("frozen longest reload", i[3])#.height
         data = tornado.escape.json_decode(i[8]) #.data
-        frozen_nodes_in_chain.update(data.get("nodes", {}))
-        if i[1] not in frozen_chain: #.hash
-            frozen_chain.append(i[1]) #.hash
+        chain.frozen_nodes_in_chain.update(data.get("nodes", {}))
+        if i[1] not in chain.frozen_chain: #.hash
+            chain.frozen_chain.append(i[1]) #.hash
 
     for i in range(c):
-        nodes_to_fetch.pop(0)
-    if not nodes_to_fetch:
-        worker_thread_mining = True
+        chain.nodes_to_fetch.pop(0)
+    # print("chain.nodes_to_fetch", chain.nodes_to_fetch)
+    if not chain.nodes_to_fetch:
+        chain.worker_thread_mining = True
 
 
-worker_thread_mining = False
+# worker_thread_mining = False
 def worker_thread():
-    global frozen_block_hash
-    global frozen_chain
-    global frozen_nodes_in_chain
+    # global frozen_block_hash
+    # global frozen_chain
+    # global frozen_nodes_in_chain
     # global recent_longest
-    global nodes_in_chain
-    global worker_thread_mining
+    # global nodes_in_chain
+    # global worker_thread_mining
 
     database.get_conn2(tree.current_name)
 
     while True:
         time.sleep(2)
-        if worker_thread_mining and setting.MINING:
+        # print('worker_thread', tree.current_nodeid)
+        if chain.worker_thread_mining and setting.MINING:
             # print('chain mining')
             mining()
             continue
@@ -523,9 +317,9 @@ def worker_thread():
         if tree.current_nodeid is None:
             continue
 
-        print('chain validation')
         # if tree.current_nodeid:
         #     fetch_chain(tree.current_nodeid[:-1])
+        # print('chain validation')
         validate()
 
     # mining_task = tornado.ioloop.PeriodicCallback(mining, 1000) # , jitter=0.5
@@ -566,11 +360,10 @@ if __name__ == '__main__':
         open(sk_filename, "w").write(bytes.decode(tree.node_sk.to_pem()))
     database.main()
 
-    worker_thread_mining = True
     setting.MINING = True
     tree.MinerConnector(tree.current_host, tree.current_port)
     worker_threading = threading.Thread(target=worker_thread)
     worker_threading.start()
 
     tornado.ioloop.IOLoop.instance().start()
-    worker_threading.join()
+    # worker_threading.join()

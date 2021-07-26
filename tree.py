@@ -20,10 +20,8 @@ import tornado.escape
 
 import setting
 import miner
-# import leader
-# import fs
+import chain
 import database
-# import msg
 
 # from ecdsa import SigningKey, VerifyingKey, NIST256p
 import ecdsa
@@ -111,7 +109,6 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         if self not in MinerHandler.child_miners:
             MinerHandler.child_miners.add(self)
 
-        self.write_message(tornado.escape.json_encode(["NODE_ID", current_nodeid]))
         print(current_port, "MinerHandler miner connected")
 
     def on_close(self):
@@ -122,17 +119,21 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
     @tornado.gen.coroutine
     def on_message(self, message):
         seq = tornado.escape.json_decode(message)
-        if seq[0] == "NEW_CHAIN_BLOCK":
+        if seq[0] == "GET_MINER_NODE":
+            print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
+            self.write_message(tornado.escape.json_encode(["MINER_NODE_ID", current_nodeid]))
+
+        elif seq[0] == "NEW_CHAIN_BLOCK":
             print("MinerHandler NEW_CHAIN_BLOCK", seq)
-            miner.new_chain_block(seq)
+            chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_PROOF":
             print("MinerHandler NEW_CHAIN_PROOF", seq)
-            miner.new_chain_proof(seq)
+            chain.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
             print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
-            miner.new_subchain_block(seq)
+            chain.new_subchain_block(seq)
 
         forward(seq)
 
@@ -147,7 +148,8 @@ class MinerConnector(object):
         self.port = port
         self.ws_uri = "ws://%s:%s/miner" % (self.host, self.port)
         self.conn = None
-        self.connect()
+        # self.connect() 
+        tornado.ioloop.IOLoop.instance().call_later(3.0, self.connect)
 
     def connect(self):
         tornado.websocket.websocket_connect(self.ws_uri,
@@ -167,14 +169,15 @@ class MinerConnector(object):
         try:
             self.conn = future.result()
             MinerConnector.node_miner = self.conn
-            print('on_connect', MinerConnector)
+            print('on_connect', self.conn)
+            self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
         except:
             tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
 
     @tornado.gen.coroutine
     def on_message(self, message):
+        global current_nodeid
         # global current_branch
-        # global current_nodeid
         # global node_parents
         # global node_neighborhoods
         # global nodes_pool
@@ -186,21 +189,25 @@ class MinerConnector(object):
             return
 
         seq = tornado.escape.json_decode(message)
-        if seq[0] == "NODE_ID":
-            print("MinerConnector got NODE_ID", seq)
+        if seq[0] == "MINER_NODE_ID":
+            print("MinerConnector got MINER_NODE_ID", seq)
             current_nodeid = seq[1]
+            if current_nodeid is not None and self.conn:
+                chain.worker_thread_mining = True
+            else:
+                self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
 
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("MinerConnector got NEW_CHAIN_BLOCK", seq)
-            miner.new_chain_block(seq)
+            chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_PROOF":
             print("MinerConnector got NEW_CHAIN_PROOF", seq)
-            miner.new_chain_proof(seq)
+            chain.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
             print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
-            miner.new_subchain_block(seq)
+            chain.new_subchain_block(seq)
 
 
 # connect point from child node
@@ -318,14 +325,14 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("NEW_CHAIN_BLOCK", seq)
-            miner.new_chain_block(seq)
+            chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_PROOF":
             print("NEW_CHAIN_PROOF", seq)
-            miner.new_chain_proof(seq)
+            chain.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
-            miner.new_subchain_block(seq)
+            chain.new_subchain_block(seq)
             # msg.WaitMsgHandler.new_block(seq)
 
         # elif seq[0] == "NEW_TX":
@@ -501,14 +508,14 @@ class NodeConnector(object):
 
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("NEW_CHAIN_BLOCK", seq)
-            miner.new_chain_block(seq)
+            chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_PROOF":
             print("NEW_CHAIN_PROOF", seq)
-            miner.new_chain_proof(seq)
+            chain.new_chain_proof(seq)
 
         elif seq[0] == "NEW_SUBCHAIN_BLOCK":
-            miner.new_subchain_block(seq)
+            chain.new_subchain_block(seq)
             # msg.WaitMsgHandler.new_block(seq)
 
         # elif seq[0] == "NEW_TX":
@@ -622,8 +629,12 @@ def connect():
 
     else:
         if parent_host and parent_port:
-            NodeConnector(parent_host, parent_port, "")
+            # NodeConnector(parent_host, parent_port, "")
+            bootstrap([parent_host, parent_port])
+
         else:
+            available_branches.add(tuple([current_host, current_port, "0"]))
+            available_branches.add(tuple([current_host, current_port, "1"]))
             current_nodeid = ""
 
 def main():

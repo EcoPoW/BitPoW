@@ -20,7 +20,7 @@ import tornado.escape
 import setting
 import tree
 import miner
-# import leader
+import chain
 import database
 # import fs
 # import msg
@@ -31,10 +31,10 @@ class Application(tornado.web.Application):
                     (r"/miner", tree.MinerHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
-                    (r"/get_highest_block", miner.GetHighestBlockHandler),
-                    (r"/get_block", miner.GetBlockHandler),
-                    (r"/get_highest_subchain_block", miner.GetHighestSubchainBlockHandler),
-                    (r"/get_subchain_block", miner.GetSubchainBlockHandler),
+                    (r"/get_highest_block", chain.GetHighestBlockHandler),
+                    (r"/get_block", chain.GetBlockHandler),
+                    (r"/get_highest_subchain_block", chain.GetHighestSubchainBlockHandler),
+                    (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
                     # (r"/disconnect", DisconnectHandler),
@@ -94,7 +94,7 @@ class NewSubchainBlockHandler(tornado.web.RequestHandler):
     def post(self):
         block = tornado.escape.json_decode(self.request.body)
 
-        tree.forward(["NEW_SUBCHAIN_BLOCK"] + block) #, time.time(), uuid.uuid4().hex])
+        tree.forward(["NEW_SUBCHAIN_BLOCK"] + block) # + [time.time(), uuid.uuid4().hex]
         self.finish({"block": block})
 
 class DashboardHandler(tornado.web.RequestHandler):
@@ -122,7 +122,7 @@ class DashboardHandler(tornado.web.RequestHandler):
             self.write("%s %s:%s <a href='http://%s:%s/dashboard'>dashboard</a><br>" %(nodeid, host, port, host, port))
 
         self.write("<br>recent longest:<br>")
-        for i in reversed(miner.recent_longest):
+        for i in reversed(chain.recent_longest):
             self.write("%s <a href='/get_block?hash=%s'>%s</a> %s<br>" % (i[3], i[1], i[1], i[6]))
 
         self.write("<br>nodes_pool:<br>")
@@ -131,13 +131,13 @@ class DashboardHandler(tornado.web.RequestHandler):
             self.write("%s: %s<br>" %(nodeid, pk))
 
         self.write("<br>nodes_in_chain:<br>")
-        for nodeid in miner.nodes_in_chain:
-            pk = miner.nodes_in_chain[nodeid]
+        for nodeid in chain.nodes_in_chain:
+            pk = chain.nodes_in_chain[nodeid]
             self.write("%s: %s<br>" %(nodeid, pk))
 
         self.write("<br>frozen_nodes_in_chain:<br>")
-        for nodeid in miner.frozen_nodes_in_chain:
-            pk = miner.frozen_nodes_in_chain[nodeid]
+        for nodeid in chain.frozen_nodes_in_chain:
+            pk = chain.frozen_nodes_in_chain[nodeid]
             self.write("%s: %s<br>" %(nodeid, pk))
 
         self.write("<br>available_branches:<br>")
@@ -145,7 +145,7 @@ class DashboardHandler(tornado.web.RequestHandler):
             self.write("%s:%s %s <br>" % branch)
 
         self.write("<br>frozen chain:<br>")
-        for i, h in enumerate(miner.frozen_chain):
+        for i, h in enumerate(chain.frozen_chain):
             self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
         self.finish()
 
