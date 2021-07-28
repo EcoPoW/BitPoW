@@ -33,6 +33,7 @@ class Application(tornado.web.Application):
                     (r"/get_node", GetNodeHandler),
                     (r"/get_highest_block", chain.GetHighestBlockHandler),
                     (r"/get_block", chain.GetBlockHandler),
+                    (r"/get_proof", chain.GetProofHandler),
                     (r"/get_highest_subchain_block", chain.GetHighestSubchainBlockHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),

@@ -254,6 +254,15 @@ class GetBlockHandler(tornado.web.RequestHandler):
         block = c.fetchone()
         self.finish({"block": block[1:]})
 
+class GetProofHandler(tornado.web.RequestHandler):
+    def get(self):
+        proof_hash = self.get_argument("hash")
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM proof WHERE hash = ?", (proof_hash,))
+        proof = c.fetchone()
+        self.finish({"proof": proof[1:]})
+
 class GetHighestSubchainBlockHandler(tornado.web.RequestHandler):
     def get(self):
         # global highest_block_hash
