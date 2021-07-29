@@ -65,7 +65,14 @@ def main():
     block = rsp.json()['block']
     print('prev_block', block)
     new_timestamp = time.time()
-    data = {'proofs': list(proofs), 'blocks': list(blocks)}
+
+    amount = 0
+    for hash in proofs:
+        amount += int(2**256/int(hash, 16))
+    for hash in blocks:
+        amount += int(2**256/int(hash, 16))
+
+    data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
     if block:
         height = block[4]
     else:

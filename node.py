@@ -38,6 +38,9 @@ class Application(tornado.web.Application):
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
+                    (r"/chain_explorer", ChainExplorerHandler),
+                    (r"/subchain_explorer", SubchainExplorerHandler),
+                    (r"/user_explorer", UserExplorerHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
                     ]
@@ -95,6 +98,7 @@ class NewSubchainBlockHandler(tornado.web.RequestHandler):
     def post(self):
         block = tornado.escape.json_decode(self.request.body)
 
+        chain.new_subchain_block(["NEW_SUBCHAIN_BLOCK"] + block)
         tree.forward(["NEW_SUBCHAIN_BLOCK"] + block) # + [time.time(), uuid.uuid4().hex]
         self.finish({"block": block})
 
@@ -149,6 +153,34 @@ class DashboardHandler(tornado.web.RequestHandler):
         for i, h in enumerate(chain.frozen_chain):
             self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
         self.finish()
+
+
+class ChainExplorerHandler(tornado.web.RequestHandler):
+    def get(self):
+        height = self.get_argument('height')
+
+class SubchainExplorerHandler(tornado.web.RequestHandler):
+    def get(self):
+        sender = self.get_argument('sender')
+        height = self.get_argument('height', 1)
+        self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Prev</a>    " % (int(height)-1, sender))
+        self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Next</a><br>" % (int(height)+1, sender))
+
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM subchains WHERE sender = ? AND height = ?", (sender, height))
+        blocks = c.fetchall()
+        for block in blocks:
+            self.write("<code>%s</code><br>" % str(block))
+
+class UserExplorerHandler(tornado.web.RequestHandler):
+    def get(self):
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT DISTINCT(sender) FROM subchains")
+        senders = c.fetchall()
+        for sender in senders:
+            self.write("<a href='/subchain_explorer?sender=%s'>%s</a><br>"% (sender[0], sender[0]))
 
 def main():
     tree.main()
