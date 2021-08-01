@@ -157,7 +157,16 @@ class DashboardHandler(tornado.web.RequestHandler):
 
 class ChainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
-        height = self.get_argument('height')
+        height = self.get_argument('height', 1)
+        self.write("<a href='/chain_explorer?height=%s'>Prev</a>    " % (int(height)-1, ))
+        self.write("<a href='/chain_explorer?height=%s'>Next</a><br>" % (int(height)+1, ))
+
+        conn = database.get_conn()
+        c = conn.cursor()
+        c.execute("SELECT * FROM chain WHERE height = ?", (height, ))
+        blocks = c.fetchall()
+        for block in blocks:
+            self.write("<code>%s</code><br>" % str(block))
 
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
