@@ -25,8 +25,10 @@ def main():
     host = args.host
     port = args.port
 
-    blocks = set()
-    proofs = set()
+    chain_blocks = set()
+    chain_proofs = set()
+    subchain_blocks = set()
+    subchain_proofs = set()
 
     sender_sk = ecdsa.SigningKey.from_pem(open("%s.pem" % name).read())
     sender_vk = sender_sk.get_verifying_key()
@@ -38,43 +40,63 @@ def main():
     prev_hash = rsp.json()["hash"]
     while True:
         rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, prev_hash))
-        block = rsp.json()["block"]
-        print(block[2], block[0])
-        if block[5] == sender:
-            print('  block', 2**256/int(block[0], 16))
-            blocks.add(block[0])
-        data = json.loads(block[7])
+        chain_block = rsp.json()["block"]
+        if chain_block is None:
+            break
+        print(chain_block[2], chain_block[0])
+        if chain_block[5] == sender:
+            print('  block', 2**256/int(chain_block[0], 16))
+            chain_blocks.add(chain_block[0])
+        data = json.loads(chain_block[7])
         for proof in data["proofs"]:
             rsp = requests.get('http://%s:%s/get_proof?hash=%s' % (host, port, proof[0]))
             proof = rsp.json()["proof"]
             if proof[5] == sender:
                 print('  proof', 2**256/int(proof[0], 16))
                 # print(proof[2], proof[0])
-                proofs.add(proof[0])
-        prev_hash = block[1]
-        if block[2] == 1:
+                chain_proofs.add(proof[0])
+        prev_hash = chain_block[1]
+        if chain_block[2] == 1:
             break
         print('-')
 
     rsp = requests.get('http://%s:%s/get_highest_subchain_block?sender=%s' % (host, port, sender))
     prev_hash = rsp.json()['hash']
     print('prev_hash', prev_hash)
+    while True:
+        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
+        print(rsp.json())
+        subchain_block = rsp.json()['block']
+        if subchain_block is None:
+            break
+        prev_hash = subchain_block[1]
+        print(subchain_block[2], subchain_block[0])
+        assert subchain_block[2] == sender
+        data = json.loads(subchain_block[6])
+        subchain_blocks.update(data.get("blocks", []))
+        subchain_proofs.update(data.get("proofs", []))
+        print(subchain_block[4])
+        if subchain_block[4] == 1:
+            break
+        print('-')
 
-    rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
-    print(rsp.json())
-    block = rsp.json()['block']
-    print('prev_block', block)
+    # rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
+    # print(rsp.json())
+    # block = rsp.json()['block']
+    # print('prev_block', block)
     new_timestamp = time.time()
 
     amount = 0
+    proofs = chain_proofs - subchain_proofs
     for hash in proofs:
         amount += int(2**256/int(hash, 16))
+    blocks = chain_blocks - subchain_blocks
     for hash in blocks:
         amount += int(2**256/int(hash, 16))
 
     data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
-    if block:
-        height = block[4]
+    if subchain_block:
+        height = subchain_block[4]
     else:
         height = 0
 

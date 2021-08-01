@@ -108,6 +108,8 @@ class DashboardHandler(tornado.web.RequestHandler):
         branches.sort(key=lambda l:len(l[2]))
 
         parents = []
+        self.write("<a href='/chain_explorer'>Chain Explorer</a> ")
+        self.write("<a href='/user_explorer'>User Explorer</a></br>")
         self.write("<br>current_nodeid: %s <br>" % tree.current_nodeid)
 
         self.write("<br>pk: %s <br>" % base64.b32encode(tree.node_sk.get_verifying_key().to_string()).decode("utf8"))
@@ -158,6 +160,9 @@ class DashboardHandler(tornado.web.RequestHandler):
 class ChainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         height = self.get_argument('height', 1)
+
+        self.write("<a href='/dashboard'>Dashboard</a> ")
+        self.write("<a href='/user_explorer'>User Explorer</a></br>")
         self.write("<a href='/chain_explorer?height=%s'>Prev</a>    " % (int(height)-1, ))
         self.write("<a href='/chain_explorer?height=%s'>Next</a><br>" % (int(height)+1, ))
 
@@ -172,6 +177,9 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
         height = self.get_argument('height', 1)
+        self.write("<a href='/dashboard'>Dashboard</a> ")
+        self.write("<a href='/chain_explorer'>Chain Explorer</a> ")
+        self.write("<a href='/user_explorer'>User Explorer</a></br>")
         self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Prev</a>    " % (int(height)-1, sender))
         self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Next</a><br>" % (int(height)+1, sender))
 
@@ -188,6 +196,8 @@ class UserExplorerHandler(tornado.web.RequestHandler):
         c = conn.cursor()
         c.execute("SELECT DISTINCT(sender) FROM subchains")
         senders = c.fetchall()
+        self.write("<a href='/dashboard'>Dashboard</a> ")
+        self.write("<a href='/chain_explorer'>Chain Explorer</a> <br>")
         for sender in senders:
             self.write("<a href='/subchain_explorer?sender=%s'>%s</a><br>"% (sender[0], sender[0]))
 
