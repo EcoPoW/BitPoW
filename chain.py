@@ -252,7 +252,10 @@ class GetBlockHandler(tornado.web.RequestHandler):
         c = conn.cursor()
         c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
         block = c.fetchone()
-        self.finish({"block": block[1:]})
+        if block:
+            self.finish({"block": block[1:]})
+        else:
+            self.finish({"block": None})
 
 class GetProofHandler(tornado.web.RequestHandler):
     def get(self):
@@ -269,7 +272,7 @@ class GetHighestSubchainBlockHandler(tornado.web.RequestHandler):
         sender = self.get_argument('sender')
         conn = database.get_conn()
         c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height DESC LIMIT 1", (sender,))
+        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height ASC LIMIT 1", (sender,))
         block = c.fetchone()
         if block:
             self.finish({"hash": block[1]})

@@ -67,10 +67,10 @@ def main():
         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
         print(rsp.json())
         subchain_block = rsp.json()['block']
+        print('assert', subchain_block)
         if subchain_block is None:
             break
-        prev_hash = subchain_block[1]
-        print(subchain_block[2], subchain_block[0])
+        prev_hash = subchain_block[0]
         assert subchain_block[2] == sender
         data = json.loads(subchain_block[6])
         subchain_blocks.update(data.get("blocks", []))
@@ -79,12 +79,6 @@ def main():
         if subchain_block[4] == 1:
             break
         print('-')
-
-    # rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
-    # print(rsp.json())
-    # block = rsp.json()['block']
-    # print('prev_block', block)
-    new_timestamp = time.time()
 
     amount = 0
     proofs = chain_proofs - subchain_proofs
@@ -100,6 +94,7 @@ def main():
     else:
         height = 0
 
+    new_timestamp = time.time()
     data_json = json.dumps(data)
     block_hash = hashlib.sha256((prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
     signature = base64.b32encode(sender_sk.sign(str(block_hash).encode("utf8"))).decode("utf8")
