@@ -120,7 +120,7 @@ class DashboardHandler(tornado.web.RequestHandler):
 
         self.write("<br>node_parents:<br>")
         for nodeid in tree.node_parents:
-            host, port = tree.node_parents[nodeid][0]
+            host, port = tree.node_parents[nodeid]
             self.write("%s %s:%s<br>" %(nodeid, host, port))
 
         self.write("<br>node_neighborhoods:<br>")

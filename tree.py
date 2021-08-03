@@ -259,6 +259,7 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         # miner.nodes_to_fetch.append(self.branch)
         # miner.worker_thread_mining = False
 
+        node_parents[current_nodeid] = [current_host, current_port]
         message = ["NODE_PARENTS", node_parents, uuid.uuid4().hex]
         self.write_message(tornado.escape.json_encode(message))
 
@@ -473,8 +474,9 @@ class NodeConnector(object):
             parent_nodeid = seq[4]
             timestamp = seq[5]
 
-            if parent_nodeid == "":
+            if parent_nodeid is not None:
                 nodes_pool[parent_nodeid] = [parent_pk, timestamp]
+                node_parents[parent_nodeid] = [self.host, self.port]
             nodes_pool[nodeid] = [pk, timestamp]
             print(current_port, "NODE_ID", nodeid, pk, parent_nodeid, parent_pk, seq[-1])
             if self.branch == nodeid:

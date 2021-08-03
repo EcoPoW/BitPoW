@@ -301,13 +301,13 @@ def fetch_chain(nodeid):
         except:
             break
         result = tornado.escape.json_decode(response.read())
+        print('result >>>>>', nodeid, result)
         host, port = result['address']
         if result['nodeid'] == result['current_nodeid']:
             break
         if prev_nodeid == result['current_nodeid']:
             break
         prev_nodeid = result['current_nodeid']
-        print('result >>>>>', nodeid, result)
 
     try:
         response = urllib.request.urlopen("http://%s:%s/get_highest_block" % (host, port))
@@ -319,7 +319,7 @@ def fetch_chain(nodeid):
         return
     # validate
 
-    print("get highest block", block_hash)
+    print("get highest block", block_hash, host, port)
     while block_hash != '0'*64:
         conn = database.get_conn2()
         c = conn.cursor()
