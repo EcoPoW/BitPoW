@@ -27,13 +27,6 @@ import database
 
 import ecdsa
 
-# frozen_block_hash = '0'*64
-# frozen_chain = ['0'*64]
-# frozen_nodes_in_chain = {}
-# highest_block_hash = None
-# recent_longest = []
-# nodes_in_chain = {}
-
 
 def longest_chain(from_hash = '0'*64):
     conn = database.get_conn2()
@@ -114,14 +107,6 @@ def miner_looping():
             tree.MinerConnector.node_miner.write_message(tornado.escape.json_encode(message))
 
     tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
-
-# nodes_to_fetch = []
-# highest_block_height = 0
-# last_highest_block_height = 0
-# hash_proofs = set()
-# last_hash_proofs = set()
-# subchains_block = {}
-# last_subchains_block = {}
 
 
 nonce = 0
@@ -224,7 +209,7 @@ def mining():
     # new_identity = "%s:%s" % (nodeno, pk)
     new_identity = pk
     new_timestamp = time.time()
-    print(tree.current_port, "mining", nonce, int(math.log(difficulty, 2)), len(chain.subchains_block), len(chain.last_subchains_block))
+    print(tree.current_port, "mining", nonce, int(math.log(difficulty, 2)), height, len(chain.subchains_block), len(chain.last_subchains_block))
     for i in range(100):
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         if int(block_hash, 16) < difficulty:
@@ -247,20 +232,11 @@ def mining():
         nonce += 1
 
 def validate():
-    # global highest_block_hash
-    # global highest_block_height
-    # global nodes_to_fetch
-    # global frozen_nodes_in_chain
-    # global frozen_chain
-    # global frozen_block_hash
-    # global recent_longest
-    # global worker_thread_mining
-
     c = 0
-    for no in chain.nodes_to_fetch:
+    for nodeid in chain.nodes_to_fetch:
         c += 1
         # no = nodes_to_fetch[0]
-        nodeid = tree.nodeno2id(no)
+        # nodeid = tree.nodeno2id(no)
         chain.fetch_chain(nodeid)
 
     longest = longest_chain(chain.frozen_block_hash)
@@ -292,24 +268,20 @@ def validate():
         chain.nodes_to_fetch.pop(0)
     # print("chain.nodes_to_fetch", chain.nodes_to_fetch)
     if not chain.nodes_to_fetch:
-        chain.worker_thread_mining = True
+        if setting.MINING:
+            chain.worker_thread_mining = True
 
 
-# worker_thread_mining = False
 def worker_thread():
-    # global frozen_block_hash
-    # global frozen_chain
-    # global frozen_nodes_in_chain
-    # global recent_longest
-    # global nodes_in_chain
-    # global worker_thread_mining
-
     database.get_conn2(tree.current_name)
 
     while True:
         time.sleep(2)
+        if chain.worker_thread_pause:
+            continue
+
         # print('worker_thread', tree.current_nodeid)
-        if chain.worker_thread_mining and setting.MINING:
+        if chain.worker_thread_mining:
             # print('chain mining')
             mining()
             continue
@@ -319,7 +291,7 @@ def worker_thread():
 
         # if tree.current_nodeid:
         #     fetch_chain(tree.current_nodeid[:-1])
-        # print('chain validation')
+        print('chain validation')
         validate()
 
     # mining_task = tornado.ioloop.PeriodicCallback(mining, 1000) # , jitter=0.5

@@ -193,7 +193,9 @@ class MinerConnector(object):
             print("MinerConnector got MINER_NODE_ID", seq)
             current_nodeid = seq[1]
             if current_nodeid is not None and self.conn:
-                chain.worker_thread_mining = True
+                chain.nodes_to_fetch.append(current_nodeid)
+                chain.worker_thread_pause = False
+                # chain.worker_thread_mining = True
             else:
                 self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
 

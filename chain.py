@@ -35,6 +35,7 @@ highest_block_hash = None
 recent_longest = []
 nodes_in_chain = {}
 worker_thread_mining = False
+worker_thread_pause = True
 
 def longest_chain(from_hash = '0'*64):
     conn = database.get_conn2()
@@ -161,7 +162,7 @@ def new_chain_block(seq):
     if highest_block_height + 1 < height:
         # no, pk = identity.split(":")
         # if int(no) not in nodes_to_fetch:
-        nodes_to_fetch.append(int(nodeno))
+        nodes_to_fetch.append(tree.nodeno2id(int(nodeno)))
         worker_thread_mining = False
     elif highest_block_height + 1 == height:
         highest_block_height = height

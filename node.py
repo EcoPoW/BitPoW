@@ -214,6 +214,7 @@ def main():
 
     worker_threading = threading.Thread(target=miner.worker_thread)
     worker_threading.start()
+    chain.worker_thread_pause = False
 
     server = Application()
     server.listen(tree.current_port, '0.0.0.0')
