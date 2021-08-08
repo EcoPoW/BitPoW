@@ -273,7 +273,7 @@ class GetHighestSubchainBlockHandler(tornado.web.RequestHandler):
         sender = self.get_argument('sender')
         conn = database.get_conn()
         c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height ASC LIMIT 1", (sender,))
+        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height DESC LIMIT 1", (sender,))
         block = c.fetchone()
         if block:
             self.finish({"hash": block[1]})
