@@ -61,7 +61,8 @@ def main():
         print('-')
 
     rsp = requests.get('http://%s:%s/get_highest_subchain_block?sender=%s' % (host, port, sender))
-    prev_hash = rsp.json()['hash']
+    highest_subchain_hash = rsp.json()['hash']
+    prev_hash = highest_subchain_hash
     print('prev_hash', prev_hash)
     while True:
         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
@@ -70,7 +71,7 @@ def main():
         print('assert', subchain_block)
         if subchain_block is None:
             break
-        prev_hash = subchain_block[0]
+        prev_hash = subchain_block[1]
         assert subchain_block[2] == sender
         data = json.loads(subchain_block[6])
         subchain_blocks.update(data.get("blocks", []))
@@ -87,21 +88,24 @@ def main():
     blocks = chain_blocks - subchain_blocks
     for hash in blocks:
         amount += int(2**256/int(hash, 16))
-
     data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
-    if subchain_block:
-        height = subchain_block[4]
+    data_json = json.dumps(data)
+
+    rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, highest_subchain_hash))
+    highest_subchain_block = rsp.json()['block']
+    if highest_subchain_block:
+        height = highest_subchain_block[4]
     else:
         height = 0
+    highest_prev_hash = highest_subchain_block[0]
 
     new_timestamp = time.time()
-    data_json = json.dumps(data)
-    block_hash = hashlib.sha256((prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
+    block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
     signature = base64.b32encode(sender_sk.sign(str(block_hash).encode("utf8"))).decode("utf8")
     print('signature', signature)
-    subchain_block = [block_hash, prev_hash, sender, receiver, height+1, data, new_timestamp, signature]
-    rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json=subchain_block)
-    print("gen subchain block", subchain_block)
+    new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature]
+    rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
+    print("gen subchain block", new_subchain_block)
 
 
 if __name__ == '__main__':
