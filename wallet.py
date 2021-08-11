@@ -95,9 +95,10 @@ def main():
     highest_subchain_block = rsp.json()['block']
     if highest_subchain_block:
         height = highest_subchain_block[4]
+        highest_prev_hash = highest_subchain_block[0]
     else:
         height = 0
-    highest_prev_hash = highest_subchain_block[0]
+        highest_prev_hash = '0'*64
 
     new_timestamp = time.time()
     block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()

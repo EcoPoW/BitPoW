@@ -94,29 +94,6 @@ def longest_chain(from_hash = '0'*64):
     return longest
 
 
-messages_out = []
-def looping():
-    global messages_out
-    # global recent_longest
-    # print(messages_out)
-
-    while messages_out:
-        message = messages_out.pop(0)
-        tree.forward(message)
-
-    tornado.ioloop.IOLoop.instance().call_later(1, looping)
-
-
-def miner_looping():
-    global messages_out
-
-    while messages_out:
-        message = messages_out.pop(0)
-        if tree.MinerConnector.node_miner:
-            tree.MinerConnector.node_miner.write_message(tornado.escape.json_encode(message))
-
-    tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
-
 nodes_to_fetch = []
 highest_block_height = 0
 last_highest_block_height = 0

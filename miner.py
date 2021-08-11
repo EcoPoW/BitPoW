@@ -299,11 +299,6 @@ def worker_thread():
     # print(tree.current_port, "miner")
 
 
-# @tornado.gen.coroutine
-# def main():
-#     tornado.ioloop.IOLoop.instance().call_later(1, looping)
-
-
 if __name__ == '__main__':
     # print("run python node.py pls")
     # tree.current_port = "8001"
