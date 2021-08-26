@@ -100,6 +100,7 @@ def looping():
 
 def miner_looping():
     global messages_out
+    print("messages_out", len(messages_out))
 
     while messages_out:
         message = messages_out.pop(0)
@@ -160,9 +161,17 @@ def mining():
     if len(chain.recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:
         height_in_cycle = chain.recent_longest[-1][3] % setting.BLOCK_DIFFICULTY_CYCLE #.height
         timecost = chain.recent_longest[-1-height_in_cycle][7] - chain.recent_longest[-height_in_cycle-setting.BLOCK_DIFFICULTY_CYCLE][7]
-        difficulty = 2**248 * timecost / (setting.BLOCK_INTERVAL_SECONDS * setting.BLOCK_DIFFICULTY_CYCLE)#.timestamp
+        if timecost < 1:
+            timecost = 1
+        adjust = timecost / (setting.BLOCK_INTERVAL_SECONDS * setting.BLOCK_DIFFICULTY_CYCLE)
+        if adjust > 4:
+            adjust = 4
+        if adjust < 1/4:
+            adjust = 1/4
+        difficulty = longest[-1][5]#.difficulty
+        block_difficulty = 2**difficulty * adjust#.timestamp
     else:
-        difficulty = 2**248
+        block_difficulty = 2**248
 
     now = int(time.time())
     last_synctime = now - now % setting.NETWORK_SPREADING_SECONDS - setting.NETWORK_SPREADING_SECONDS
@@ -197,7 +206,7 @@ def mining():
 
     else:
         prev_hash, height, data, identity = '0'*64, 0, {}, ":"
-    new_difficulty = int(math.log(difficulty, 2))
+    new_difficulty = int(math.log(block_difficulty, 2))
 
     # data = {"nodes": {k:list(v) for k, v in tree.nodes_pool.items()}}
     data["nodes"] = nodes_to_update
@@ -209,10 +218,11 @@ def mining():
     # new_identity = "%s:%s" % (nodeno, pk)
     new_identity = pk
     new_timestamp = time.time()
-    print(tree.current_port, "mining", nonce, int(math.log(difficulty, 2)), height, len(chain.subchains_block), len(chain.last_subchains_block))
+    if nonce % 1000 == 0:
+        print(tree.current_port, "mining", nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_block), len(chain.last_subchains_block))
     for i in range(100):
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-        if int(block_hash, 16) < difficulty:
+        if int(block_hash, 16) < block_difficulty:
             if longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
@@ -222,7 +232,7 @@ def mining():
             nonce = 0
             break
 
-        if int(block_hash, 16) < difficulty*2:
+        if int(block_hash, 16) < block_difficulty*2:
             # if longest:
             #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
@@ -232,6 +242,7 @@ def mining():
         nonce += 1
 
 def validate():
+    global nonce
     c = 0
     for nodeid in chain.nodes_to_fetch:
         c += 1
@@ -270,6 +281,7 @@ def validate():
     if not chain.nodes_to_fetch:
         if setting.MINING:
             chain.worker_thread_mining = True
+            nonce = 0
 
 
 def worker_thread():

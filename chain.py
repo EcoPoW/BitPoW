@@ -140,9 +140,9 @@ def new_chain_block(seq):
         # no, pk = identity.split(":")
         # if int(no) not in nodes_to_fetch:
         nodes_to_fetch.append(tree.nodeno2id(int(nodeno)))
-        worker_thread_mining = False
     elif highest_block_height + 1 == height:
         highest_block_height = height
+    worker_thread_mining = False
 
     print('new_chain_block', last_highest_block_height, highest_block_height)
     if last_highest_block_height != highest_block_height:
