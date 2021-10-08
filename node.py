@@ -161,19 +161,29 @@ class DashboardHandler(tornado.web.RequestHandler):
 
 class ChainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
-        height = self.get_argument('height', 1)
+        block_hash = self.get_argument('hash', None)
+        db = database.get_conn()
+        if not block_hash:
+            block_hash = db.get(b'chain')
+        else:
+            block_hash = block_hash.encode('utf8')
 
-        self.write("<a href='/dashboard'>Dashboard</a> ")
-        self.write("<a href='/user_explorer'>User Explorer</a></br>")
-        self.write("<a href='/chain_explorer?height=%s'>Prev</a>    " % (int(height)-1, ))
-        self.write("<a href='/chain_explorer?height=%s'>Next</a><br>" % (int(height)+1, ))
+        if not block_hash:
+            self.write('hash required')
+            return
 
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM chain WHERE height = ?", (height, ))
-        blocks = c.fetchall()
-        for block in blocks:
-            self.write("<code>%s</code><br>" % str(block))
+        self.write('<a href="/dashboard">Dashboard</a> ')
+        self.write('<a href="/user_explorer">User Explorer</a></br></br>')
+
+        for i in range(10):
+            block_json = db.get(b'block%s' % block_hash)
+            if not block_json:
+                return
+            self.write("<code>%s</code><br><br>" % block_json)
+            block = tornado.escape.json_decode(block_json)
+            block_hash = block[chain.PREV_HASH].encode('utf8')
+
+        self.write("<a href='/chain_explorer?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
 
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
@@ -194,14 +204,18 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
 
 class UserExplorerHandler(tornado.web.RequestHandler):
     def get(self):
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT DISTINCT(sender) FROM subchains")
-        senders = c.fetchall()
+        db = database.get_conn()
+        it = db.iteritems()
         self.write("<a href='/dashboard'>Dashboard</a> ")
         self.write("<a href='/chain_explorer'>Chain Explorer</a> <br>")
-        for sender in senders:
-            self.write("<a href='/subchain_explorer?sender=%s'>%s</a><br>"% (sender[0], sender[0]))
+        it.seek(b'chain')
+        for k, v in it:
+            if k == b'chain':
+                self.write("<a href='/chain_explorer?hash=%s'>main chain</a><br>"% v.decode())
+                continue
+            if not k.startswith(b'chain'):
+                break
+            self.write("<a href='/subchain_explorer?hash=%s'>%s</a><br>"% (v.decode(), k.decode().replace('chain', 'account chain ')))
 
 def main():
     tree.main()

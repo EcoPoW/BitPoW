@@ -106,7 +106,7 @@ def longest_chain(from_hash = '0'*64):
 
 
 nodes_to_fetch = []
-highest_block_height = 0
+# highest_block_height = 0
 last_highest_block_height = 0
 hash_proofs = set()
 last_hash_proofs = set()
@@ -115,11 +115,9 @@ last_subchains_block = {}
 
 @tornado.gen.coroutine
 def new_chain_block(seq):
-    # global frozen_block_hash
     global nodes_to_fetch
-    # global recent_longest
     global worker_thread_mining
-    global highest_block_height
+    # global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
@@ -130,11 +128,18 @@ def new_chain_block(seq):
     # check difficulty
 
     db = database.get_conn()
-    # try:
-    db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
-    db.put(b'chain', block_hash.encode('utf8'))
-    # except Exception as e:
-    #     print("new_chain_block Error: %s" % e)
+    highest_block_hash = db.get(b'chain')
+    if highest_block_hash:
+        highest_block_json = db.get(b'block%s' % highest_block_hash)
+        if highest_block_json:
+            highest_block = tornado.escape.json_decode(highest_block_json)
+            highest_block_height = highest_block[HEIGHT]
+            if highest_block_height < height:
+                # try:
+                db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
+                db.put(b'chain', block_hash.encode('utf8'))
+                # except Exception as e:
+                #     print("new_chain_block Error: %s" % e)
 
     # if prev_hash != '0'*64:
     #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
@@ -167,8 +172,7 @@ def new_chain_block(seq):
 @tornado.gen.coroutine
 def new_chain_proof(seq):
     global nodes_to_fetch
-    # global recent_longest
-    global highest_block_height
+    # global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
@@ -292,7 +296,7 @@ def fetch_chain(nodeid):
         except:
             break
         result = tornado.escape.json_decode(response.read())
-        print('result >>>>>', nodeid, result)
+        print('fetch_chain result', nodeid, result)
         host, port = result['address']
         if result['nodeid'] == result['current_nodeid']:
             break
@@ -311,17 +315,17 @@ def fetch_chain(nodeid):
         return b'0'*64, 0
 
     db = database.get_conn()
-    print('get highest block', highest_block_hash, highest_block_height, host, port)
+    print('fetch_chain get highest block', highest_block_hash, highest_block_height, host, port)
 
     # validate
     block_hash = highest_block_hash
     while block_hash != '0'*64:
         block_json = db.get(b'block%s' % block_hash.encode('utf8'))
         if block_json:
-            block = tornado.escape.json_decode(block_json)
-            if block[HEIGHT] % 1000 == 0:
-                print('block height', block[HEIGHT])
-            block_hash = block[PREV_HASH]
+            # block = tornado.escape.json_decode(block_json)
+            # if block[HEIGHT] % 1000 == 0:
+            #     print('fetch_chain block height', block[HEIGHT])
+            # block_hash = block[PREV_HASH]
             break
 
         try:
@@ -332,14 +336,15 @@ def fetch_chain(nodeid):
         result = tornado.escape.json_decode(response.read())
         block = result['block']
         # if block['height'] % 1000 == 0:
-        print('fetch block', block['block'])
-        block_hash = block[HASH]
+        print('fetch_chain block', block[HASH])
 
         # try:
-        db.put(b'block%s' % block_hash.encode('utf8'), block['block'].encode('utf8'))
+        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(block).encode('utf8'))
         # except Exception as e:
         #     print('fetch_chain Error: %s' % e)
-    return highest_block_hash, highest_block_height
+        block_hash = block[PREV_HASH]
+
+    return highest_block_hash.encode('utf8'), highest_block_height
 
 if __name__ == '__main__':
     pass

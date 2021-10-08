@@ -229,11 +229,12 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         self.pk = self.get_argument("pk")
         self.sig = self.get_argument("sig")
         print(self.pk, len(self.pk))
-        node_pk = eth_keys.keys.PublicKey(bytes.fromhex(self.pk[2:]))
+        pk_bytes = bytes.fromhex(self.pk[2:])
+        child_pk = eth_keys.keys.PublicKey(pk_bytes)
         sig = eth_keys.keys.Signature(bytes.fromhex(self.sig[2:]))
-        # print(self.sig, len(self.sig))
-        # print(b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), self.pk))
-        node_pk.verify_msg(b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), node_pk.to_bytes()), sig)
+        child_pk.verify_msg(b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), pk_bytes), sig)
+        # TODO: disconnect if not verified
+
         self.remove_node = True
         if self.branch in NodeHandler.child_nodes:
             print(current_port, "force disconnect")
@@ -481,8 +482,9 @@ class NodeConnector(object):
             if parent_nodeid is not None:
                 nodes_pool[parent_nodeid] = [parent_pk, timestamp]
                 node_parents[parent_nodeid] = [self.host, self.port]
+                chain.nodes_to_fetch.append(parent_nodeid)
             nodes_pool[nodeid] = [pk, timestamp]
-            print(current_port, "NODE_ID", nodeid, pk, parent_nodeid, parent_pk, seq[-1])
+            print(current_port, 'NODE_ID', nodeid, pk, 'PARENT_ID', parent_nodeid, parent_pk, seq[-1])
             if self.branch == nodeid:
                 current_nodeid = nodeid
 
