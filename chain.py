@@ -29,11 +29,21 @@ import database
 # import ecdsa
 # import eth_keys
 
-frozen_block_hash = '0'*64
-frozen_chain = ['0'*64]
-frozen_nodes_in_chain = {}
-frozen_longest = []
-highest_block_hash = None
+HASH = 0
+PREV_HASH = 1
+HEIGHT = 2
+NONCE = 3
+DIFFICULTY = 4
+IDENTITY = 5
+DATA = 6
+TIMESTAMP = 7
+NODE = 8
+MSGID = 9
+
+# frozen_block_hash = '0'*64
+# frozen_chain = ['0'*64]
+# frozen_nodes_in_chain = {}
+# frozen_longest = []
 recent_longest = []
 nodes_in_chain = {}
 worker_thread_mining = False
@@ -119,14 +129,12 @@ def new_chain_block(seq):
     # validate
     # check difficulty
 
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO chain (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-    except Exception as e:
-        print("new_chain_block Error: %s" % e)
-    conn.commit()
+    db = database.get_conn()
+    # try:
+    db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
+    db.put(b'chain', block_hash.encode('utf8'))
+    # except Exception as e:
+    #     print("new_chain_block Error: %s" % e)
 
     # if prev_hash != '0'*64:
     #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
@@ -170,14 +178,11 @@ def new_chain_proof(seq):
     # check difficulty
     print('new_chain_proof', highest_block_height, height)
 
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO proof (hash, prev_hash, height, nonce, difficulty, identity, timestamp, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, height, nonce, difficulty, identity, timestamp, tornado.escape.json_encode(data)))
-    except Exception as e:
-        print("new_chain_proof Error: %s" % e)
-    conn.commit()
+    db = database.get_conn()
+    # try:
+    db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(data).encode('utf8'))
+    # except Exception as e:
+    #     print("new_chain_proof Error: %s" % e)
 
     print(highest_block_height, height, identity)
     # if highest_block_height + 1 < height:
@@ -221,19 +226,24 @@ def new_subchain_block(seq):
 
 class GetHighestBlockHashesHandler(tornado.web.RequestHandler):
     def get(self):
-        # TODO: fixed key 'chain' for rocksdb
-        global highest_block_hash
-        self.finish({"hash": highest_block_hash})
+        db = database.get_conn()
+        highest_block_height = 0
+        highest_block_hash = db.get(b'chain')
+        if highest_block_hash:
+            highest_block_json = db.get(b'block%s' % highest_block_hash)
+            if highest_block_json:
+                highest_block = tornado.escape.json_decode(highest_block_json)
+                highest_block_height = highest_block[HEIGHT]
+
+        self.finish({'hash': highest_block_hash.decode('utf8'), 'height': highest_block_height})
 
 class GetBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM chain WHERE hash = ?", (block_hash,))
-        block = c.fetchone()
-        if block:
-            self.finish({"block": block[1:]})
+        db = database.get_conn()
+        block_json = db.get(b'block%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"block": tornado.escape.json_decode(block_json)})
         else:
             self.finish({"block": None})
 
@@ -249,7 +259,6 @@ class GetProofHandler(tornado.web.RequestHandler):
 class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: fixed key 'chain0x0000' for rocksdb
-        # global highest_block_hash
         sender = self.get_argument('sender')
         conn = database.get_conn()
         c = conn.cursor()
@@ -274,7 +283,7 @@ class GetSubchainBlockHandler(tornado.web.RequestHandler):
             self.finish({"block": None})
 
 def fetch_chain(nodeid):
-    print(tree.current_nodeid, 'fetch chain', nodeid)
+    print('node', tree.current_nodeid, 'fetch chain', nodeid)
     host, port = tree.current_host, tree.current_port
     prev_nodeid = None
     while True:
@@ -294,40 +303,43 @@ def fetch_chain(nodeid):
     try:
         response = urllib.request.urlopen("http://%s:%s/get_highest_block" % (host, port))
     except:
-        return
+        return b'0'*64, 0
     result = tornado.escape.json_decode(response.read())
     highest_block_hash = result['hash']
+    highest_block_height = result['height']
     if not highest_block_hash:
-        return
-    # validate
-
-    print('get highest block', highest_block_hash, host, port)
-    block_hash = highest_block_hash
+        return b'0'*64, 0
 
     db = database.get_conn()
+    print('get highest block', highest_block_hash, highest_block_height, host, port)
+
+    # validate
+    block_hash = highest_block_hash
     while block_hash != '0'*64:
         block_json = db.get(b'block%s' % block_hash.encode('utf8'))
         if block_json:
             block = tornado.escape.json_decode(block_json)
-            if block['height'] % 1000 == 0:
-                print('block height', block['height'])
-            block_hash = block['prev_hash']
+            if block[HEIGHT] % 1000 == 0:
+                print('block height', block[HEIGHT])
+            block_hash = block[PREV_HASH]
             break
+
         try:
             response = urllib.request.urlopen('http://%s:%s/get_block?hash=%s' % (host, port, block_hash))
         except:
-            continue
+            # continue
+            return b'0'*64, 0
         result = tornado.escape.json_decode(response.read())
         block = result['block']
         # if block['height'] % 1000 == 0:
         print('fetch block', block['block'])
-        block_hash = block['hash']
+        block_hash = block[HASH]
 
-        try:
-            db.put(b'block%s' % block_hash.encode('utf8'), block['block'].encode('utf8'))
-        except Exception as e:
-            print('fetch_chain Error: %s' % e)
-
+        # try:
+        db.put(b'block%s' % block_hash.encode('utf8'), block['block'].encode('utf8'))
+        # except Exception as e:
+        #     print('fetch_chain Error: %s' % e)
+    return highest_block_hash, highest_block_height
 
 if __name__ == '__main__':
     pass

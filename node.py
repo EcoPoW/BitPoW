@@ -132,7 +132,7 @@ class DashboardHandler(tornado.web.RequestHandler):
 
         self.write("<br>recent longest:<br>")
         for i in reversed(chain.recent_longest):
-            self.write("%s <a href='/get_block?hash=%s'>%s</a> %s<br>" % (i[3], i[1], i[1], i[6]))
+            self.write("%s <a href='/get_block?hash=%s'>%s</a> %s<br>" % (i[chain.HEIGHT], i[chain.HASH], i[chain.HASH], i[chain.IDENTITY]))
 
         self.write("<br>nodes_pool:<br>")
         for nodeid in tree.nodes_pool:
@@ -144,18 +144,18 @@ class DashboardHandler(tornado.web.RequestHandler):
             pk = chain.nodes_in_chain[nodeid]
             self.write("%s: %s<br>" %(nodeid, pk))
 
-        self.write("<br>frozen_nodes_in_chain:<br>")
-        for nodeid in chain.frozen_nodes_in_chain:
-            pk = chain.frozen_nodes_in_chain[nodeid]
-            self.write("%s: %s<br>" %(nodeid, pk))
+        # self.write("<br>frozen_nodes_in_chain:<br>")
+        # for nodeid in chain.frozen_nodes_in_chain:
+        #     pk = chain.frozen_nodes_in_chain[nodeid]
+        #     self.write("%s: %s<br>" %(nodeid, pk))
 
         self.write("<br>available_branches:<br>")
         for branch in branches:
             self.write("%s:%s %s <br>" % branch)
 
-        self.write("<br>frozen chain:<br>")
-        for i, h in enumerate(chain.frozen_chain):
-            self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
+        # self.write("<br>frozen chain:<br>")
+        # for i, h in enumerate(chain.frozen_chain):
+        #     self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
         self.finish()
 
 

@@ -95,8 +95,8 @@ def sign_msg(message):
     if not node_sk:
         raise
     message_json = tornado.escape.json_encode(message)
-    signature = node_sk.sign(message_json.encode("utf8"))
-    message.append(base64.b32encode(signature).decode("utf8"))
+    signature = node_sk.sign_msg(message_json.encode("utf8"))
+    message.append(signature.to_hex())
     print(current_port, "signature", message)
 
 
@@ -226,13 +226,14 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         self.branch = self.get_argument("branch")
         self.from_host = self.get_argument("host")
         self.from_port = self.get_argument("port")
-        self.pk = base64.b32decode(self.get_argument("pk"))
-        # print(self.pk, len(self.pk))
-        node_pk = ecdsa.VerifyingKey.from_string(self.pk, curve=ecdsa.NIST256p)
-        self.sig = base64.b32decode(self.get_argument("sig"))
+        self.pk = self.get_argument("pk")
+        self.sig = self.get_argument("sig")
+        print(self.pk, len(self.pk))
+        node_pk = eth_keys.keys.PublicKey(bytes.fromhex(self.pk[2:]))
+        sig = eth_keys.keys.Signature(bytes.fromhex(self.sig[2:]))
         # print(self.sig, len(self.sig))
         # print(b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), self.pk))
-        node_pk.verify(self.sig, b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), self.pk))
+        node_pk.verify_msg(b"%s%s%s%s" % (self.branch.encode("utf8"), self.from_host.encode("utf8"), self.from_port.encode("utf8"), node_pk.to_bytes()), sig)
         self.remove_node = True
         if self.branch in NodeHandler.child_nodes:
             print(current_port, "force disconnect")
@@ -255,8 +256,8 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         # message = ["NODE_ID", self.branch, [ip, port], timestamp, current_nodeid, sig]
         timestamp = time.time()
-        message = ["NODE_ID", base64.b32encode(self.pk).decode("utf8"), self.branch,
-                    base64.b32encode(node_sk.get_verifying_key().to_string()).decode("utf8"), current_nodeid, timestamp]
+        message = ["NODE_ID", self.pk, self.branch,
+                    node_sk.public_key.to_hex(), current_nodeid, timestamp]
         sign_msg(message)
         self.write_message(tornado.escape.json_encode(message))
         # miner.nodes_to_fetch.append(self.branch)
@@ -374,13 +375,13 @@ class NodeConnector(object):
         self.host = to_host
         self.port = to_port
         self.branch = branch
-        self.pk = node_sk.get_verifying_key().to_string()
+        self.pk = node_sk.public_key
 
-        # print(self.pk.decode("utf8"))
+        # print(self.pk)
         # print(b"%s%s%s%s" % (self.branch.encode("utf8"), current_host.encode("utf8"), current_port.encode("utf8"), self.pk))
-        sig = node_sk.sign(b"%s%s%s%s" % (self.branch.encode("utf8"), current_host.encode("utf8"), current_port.encode("utf8"), self.pk))
+        sig = node_sk.sign_msg(b"%s%s%s%s" % (self.branch.encode("utf8"), current_host.encode("utf8"), current_port.encode("utf8"), self.pk.to_bytes()))
         # print(sig)
-        self.ws_uri = "ws://%s:%s/node?branch=%s&host=%s&port=%s&pk=%s&sig=%s" % (self.host, self.port, self.branch, current_host, current_port, base64.b32encode(self.pk).decode("utf8"), base64.b32encode(sig).decode("utf8"))
+        self.ws_uri = "ws://%s:%s/node?branch=%s&host=%s&port=%s&pk=%s&sig=%s" % (self.host, self.port, self.branch, current_host, current_port, self.pk.to_hex(), sig.to_hex())
         self.conn = None
         self.connect()
 
