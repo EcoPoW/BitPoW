@@ -1,11 +1,11 @@
 from __future__ import print_function
 
 import time
-import socket
-import subprocess
-import argparse
+# import socket
+# import subprocess
+# import argparse
+# import base64
 import uuid
-import base64
 import threading
 
 import tornado.web
@@ -22,8 +22,6 @@ import tree
 import miner
 import chain
 import database
-# import fs
-# import msg
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -31,10 +29,10 @@ class Application(tornado.web.Application):
                     (r"/miner", tree.MinerHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
-                    (r"/get_highest_block", chain.GetHighestBlockHandler),
+                    (r"/get_highest_block", chain.GetHighestBlockHashesHandler),
                     (r"/get_block", chain.GetBlockHandler),
                     (r"/get_proof", chain.GetProofHandler),
-                    (r"/get_highest_subchain_block", chain.GetHighestSubchainBlockHandler),
+                    (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
@@ -43,11 +41,15 @@ class Application(tornado.web.Application):
                     (r"/user_explorer", UserExplorerHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
+                    (r"/", MainHandler),
                     ]
         settings = {"debug":True}
 
         tornado.web.Application.__init__(self, handlers, **settings)
 
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.redirect('/dashboard')
 
 class AvailableBranchesHandler(tornado.web.RequestHandler):
     def get(self):
@@ -112,7 +114,7 @@ class DashboardHandler(tornado.web.RequestHandler):
         self.write("<a href='/user_explorer'>User Explorer</a></br>")
         self.write("<br>current_nodeid: %s <br>" % tree.current_nodeid)
 
-        self.write("<br>pk: %s <br>" % base64.b32encode(tree.node_sk.get_verifying_key().to_string()).decode("utf8"))
+        self.write("<br>pk: %s <br>" % tree.node_sk.public_key)
         # sender = base64.b32encode(sender_vk.to_string()).decode("utf8")
         self.write("<br>node_parent:<br>")
         if tree.NodeConnector.node_parent:

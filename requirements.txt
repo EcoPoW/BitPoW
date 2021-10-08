@@ -2,4 +2,5 @@
 pip
 six
 tornado==5.1.1
-ecdsa
+eth-keys
+rocksdb

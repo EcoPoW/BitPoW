@@ -105,5 +105,8 @@ venv.bak/
 
 .DS_Store
 data/
+miners/
+users/
+test.db/
 client/node_modules/
 chat/node_modules/

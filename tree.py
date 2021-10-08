@@ -10,6 +10,7 @@ import argparse
 import uuid
 import functools
 import base64
+import secrets
 
 import tornado.web
 import tornado.websocket
@@ -23,15 +24,14 @@ import miner
 import chain
 import database
 
-# from ecdsa import SigningKey, VerifyingKey, NIST256p
-import ecdsa
+# import ecdsa
+import eth_keys
 
 dashboard_port = 0
 
 current_name = None
 current_host = None
 current_port = None
-current_branch = None
 current_nodeid = None
 node_sk = None
 parent_host = None
@@ -39,6 +39,7 @@ parent_port = None
 dashboard_host = None
 dashboard_port = None
 
+current_branch = None
 available_branches = set()
 
 node_neighborhoods = dict()
@@ -651,7 +652,7 @@ def main():
     global dashboard_port
     global node_sk
 
-    parser = argparse.ArgumentParser(description="node.py --name=[node name]")
+    parser = argparse.ArgumentParser(description="node.py --name=<node_name> [--host=127.0.0.1] [--port=8002]")
     parser.add_argument('--name')
     parser.add_argument('--host')
     parser.add_argument('--port')
@@ -666,8 +667,11 @@ def main():
         sys.exit()
     current_name = args.name
     json_data = {}
-    if os.path.exists('%s.json' % current_name):
-        with open('%s.json' % current_name) as f:
+
+    if not os.path.exists('miners'):
+        os.makedirs('miners')
+    if os.path.exists('miners/%s.json' % current_name):
+        with open('miners/%s.json' % current_name) as f:
             json_data = tornado.escape.json_decode(f.read())
             current_host = json_data.get('current_host')
             current_port = json_data.get('current_port')
@@ -694,7 +698,7 @@ def main():
     if args.dashboard_port:
         dashboard_port = args.dashboard_port
         json_data['dashboard_port'] = dashboard_port
-    with open('%s.json' % current_name, 'w') as f:
+    with open('miners/%s.json' % current_name, 'w') as f:
         f.write(tornado.escape.json_encode(json_data))
 
     if setting.BOOTSTRAP_BY_PORT_NO:
@@ -704,14 +708,18 @@ def main():
 
     database.main()
 
-    # parser.add_argument('--pirvate_key', default=)
-    # pirvate_key_file = args.pirvate_key
-    sk_filename = "%s.pem" % current_name
+    sk_filename = "miners/%s.key" % current_name
     if os.path.exists(sk_filename):
-        node_sk = ecdsa.SigningKey.from_pem(open(sk_filename).read())
+        f = open(sk_filename, 'rb')
+        raw_key = f.read(32)
+        f.close()
+        node_sk = eth_keys.keys.PrivateKey(raw_key)
     else:
-        node_sk = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
-        open(sk_filename, "w").write(bytes.decode(node_sk.to_pem()))
+        raw_key = secrets.token_bytes(32)
+        f = open(sk_filename, "wb")
+        f.write(raw_key)
+        f.close()
+        node_sk = eth_keys.keys.PrivateKey(raw_key)
 
     tornado.ioloop.IOLoop.instance().call_later(int(current_port)-setting.DASHBOARD_PORT, connect)
     # tornado.ioloop.IOLoop.instance().add_callback(connect)
