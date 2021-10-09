@@ -18,7 +18,7 @@ import eth_keys
 
 
 USER_NO = 10
-count = 1
+count = 10
 users = {}
 subchain_blocks = []
 
@@ -50,9 +50,9 @@ def main():
         rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender_sk.public_key.to_checksum_address())
         prev_hash = rsp.json()['hash']
         print('prev_hash', prev_hash)
-        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % prev_hash)
+        rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
         # print(rsp.json())
-        block = rsp.json()['block']
+        block = rsp.json()['msg']
         print('prev_block', block)
         new_timestamp = time.time()
         if block:

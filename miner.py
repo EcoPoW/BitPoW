@@ -289,8 +289,6 @@ def worker_thread():
 if __name__ == '__main__':
     # print("run python node.py pls")
     # tree.current_port = "8001"
-    # longest_chain2()
-    # longest_chain()
 
     tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 

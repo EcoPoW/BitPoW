@@ -40,69 +40,65 @@ TIMESTAMP = 7
 NODE = 8
 MSGID = 9
 
-# frozen_block_hash = '0'*64
-# frozen_chain = ['0'*64]
-# frozen_nodes_in_chain = {}
-# frozen_longest = []
 recent_longest = []
 nodes_in_chain = {}
 worker_thread_mining = False
 worker_thread_pause = True
 
-def longest_chain(from_hash = '0'*64):
-    db = database.get_conn()
-    c.execute("SELECT * FROM chain WHERE prev_hash = ?", (from_hash,))
-    roots = c.fetchall()
+# def longest_chain(from_hash = '0'*64):
+#     db = database.get_conn()
+#     c.execute("SELECT * FROM chain WHERE prev_hash = ?", (from_hash,))
+#     roots = c.fetchall()
 
-    chains = []
-    prev_hashs = []
-    for root in roots:
-        # chains.append([root.hash])
-        chains.append([root])
-        # print(root)
-        block_hash = root[1]
-        prev_hashs.append(block_hash)
+#     chains = []
+#     prev_hashs = []
+#     for root in roots:
+#         # chains.append([root.hash])
+#         chains.append([root])
+#         # print(root)
+#         block_hash = root[1]
+#         prev_hashs.append(block_hash)
 
-    t0 = time.time()
-    n = 0
-    while True:
-        if prev_hashs:
-            prev_hash = prev_hashs.pop(0)
-        else:
-            break
+#     t0 = time.time()
+#     n = 0
+#     while True:
+#         if prev_hashs:
+#             prev_hash = prev_hashs.pop(0)
+#         else:
+#             break
 
-        c.execute("SELECT * FROM chain WHERE prev_hash = ?", (prev_hash,))
-        leaves = c.fetchall()
-        n += 1
-        if len(leaves) > 0:
-            block_height = leaves[0][3]
-            if block_height % 1000 == 0:
-                print('longest height', block_height)
-            for leaf in leaves:
-                for chain in chains:
-                    prev_block = chain[-1]
-                    prev_block_hash = prev_block[1]
-                    # print(prev_block_hash)
-                    if prev_block_hash == prev_hash:
-                        forking_chain = copy.copy(chain)
-                        # chain.append(leaf.hash)
-                        chain.append(leaf)
-                        chains.append(forking_chain)
-                        break
-                leaf_hash = leaf[1]
-                if leaf_hash not in prev_hashs and leaf_hash:
-                    prev_hashs.append(leaf_hash)
-    t1 = time.time()
-    # print(tree.current_port, "query time", t1-t0, n)
+#         c.execute("SELECT * FROM chain WHERE prev_hash = ?", (prev_hash,))
+#         leaves = c.fetchall()
+#         n += 1
+#         if len(leaves) > 0:
+#             block_height = leaves[0][3]
+#             if block_height % 1000 == 0:
+#                 print('longest height', block_height)
+#             for leaf in leaves:
+#                 for chain in chains:
+#                     prev_block = chain[-1]
+#                     prev_block_hash = prev_block[1]
+#                     # print(prev_block_hash)
+#                     if prev_block_hash == prev_hash:
+#                         forking_chain = copy.copy(chain)
+#                         # chain.append(leaf.hash)
+#                         chain.append(leaf)
+#                         chains.append(forking_chain)
+#                         break
+#                 leaf_hash = leaf[1]
+#                 if leaf_hash not in prev_hashs and leaf_hash:
+#                     prev_hashs.append(leaf_hash)
+#     t1 = time.time()
+#     # print(tree.current_port, "query time", t1-t0, n)
 
-    longest = []
-    for i in chains:
-        # print(i)
-        if not longest:
-            longest = i
-        if len(longest) < len(i):
-            longest = i
-    return longest
+#     longest = []
+#     for i in chains:
+#         # print(i)
+#         if not longest:
+#             longest = i
+#         if len(longest) < len(i):
+#             longest = i
+#     return longest
 
 
 nodes_to_fetch = []
@@ -230,7 +226,7 @@ def new_subchain_block(seq):
     #     print("new_subchain_block Error: %s" % e)
 
 
-class GetHighestBlockHashesHandler(tornado.web.RequestHandler):
+class GetHighestBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
         db = database.get_conn()
         highest_block_height = 0
@@ -275,6 +271,16 @@ class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
         else:
             self.finish({"hash": '0'*64})
 
+class GetSubchainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        db = database.get_conn()
+        block_json = db.get(b'msg%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"msg": tornado.escape.json_decode(block_json)})
+        else:
+            self.finish({"msg": None})
+
 def fetch_chain(nodeid):
     print('node', tree.current_nodeid, 'fetch chain', nodeid)
     host, port = tree.current_host, tree.current_port
@@ -294,7 +300,7 @@ def fetch_chain(nodeid):
         prev_nodeid = result['current_nodeid']
 
     try:
-        response = urllib.request.urlopen("http://%s:%s/get_highest_block" % (host, port))
+        response = urllib.request.urlopen("http://%s:%s/get_highest_block_hash" % (host, port))
     except:
         return b'0'*64, 0
     result = tornado.escape.json_decode(response.read())
