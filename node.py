@@ -33,7 +33,6 @@ class Application(tornado.web.Application):
                     (r"/get_block", chain.GetBlockHandler),
                     (r"/get_proof", chain.GetProofHandler),
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
-                    (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_explorer", ChainExplorerHandler),
@@ -97,6 +96,12 @@ class BroadcastHandler(tornado.web.RequestHandler):
         self.finish({"test_msg": test_msg})
 
 class NewSubchainBlockHandler(tornado.web.RequestHandler):
+    # def get(self):
+    #     block =  ["58745b596bcfc8376527fd37cb2ca34224ff4d1d4f1d41053a889742f4bc77a8", "0000000000000000000000000000000000000000000000000000000000000000", "0xb88744C14D2E92cC653493df18bEF2E4b263c1FD", "0x504E18e367F32050951452Affc56082847628d28", 1, {"amount": 6}, 1633745105.8568707, "0x64a7f9a8b19cfd7597ecc6a49ada434b2101a7a8afc0ac78e59a59af3152eedc1a26e9a9b660373b8eae7bc2c646b393f0a51bd904e5a16336ebc3c3d77710c401"]
+    #     chain.new_subchain_block(["NEW_SUBCHAIN_BLOCK"] + block)
+    #     tree.forward(["NEW_SUBCHAIN_BLOCK"] + block) # + [time.time(), uuid.uuid4().hex]
+    #     self.finish({"block": block})
+
     def post(self):
         block = tornado.escape.json_decode(self.request.body)
 
@@ -188,34 +193,45 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
-        height = self.get_argument('height', 1)
+        hash = self.get_argument('hash', None)
         self.write("<a href='/dashboard'>Dashboard</a> ")
         self.write("<a href='/chain_explorer'>Chain Explorer</a> ")
-        self.write("<a href='/user_explorer'>User Explorer</a></br>")
-        self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Prev</a>    " % (int(height)-1, sender))
-        self.write("<a href='/subchain_explorer?height=%s&sender=%s'>Next</a><br>" % (int(height)+1, sender))
+        self.write("<a href='/user_explorer'>User Explorer</a></br></br>")
 
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE sender = ? AND height = ?", (sender, height))
-        blocks = c.fetchall()
-        for block in blocks:
-            self.write("<code>%s</code><br>" % str(block))
+        db = database.get_conn()
+        if hash is None:
+            msg_hash = db.get(b'chain%s' % sender.encode('utf8'))
+            if not msg_hash:
+                return
+        else:
+            msg_hash = hash.encode('utf8')
+
+        for i in range(10):
+            msg_json = db.get(b'msg%s' % msg_hash)
+            if not msg_json:
+                return
+
+            self.write("<code>%s</code><br><br>" % msg_json)
+            msg = tornado.escape.json_decode(msg_json)
+            msg_hash = msg[chain.PREV_HASH].encode('utf8')
+
+        self.write("<a href='/subchain_explorer?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
+
 
 class UserExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         db = database.get_conn()
         it = db.iteritems()
         self.write("<a href='/dashboard'>Dashboard</a> ")
-        self.write("<a href='/chain_explorer'>Chain Explorer</a> <br>")
+        self.write("<a href='/chain_explorer'>Chain Explorer</a> <br><br>")
         it.seek(b'chain')
         for k, v in it:
             if k == b'chain':
-                self.write("<a href='/chain_explorer?hash=%s'>main chain</a><br>"% v.decode())
+                # self.write("<a href='/chain_explorer?hash=%s'>main chain</a><br>"% v.decode())
                 continue
             if not k.startswith(b'chain'):
                 break
-            self.write("<a href='/subchain_explorer?hash=%s'>%s</a><br>"% (v.decode(), k.decode().replace('chain', 'account chain ')))
+            self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', ''), k.decode().replace('chain', 'account chain '), v.decode()))
 
 def main():
     tree.main()

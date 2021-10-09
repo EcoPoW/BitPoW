@@ -213,19 +213,21 @@ def new_subchain_block(seq):
     global subchains_block
     # global last_subchains_block
     msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
+    assert sender.startswith('0x')
+    assert len(sender) == 42
+    assert receiver.startswith('0x')
+    assert len(receiver) == 42
     # validate
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
     print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
     subchains_block[sender] = block_hash
 
-    conn = database.get_conn()
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO subchains (hash, prev_hash, sender, receiver, height, timestamp, data, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (block_hash, prev_hash, sender, receiver, height, timestamp, tornado.escape.json_encode(data), signature))
-    except Exception as e:
-        print("new_subchain_block Error: %s" % e)
-    conn.commit()
+    db = database.get_conn()
+    # try:
+    db.put(b'msg%s' % block_hash.encode('utf8'), tornado.escape.json_encode([block_hash, prev_hash, sender, receiver, height, timestamp, data, signature]).encode('utf8'))
+    db.put(b'chain%s' % sender.encode('utf8'), block_hash.encode('utf8'))
+    # except Exception as e:
+    #     print("new_subchain_block Error: %s" % e)
 
 
 class GetHighestBlockHashesHandler(tornado.web.RequestHandler):
@@ -264,27 +266,14 @@ class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: fixed key 'chain0x0000' for rocksdb
         sender = self.get_argument('sender')
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE sender = ? ORDER BY height DESC LIMIT 1", (sender,))
-        block = c.fetchone()
-        if block:
-            self.finish({"hash": block[1]})
+        assert sender.startswith('0x')
+        assert len(sender) == 42
+        db = database.get_conn()
+        highest_block_hash = db.get(b'chain%s' % sender.encode('utf8'))
+        if highest_block_hash:
+            self.finish({"hash": highest_block_hash.decode('utf8')})
         else:
             self.finish({"hash": '0'*64})
-
-class GetSubchainBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        # TODO: combine with GetBlockHandler
-        block_hash = self.get_argument("hash")
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM subchains WHERE hash = ?", (block_hash,))
-        block = c.fetchone()
-        if block:
-            self.finish({"block": block[1:]})
-        else:
-            self.finish({"block": None})
 
 def fetch_chain(nodeid):
     print('node', tree.current_nodeid, 'fetch chain', nodeid)

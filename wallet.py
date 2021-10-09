@@ -60,12 +60,12 @@ def main():
             break
         print('-')
 
-    rsp = requests.get('http://%s:%s/get_highest_subchain_block?sender=%s' % (host, port, sender))
+    rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
     highest_subchain_hash = rsp.json()['hash']
     prev_hash = highest_subchain_hash
     print('prev_hash', prev_hash)
     while True:
-        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
+        rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, prev_hash))
         print(rsp.json())
         subchain_block = rsp.json()['block']
         print('assert', subchain_block)
