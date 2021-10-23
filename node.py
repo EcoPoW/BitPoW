@@ -159,9 +159,18 @@ class DashboardHandler(tornado.web.RequestHandler):
         for branch in branches:
             self.write("%s:%s %s <br>" % branch)
 
-        # self.write("<br>frozen chain:<br>")
-        # for i, h in enumerate(chain.frozen_chain):
-        #     self.write("%s <a href='/get_block?hash=%s'>%s</a><br>" % (i, h, h))
+        self.write("<br>subchain block to mine:<br>")
+        for i, h in chain.subchains_block_to_mine.items():
+            self.write("%s %s<br>" % (i, h))
+
+        self.write("<br>txpool:<br>")
+        db = database.get_conn()
+        it = db.iteritems()
+        it.seek(b'txpool')
+        for k, v in it:
+            if not k.startswith(b'txpool'):
+                break
+            self.write("%s -> %s<br>"% (k.decode(), v.decode()))
         self.finish()
 
 

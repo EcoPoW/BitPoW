@@ -182,7 +182,7 @@ def mining():
     data = {}
     data["nodes"] = nodes_to_update
     data["proofs"] = list([list(p) for p in chain.last_hash_proofs])
-    data["subchains"] = chain.last_subchains_block
+    data["subchains"] = chain.subchains_block_to_mine
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
@@ -190,7 +190,7 @@ def mining():
     new_identity = pk.to_checksum_address()
     new_timestamp = time.time()
     if nonce % 1000 == 0:
-        print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_block), len(chain.last_subchains_block))
+        print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_block_to_mine))
     for i in range(100):
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         if int(block_hash, 16) < block_difficulty:
