@@ -176,7 +176,7 @@ def new_chain_proof(seq):
     msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, msg_id = seq
     # validate
     # check difficulty
-    print('new_chain_proof', highest_block_height, height)
+    print('new_chain_proof', last_highest_block_height, height)
 
     db = database.get_conn()
     # try:
@@ -184,25 +184,25 @@ def new_chain_proof(seq):
     # except Exception as e:
     #     print("new_chain_proof Error: %s" % e)
 
-    print(highest_block_height, height, identity)
+    print(last_highest_block_height, height, identity)
     # if highest_block_height + 1 < height:
     #     no, pk = identity.split(":")
     #     if int(no) not in nodes_to_fetch:
     #         nodes_to_fetch.append(int(no))
 
-    if last_highest_block_height != highest_block_height:
-        if last_highest_block_height + 1 == highest_block_height:
-            last_hash_proofs = hash_proofs
-        else:
-            last_hash_proofs = set()
-        hash_proofs = set()
-        # last_highest_block_height = highest_block_height
+    # if last_highest_block_height != highest_block_height:
+    #     if last_highest_block_height + 1 == highest_block_height:
+    #         last_hash_proofs = hash_proofs
+    #     else:
+    #         last_hash_proofs = set()
+    #     hash_proofs = set()
+    #     # last_highest_block_height = highest_block_height
 
-    if highest_block_height + 1 == height:
-        hash_proofs.add(tuple([block_hash, height]))
+    # if highest_block_height + 1 == height:
+    #     hash_proofs.add(tuple([block_hash, height]))
 
-    print('hash_proofs', hash_proofs)
-    print('last_hash_proofs', last_hash_proofs)
+    # print('hash_proofs', hash_proofs)
+    # print('last_hash_proofs', last_hash_proofs)
 
 @tornado.gen.coroutine
 def new_subchain_block(seq):
@@ -212,7 +212,7 @@ def new_subchain_block(seq):
     assert sender.startswith('0x')
     assert len(sender) == 42
     assert receiver.startswith('0x')
-    assert len(receiver) == 42
+    assert len(receiver) == 42 or len(receiver) == 2 #valid address or empty to create contract
     # validate
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
     print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
@@ -249,14 +249,14 @@ class GetBlockHandler(tornado.web.RequestHandler):
         else:
             self.finish({"block": None})
 
-class GetProofHandler(tornado.web.RequestHandler):
-    def get(self):
-        proof_hash = self.get_argument("hash")
-        conn = database.get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM proof WHERE hash = ?", (proof_hash,))
-        proof = c.fetchone()
-        self.finish({"proof": proof[1:]})
+# class GetProofHandler(tornado.web.RequestHandler):
+#     def get(self):
+#         proof_hash = self.get_argument("hash")
+#         conn = database.get_conn()
+#         c = conn.cursor()
+#         c.execute("SELECT * FROM proof WHERE hash = ?", (proof_hash,))
+#         proof = c.fetchone()
+#         self.finish({"proof": proof[1:]})
 
 class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
     def get(self):

@@ -37,60 +37,55 @@ def main():
     # sender_sk = ecdsa.SigningKey.from_pem(open("%s.pem" % name).read())
     sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
     sender = sender_sk.public_key.to_checksum_address()
-    receiver = sender
 
-    """
-    The script scans the main chain and see if the mined blocks or proofs as the rewards
-    This is the prototype for hash computation as currency
-    """
-    rsp = requests.get('http://%s:%s/get_highest_block_hash' % (host, port))
-    print(rsp.json())
-    prev_hash = rsp.json()["hash"]
 
-    # scan main chain
-    while True:
-        # turn my block to money
-        rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, prev_hash))
-        chain_block = rsp.json()["block"]
-        if chain_block is None:
-            break
-        print(chain_block[2], chain_block[0])
-        if chain_block[5] == sender:
-            print('  block', 2**256/int(chain_block[0], 16))
-            chain_blocks.add(chain_block[0])
-        data = chain_block[6]
-        print(chain_block)
+    # rsp = requests.get('http://%s:%s/get_highest_block_hash' % (host, port))
+    # print(rsp.json())
+    # prev_hash = rsp.json()["hash"]
 
-        # turn my proof to money
-        for proof in data["proofs"]:
-            rsp = requests.get('http://%s:%s/get_proof?hash=%s' % (host, port, proof[0]))
-            proof = rsp.json()["proof"]
-            if proof[5] == sender:
-                print('  proof', 2**256/int(proof[0], 16))
-                # print(proof[2], proof[0])
-                chain_proofs.add(proof[0])
+    # # scan main chain
+    # while True:
+    #     # turn my block to money
+    #     rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, prev_hash))
+    #     chain_block = rsp.json()["block"]
+    #     if chain_block is None:
+    #         break
+    #     print(chain_block[2], chain_block[0])
+    #     if chain_block[5] == sender:
+    #         print('  block', 2**256/int(chain_block[0], 16))
+    #         chain_blocks.add(chain_block[0])
+    #     data = chain_block[6]
+    #     print(chain_block)
 
-        # check the subchains confirmed by main chain
-        for sender_account, msg_hash in data.get("subchains", {}).items():
-            rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, msg_hash))
-            # print('  subchain block', rsp.json()['msg'])
-            print('  subchain', sender_account, msg_hash, rsp.json()['msg'][4])
+    #     # turn my proof to money
+    #     for proof in data["proofs"]:
+    #         rsp = requests.get('http://%s:%s/get_proof?hash=%s' % (host, port, proof[0]))
+    #         proof = rsp.json()["proof"]
+    #         if proof[5] == sender:
+    #             print('  proof', 2**256/int(proof[0], 16))
+    #             # print(proof[2], proof[0])
+    #             chain_proofs.add(proof[0])
 
-            # check each subchain all the way to see if any message/transaction sent to me?
+    #     # check the subchains confirmed by main chain
+    #     for sender_account, msg_hash in data.get("subchains", {}).items():
+    #         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, msg_hash))
+    #         # print('  subchain block', rsp.json()['msg'])
+    #         print('  subchain', sender_account, msg_hash, rsp.json()['msg'][4])
 
-        prev_hash = chain_block[1]
-        if chain_block[2] == 1:
-            break
-        # print('-')
+    #         # check each subchain all the way to see if any message/transaction sent to me?
+
+    #     prev_hash = chain_block[1]
+    #     if chain_block[2] == 1:
+    #         break
+    #     # print('-')
 
     rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
     highest_subchain_hash = rsp.json()['hash']
     prev_hash = highest_subchain_hash
     print('sender', sender)
-    print('prev_hash', prev_hash)
     while True:
+        print('  prev_hash', prev_hash)
         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
-        # print(rsp.json())
         subchain_block = rsp.json()['msg']
         print('assert', subchain_block)
         if subchain_block is None:
@@ -103,17 +98,18 @@ def main():
         # print(subchain_block[4])
         if subchain_block[4] == 1:
             break
-        # print('-')
 
-    amount = 0
-    proofs = chain_proofs - subchain_proofs
-    for hash in proofs:
-        amount += int(2**256/int(hash, 16))
-    blocks = chain_blocks - subchain_blocks
-    for hash in blocks:
-        amount += int(2**256/int(hash, 16))
-    data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
+    # amount = 0
+    # proofs = chain_proofs - subchain_proofs
+    # for hash in proofs:
+    #     amount += int(2**256/int(hash, 16))
+    # blocks = chain_blocks - subchain_blocks
+    # for hash in blocks:
+    #     amount += int(2**256/int(hash, 16))
+    # data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
+    data = {}
     data_json = json.dumps(data)
+    receiver = '0x'
 
     rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, highest_subchain_hash))
     highest_subchain_block = rsp.json()['msg']
