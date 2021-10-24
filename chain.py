@@ -109,10 +109,11 @@ last_hash_proofs = set()
 # subchains_block = {}
 subchains_block_to_mine = {}
 
-@tornado.gen.coroutine
+# @tornado.gen.coroutine
 def new_chain_block(seq):
     global nodes_to_fetch
     global worker_thread_mining
+    global recent_longest
     # global highest_block_height
     global last_highest_block_height
     global hash_proofs
@@ -130,41 +131,32 @@ def new_chain_block(seq):
         if highest_block_json:
             highest_block = tornado.escape.json_decode(highest_block_json)
             highest_block_height = highest_block[HEIGHT]
-            if highest_block_height < height:
-                # try:
-                db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
-                db.put(b'chain', block_hash.encode('utf8'))
-                # except Exception as e:
-                #     print("new_chain_block Error: %s" % e)
+    else:
+        highest_block_height = 0
 
-    # if prev_hash != '0'*64:
-    #     prev_block = database.connection.get("SELECT * FROM chain"+tree.current_port+" WHERE hash = %s", prev_hash)
-    #     if not prev_block:
-    #         no, pk = identity.split(":")
-    #         if int(no) not in nodes_to_fetch:
-    #             nodes_to_fetch.append(int(no))
-    #         worker_thread_mining = False
+    if highest_block_height == height - 1:
+        # try:
+        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
+        db.put(b'chain', block_hash.encode('utf8'))
+        # except Exception as e:
+        #     print("new_chain_block Error: %s" % e)
 
-    print(highest_block_height, height, identity)
-    if highest_block_height + 1 < height:
-        # no, pk = identity.split(":")
-        # if int(no) not in nodes_to_fetch:
-        nodes_to_fetch.append(tree.nodeno2id(int(nodeno)))
-    elif highest_block_height + 1 == height:
+        recent_longest.insert(0, seq[1:])
         highest_block_height = height
-    worker_thread_mining = False
 
-    print('new_chain_block', last_highest_block_height, highest_block_height)
-    if last_highest_block_height != highest_block_height:
-        
+        # init the data for mining next block?
+        # or should move to miner
 
         it = db.iteritems()
         it.seek(b'txpool')
         for k, v in it:
             if not k.startswith(b'txpool'):
                 break
-            subchains_block_to_mine[k[6:]] = v
-        # subchains_block = {}
+            subchains_block_to_mine[k[6:].decode('utf8')] = v.decode('utf8')
+
+        # check the main chain history to avoid same contract address
+        # since the subchain is sharding, which may not existing in KV db
+
         if last_highest_block_height + 1 == highest_block_height:
             last_hash_proofs = hash_proofs
         else:
@@ -172,7 +164,15 @@ def new_chain_block(seq):
         hash_proofs = set()
         last_highest_block_height = highest_block_height
 
-@tornado.gen.coroutine
+    elif highest_block_height < height - 1:
+        # no, pk = identity.split(":")
+        # if int(no) not in nodes_to_fetch:
+
+        # need to fetch the missing block
+        nodes_to_fetch.append(tree.nodeno2id(int(nodeno)))
+        worker_thread_mining = False
+
+# @tornado.gen.coroutine
 def new_chain_proof(seq):
     global nodes_to_fetch
     # global highest_block_height

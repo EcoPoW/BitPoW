@@ -195,7 +195,7 @@ def mining():
         block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         if int(block_hash, 16) < block_difficulty:
             if chain.recent_longest:
-                print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', chain.recent_longest[-1][chain.TIMESTAMP] - chain.recent_longest[0][chain.TIMESTAMP])
+                print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
             txid = uuid.uuid4().hex
             message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]
@@ -203,9 +203,10 @@ def mining():
             print(tree.current_port, "mining", height+1, nonce, block_hash)
             nonce = 0
 
-            db = database.get_conn()
-            db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode([block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]).encode('utf8'))
-            db.put(b'chain', block_hash.encode('utf8'))
+            chain.new_chain_block(message)
+            # db = database.get_conn()
+            # db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode([block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]).encode('utf8'))
+            # db.put(b'chain', block_hash.encode('utf8'))
 
             break
 

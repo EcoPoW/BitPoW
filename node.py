@@ -170,7 +170,7 @@ class DashboardHandler(tornado.web.RequestHandler):
         for k, v in it:
             if not k.startswith(b'txpool'):
                 break
-            self.write("%s -> %s<br>"% (k.decode(), v.decode()))
+            self.write("%s -> %s<br>"% (k[6:].decode(), v.decode()))
         self.finish()
 
 
