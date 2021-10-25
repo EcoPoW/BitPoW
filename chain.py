@@ -134,7 +134,7 @@ def new_chain_block(seq):
     else:
         highest_block_height = 0
 
-    if highest_block_height == height - 1:
+    if highest_block_height == height - 1 and highest_block_hash.decode() == prev_hash:
         # try:
         db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
         db.put(b'chain', block_hash.encode('utf8'))
@@ -142,11 +142,20 @@ def new_chain_block(seq):
         #     print("new_chain_block Error: %s" % e)
 
         recent_longest.insert(0, seq[1:])
+        recent_longest.pop()
         highest_block_height = height
+
+        subchains = data.get('subchains', {})
+        for k, v in subchains.items():
+            msg_hash = db.get(b'txpool%s' % k.encode('utf8'))
+            if msg_hash and msg_hash == v.encode('utf8'):
+                print('>>> delete', k, v)
+                db.delete(b'txpool%s' % k.encode('utf8'))
 
         # init the data for mining next block?
         # or should move to miner
 
+        subchains_block_to_mine = {}
         it = db.iteritems()
         it.seek(b'txpool')
         for k, v in it:
