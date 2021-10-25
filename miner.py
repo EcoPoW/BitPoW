@@ -200,7 +200,7 @@ def mining():
             txid = uuid.uuid4().hex
             message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]
             messages_out.append(message)
-            print(tree.current_port, "mining", height+1, nonce, block_hash)
+            print(tree.current_port, 'mining block', height+1, block_hash, nonce)
             nonce = 0
 
             chain.new_chain_block(message)

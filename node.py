@@ -195,6 +195,10 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
             if not block_json:
                 return
             self.write("<code>%s</code><br><br>" % block_json)
+
+            fullstate_json = db.get(b'fullstate%s' % block_hash)
+            self.write("<code>%s</code><br><br><br>" % fullstate_json)
+
             block = tornado.escape.json_decode(block_json)
             block_hash = block[chain.PREV_HASH].encode('utf8')
 
@@ -216,7 +220,7 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
         else:
             msg_hash = hash.encode('utf8')
 
-        for i in range(10):
+        for i in range(20):
             msg_json = db.get(b'msg%s' % msg_hash)
             if not msg_json:
                 return

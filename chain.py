@@ -102,7 +102,6 @@ worker_thread_pause = True
 
 
 nodes_to_fetch = []
-# highest_block_height = 0
 last_highest_block_height = 0
 hash_proofs = set()
 last_hash_proofs = set()
@@ -114,7 +113,6 @@ def new_chain_block(seq):
     global nodes_to_fetch
     global worker_thread_mining
     global recent_longest
-    # global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
@@ -133,6 +131,7 @@ def new_chain_block(seq):
             highest_block_height = highest_block[HEIGHT]
     else:
         highest_block_height = 0
+        highest_block_hash = b'0'*64
 
     if highest_block_height == height - 1 and highest_block_hash.decode() == prev_hash:
         # try:
@@ -141,8 +140,24 @@ def new_chain_block(seq):
         # except Exception as e:
         #     print("new_chain_block Error: %s" % e)
 
+        if highest_block_height:
+            highest_fullstate_json = db.get(b'fullstate%s' % highest_block_hash)
+            if highest_fullstate_json:
+                highest_fullstate = tornado.escape.json_decode(highest_fullstate_json)
+                fullstate = highest_fullstate
+                fullstate['nodes'].update(data['nodes'])
+                fullstate['subchains'].update(data['subchains'])
+        else:
+            fullstate = {
+                'nodes': {},
+                'proofs': [],
+                'subchains': {},
+            }
+        db.put(b'fullstate%s' % block_hash.encode('utf8'), tornado.escape.json_encode(fullstate).encode('utf8'))
+
         recent_longest.insert(0, seq[1:])
-        recent_longest.pop()
+        if len(recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:
+            recent_longest.pop()
         highest_block_height = height
 
         subchains = data.get('subchains', {})
@@ -184,7 +199,6 @@ def new_chain_block(seq):
 # @tornado.gen.coroutine
 def new_chain_proof(seq):
     global nodes_to_fetch
-    # global highest_block_height
     global last_highest_block_height
     global hash_proofs
     global last_hash_proofs
