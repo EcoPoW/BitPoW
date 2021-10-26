@@ -163,14 +163,14 @@ class DashboardHandler(tornado.web.RequestHandler):
         for i, h in chain.subchains_block_to_mine.items():
             self.write("%s %s<br>" % (i, h))
 
-        self.write("<br>txpool:<br>")
+        self.write("<br>pool:<br>")
         db = database.get_conn()
         it = db.iteritems()
-        it.seek(b'txpool')
+        it.seek(b'pool')
         for k, v in it:
-            if not k.startswith(b'txpool'):
+            if not k.startswith(b'pool'):
                 break
-            self.write("%s -> %s<br>"% (k[6:].decode(), v.decode()))
+            self.write("%s -> %s<br>"% (k[4:].decode(), v.decode()))
         self.finish()
 
 

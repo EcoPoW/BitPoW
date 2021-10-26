@@ -63,7 +63,7 @@ def main():
             data = {'amount': amount}
 
         data_json = json.dumps(data)
-        block_hash = hashlib.sha256((prev_hash + sender_sk.public_key.to_checksum_address() + receiver_sk.public_key.to_checksum_address() + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
+        block_hash = hashlib.sha256((prev_hash + sender_sk.public_key.to_checksum_address() + receiver_sk.public_key.to_checksum_address() + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
         print('sender', sender_sk.public_key.to_checksum_address())
         print('receiver', receiver_sk.public_key.to_checksum_address())

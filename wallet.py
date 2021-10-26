@@ -125,7 +125,7 @@ def main():
         highest_prev_hash = '0'*64
 
     new_timestamp = time.time()
-    block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + str(new_timestamp) + data_json).encode('utf8')).hexdigest()
+    block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
     signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
     print('signature', signature.to_hex())
     new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
