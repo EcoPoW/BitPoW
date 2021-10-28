@@ -200,27 +200,6 @@ def mining():
             if chain.recent_longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
-            db = database.get_conn()
-            for k, v in data['subchains'].items():
-                msg_json = db.get(b'msg%s' % v.encode('utf8'))
-                print('mining subchains', k, v)
-                msg = tornado.escape.json_decode(msg_json)
-                if msg[chain.RECEIVER] == '0x':
-                    # new_contract_block
-                    new_contract_address = '0x%s' % msg[chain.HASH][:40].upper()
-                    msg_sender = msg[chain.SENDER]
-                    msg_data = msg[chain.DATA]
-                    print('mining new_contract', msg)
-                    print('mining new_contract_address', new_contract_address)
-
-                    new_contract_hash = hashlib.sha256(('0'*64 + msg_sender + new_contract_address + str(1) + tornado.escape.json_encode(msg_data) + str(new_timestamp)).encode('utf8')).hexdigest()
-                    contract_signature = tree.node_sk.sign_msg(str(new_contract_hash).encode("utf8"))
-                    print('signature', contract_signature.to_hex())
-                    new_contract_block = [new_contract_hash, '0'*64, msg_sender, new_contract_address, 1, msg_data, new_timestamp, contract_signature.to_hex()]
-
-                    db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                    db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
-
             # txid = uuid.uuid4().hex
             message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno]
             messages_out.append(message)

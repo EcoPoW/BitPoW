@@ -93,8 +93,8 @@ def main():
         prev_hash = subchain_block[1]
         assert subchain_block[2] == sender
         data = subchain_block[6]
-        subchain_blocks.update(data.get("blocks", []))
-        subchain_proofs.update(data.get("proofs", []))
+        # subchain_blocks.update(data.get("blocks", []))
+        # subchain_proofs.update(data.get("proofs", []))
         # print(subchain_block[4])
         if subchain_block[4] == 1:
             break
@@ -128,6 +128,17 @@ def main():
     rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
     print("new subchain block", new_subchain_block)
 
+    new_contract_address = '0x%s' % new_subchain_block[0]
+    print("new contract address", new_contract_address)
+    highest_prev_hash = new_subchain_block[0]
+    height = new_subchain_block[4]
+    new_timestamp = time.time()
+    block_hash = hashlib.sha256((highest_prev_hash + sender + new_contract_address + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
+    signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+    print('signature', signature.to_hex())
+    new_subchain_block = [block_hash, highest_prev_hash, sender, new_contract_address, height+1, data, new_timestamp, signature.to_hex()]
+    rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
+    print("new subchain block", new_subchain_block)
 
 if __name__ == '__main__':
     main()
