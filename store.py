@@ -107,7 +107,10 @@ def main():
     # for hash in blocks:
     #     amount += int(2**256/int(hash, 16))
     # data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
-    data = {}
+    data = {
+        'type': 'storage_contract',
+    	'version': 1
+    }
     data_json = json.dumps(data)
     receiver = '0x'
 
@@ -131,7 +134,23 @@ def main():
     print("  subchain block", new_subchain_block)
 
     t0 = time.time()
-    for i in range(10000):
+    for i in range(1):
+        data = {
+            'crypto': 'AES_OFB',
+            'iv': '0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f',
+            'folders': {
+                'folder1': {
+                    'aes_encrypted_file_path_and_name_in_hex': [
+                        [
+                            ['encrypted_file_chunk1_sha256_in_hex', (2**20)*8, ['miner1_address', 'miner2_address', 'miner3_address']],
+                            ['encrypted_file_chunk2_sha256_in_hex', (2**20)*8, ['miner4_address', 'miner5_address', 'miner6_address']],
+                            ['encrypted_file_chunk3_sha256_in_hex', (2**20)*8, ['miner7_address', 'miner8_address', 'miner9_address']]
+                        ],
+                    ]
+                }
+            }
+        }
+        data_json = json.dumps(data)
         highest_prev_hash = new_subchain_block[0]
         height = new_subchain_block[4]
         new_timestamp = time.time()
