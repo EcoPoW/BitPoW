@@ -105,7 +105,7 @@ worker_thread_pause = True
 #     return longest
 
 
-nodes_to_fetch = []
+nodes_to_fetch = set()
 last_highest_block_height = 0
 hash_proofs = set()
 last_hash_proofs = set()
@@ -180,9 +180,9 @@ def new_chain_block(seq):
             if not k.startswith(b'pool'):
                 break
             parent_msg_hash = msg_hash_to_confirm
-            print(highest_fullstate)
+            # print(highest_fullstate)
             last_confirmed_msg_hash = highest_fullstate.setdefault('subchains', {}).get(k.decode('utf8')[4:], '0'*64).encode('utf8')
-            print(last_confirmed_msg_hash)
+            # print(last_confirmed_msg_hash)
             contracts_to_create = []
             while True:
                 msg_json = db.get(b'msg%s' % parent_msg_hash)
@@ -201,17 +201,17 @@ def new_chain_block(seq):
                         print('contracts_to_create', i)
                         msg_json = db.get(b'msg%s' % i.encode('utf8'))
                         msg = tornado.escape.json_decode(msg_json)
-                        print(msg)
+                        # print(msg)
 
                         if len(msg[RECEIVER]) == 66:
-                            print('new_chain_block msg to contract', msg)
                             msg_hash = msg[HASH]
+                            print('new_chain_block msg to contract', msg_hash)
                             msg_sender = msg[SENDER]
                             msg_receiver = msg[RECEIVER]
 
                             contract_parent_hash = db.get(b'chain%s' % msg_receiver[2:].encode('utf8'))
                             print(b'chain%s' % msg_receiver[2:].encode('utf8'))
-                            print(contract_parent_hash)
+                            # print(contract_parent_hash)
                             contract_block_json = db.get(b'msg%s' % contract_parent_hash)
                             contract_block = tornado.escape.json_decode(contract_block_json)
                             contract_height = contract_block[MSG_HEIGHT]+1
@@ -225,9 +225,9 @@ def new_chain_block(seq):
                             new_contract_block = [new_contract_hash, contract_parent_hash.decode('utf8'), msg_sender, msg_hash, contract_height, contract_data, new_timestamp, contract_signature.to_hex()]
 
                             db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                            print(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
+                            # print(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                             db.put(b'chain%s' % msg_receiver[2:].encode('utf8'), new_contract_hash.encode('utf8'))
-                            print(b'chain%s' % msg_receiver[2:].encode('utf8'), new_contract_hash.encode('utf8'))
+                            # print(b'chain%s' % msg_receiver[2:].encode('utf8'), new_contract_hash.encode('utf8'))
 
                         elif msg[RECEIVER] == '0x':
                             # new_contract_block
@@ -235,7 +235,7 @@ def new_chain_block(seq):
                             msg_hash = msg[HASH]
                             msg_sender = msg[SENDER]
                             msg_data = msg[DATA]
-                            print('mining new_contract', msg)
+                            print('mining new_contract', msg_hash)
                             # print('mining new_contract_address', new_contract_address)
 
                             new_timestamp = time.time()
@@ -269,7 +269,7 @@ def new_chain_block(seq):
         # if int(no) not in nodes_to_fetch:
 
         # need to fetch the missing block
-        nodes_to_fetch.append(tree.nodeno2id(int(nodeno)))
+        nodes_to_fetch.add(tree.nodeno2id(int(nodeno)))
         worker_thread_mining = False
 
 # @tornado.gen.coroutine
@@ -294,7 +294,7 @@ def new_chain_proof(seq):
     # if highest_block_height + 1 < height:
     #     no, pk = identity.split(":")
     #     if int(no) not in nodes_to_fetch:
-    #         nodes_to_fetch.append(int(no))
+    #         nodes_to_fetch.add(int(no))
 
     # if last_highest_block_height != highest_block_height:
     #     if last_highest_block_height + 1 == highest_block_height:
@@ -424,7 +424,8 @@ def fetch_chain(nodeid):
     block_hash = highest_block_hash
     while block_hash != '0'*64:
         block_json = db.get(b'block%s' % block_hash.encode('utf8'))
-        if block_json:
+        fullstate_json = db.get(b'fullstate%s' % block_hash.encode('utf8'))
+        if block_json and fullstate_json:
             # block = tornado.escape.json_decode(block_json)
             # if block[HEIGHT] % 1000 == 0:
             #     print('fetch_chain block height', block[HEIGHT])

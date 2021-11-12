@@ -207,7 +207,7 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
-        assert len(sender) == 42 or len(sender) == 66
+        assert sender.startswith('0x') and (len(sender) == 42 or len(sender) == 66)
         hash = self.get_argument('hash', None)
         self.write("<a href='/dashboard'>Dashboard</a> ")
         self.write("<a href='/chain_explorer'>Chain Explorer</a> ")
@@ -221,7 +221,7 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
         else:
             msg_hash = hash.encode('utf8')
 
-        for i in range(20):
+        for i in range(2000):
             msg_json = db.get(b'msg%s' % msg_hash)
             if not msg_json:
                 return

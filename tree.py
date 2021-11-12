@@ -194,7 +194,7 @@ class MinerConnector(object):
             print("MinerConnector got MINER_NODE_ID", seq)
             current_nodeid = seq[1]
             if current_nodeid is not None and self.conn:
-                chain.nodes_to_fetch.append(current_nodeid)
+                chain.nodes_to_fetch.add(current_nodeid)
                 chain.worker_thread_pause = False
                 # chain.worker_thread_mining = True
             else:
@@ -482,7 +482,7 @@ class NodeConnector(object):
             if parent_nodeid is not None:
                 nodes_pool[parent_nodeid] = [parent_pk, timestamp]
                 node_parents[parent_nodeid] = [self.host, self.port]
-                chain.nodes_to_fetch.append(parent_nodeid)
+                chain.nodes_to_fetch.add(parent_nodeid)
             nodes_pool[nodeid] = [pk, timestamp]
             print(current_port, 'NODE_ID', nodeid, pk, 'PARENT_ID', parent_nodeid, parent_pk, seq[-1])
             if self.branch == nodeid:

@@ -235,10 +235,10 @@ def validate():
         highest_block_hash = b'0'*64
         highest_block_height = 0
 
-    print("validate nodes_to_fetch", chain.nodes_to_fetch)
-    c = 0
+    print('validate nodes_to_fetch', chain.nodes_to_fetch)
+    fetched_nodes = set()
     for nodeid in chain.nodes_to_fetch:
-        c += 1
+        fetched_nodes.add(nodeid)
         new_chain_hash, new_chain_height = chain.fetch_chain(nodeid)
         print('validate', highest_block_hash, highest_block_height)
         print('validate', new_chain_hash, new_chain_height)
@@ -258,8 +258,7 @@ def validate():
         else:
             break
 
-    for i in range(c):
-        chain.nodes_to_fetch.pop(0)
+    chain.nodes_to_fetch = chain.nodes_to_fetch - fetched_nodes
     if not chain.nodes_to_fetch:
         if setting.MINING:
             chain.worker_thread_mining = True
