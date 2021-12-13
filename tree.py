@@ -553,19 +553,19 @@ class NodeConnector(object):
 def bootstrap(addr):
     global available_branches
 
-    print(current_port, "fetch", addr)
+    print(current_port, 'fetch available branches', addr)
     http_client = tornado.httpclient.AsyncHTTPClient()
     try:
-        response = yield http_client.fetch("http://%s:%s/available_branches" % tuple(addr))
+        response = yield http_client.fetch('http://%s:%s/available_branches' % tuple(addr))
     except Exception as e:
-        print("bootstrap Error: %s" % e)
+        print('bootstrap Error: %s' % e)
         tornado.ioloop.IOLoop.instance().call_later(1.0, functools.partial(bootstrap, addr))
         return
 
     result = tornado.escape.json_decode(response.body)
-    branches = result["available_branches"]
+    branches = result['available_branches']
     branches.sort(key=lambda l:len(l[2]))
-    print(current_port, "fetch result", [tuple(i) for i in branches])
+    print(current_port, '  fetch result', [tuple(i) for i in branches])
 
     if branches:
         available_branches = set([tuple(i) for i in branches])
