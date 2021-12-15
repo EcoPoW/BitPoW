@@ -11,10 +11,36 @@ import time
 import hashlib
 import json
 import pprint
+import copy
 
 import requests
 # import ecdsa
 import eth_keys
+
+
+def state_transfer_function(state, msg):
+    new_state = copy.deepcopy(state)
+    if msg.get('type') == 'folder_storage':
+        folder = msg.get('name')
+        assert folder
+        new_state.setdefault('folder_storage', {})
+        current_folder = new_state['folder_storage'].setdefault(folder, {})
+        # print('current folder', current_folder)
+        if 'remove' in msg:
+            remove_dict = msg['remove']
+            for path, info in remove_dict.items():
+                # print('remove', path, info)
+                pass
+
+        if 'add' in msg:
+            add_dict = msg['add']
+            for path, info in add_dict.items():
+                # print('add', path, info)
+                assert path not in current_folder
+                current_folder[path] = info
+        # print('fullstate dict', fullstate_dict)
+
+    return new_state
 
 
 def main():
@@ -90,8 +116,9 @@ def main():
             folder = store_obj['folder']
             sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
             sender = sender_sk.public_key.to_checksum_address()
-            fullstate_hash = store_obj.get('fullstate_hash')
-            fullstate_dict = store_obj.get('fullstate_dict', {})
+            # fullstate_hash = store_obj.get('fullstate_hash')
+            # fullstate_dict = store_obj.get('fullstate_dict', {})
+            fullstate_dict = {}
 
             rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
             highest_subchain_hash = rsp.json()['hash']
@@ -99,10 +126,10 @@ def main():
             print('sender', sender)
             block_stack = []
             while True:
-                print('  block_hash', block_hash)
+                # print('  block_hash', block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
-                print('    data', subchain_block[5])
+                # print('    data', subchain_block[5])
                 # print('assert', subchain_block)
                 if subchain_block is None:
                     break
@@ -110,9 +137,6 @@ def main():
                 block_hash = subchain_block[1]
                 assert subchain_block[2] == sender
                 data = subchain_block[6]
-                # subchain_blocks.update(data.get("blocks", []))
-                # subchain_proofs.update(data.get("proofs", []))
-                # print(subchain_block[4])
                 if subchain_block[4] == 1:
                     break
 
@@ -124,21 +148,12 @@ def main():
                 print(block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
-                print('    data', subchain_block[5])
                 msg = subchain_block[5]
-                if msg.get('type') == 'folder_storage' and msg.get('name') == folder:
-                    current_folder_state_dict = fullstate_dict.setdefault('folder_storage', {}).get(msg['name'], {})
-                    print('current folder', current_folder_state_dict)
-                    if 'remove' in msg:
-                        remove_dict = msg['remove']
-                        for path, info in remove_dict.items():
-                            print('remove', path, info)
-
-                    if 'add' in msg:
-                        add_dict = msg['add']
-                        for path, info in add_dict.items():
-                            print('add', path, info)
-                    # print('fullstate dict', fullstate_dict)
+                print('    msg', subchain_block[5])
+                print('    old', fullstate_dict)
+                fullstate_dict = state_transfer_function(fullstate_dict, msg)
+                print('    new', fullstate_dict)
+                print('')
             print('fullstate dict', fullstate_dict)
 
             return
@@ -178,16 +193,12 @@ def main():
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
                 print('    block', subchain_block[5])
-                # print('assert', subchain_block)
                 if subchain_block is None:
                     break
                 block_stack.append(block_hash)
                 block_hash = subchain_block[1]
                 assert subchain_block[2] == sender
                 data = subchain_block[6]
-                # subchain_blocks.update(data.get("blocks", []))
-                # subchain_proofs.update(data.get("proofs", []))
-                # print(subchain_block[4])
                 if subchain_block[4] == 1:
                     break
 
@@ -199,30 +210,15 @@ def main():
                 print(block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
-                print('    block', subchain_block[5])
                 msg = subchain_block[5]
-                if msg.get('type') == 'folder_storage' and msg.get('name') == folder:
-                    current_folder_state_dict = fullstate_dict.setdefault('folder_storage', {}).get(msg['name'], {})
-                    print('current folder', current_folder_state_dict)
-                    if 'remove' in msg:
-                        remove_dict = msg['remove']
-                        for path, info in remove_dict.items():
-                            print('remove', path, info)
+                print('    msg', subchain_block[5])
+                print('    old', fullstate_dict)
+                fullstate_dict = state_transfer_function(fullstate_dict, msg)
+                print('    new', fullstate_dict)
+                print('')
 
-                    if 'add' in msg:
-                        add_dict = msg['add']
-                        for path, info in add_dict.items():
-                            print('add', path, info)
+            print('fullstate dict', fullstate_dict)
 
-                    print('fullstate dict', fullstate_dict)
-            # amount = 0
-            # proofs = chain_proofs - subchain_proofs
-            # for hash in proofs:
-            #     amount += int(2**256/int(hash, 16))
-            # blocks = chain_blocks - subchain_blocks
-            # for hash in blocks:
-            #     amount += int(2**256/int(hash, 16))
-            # data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
             data = {
                 'type': 'folder_storage',
                 'name': folder,
