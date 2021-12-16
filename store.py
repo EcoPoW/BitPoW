@@ -30,7 +30,8 @@ def state_transfer_function(state, msg):
             remove_dict = msg['remove']
             for path, info in remove_dict.items():
                 # print('remove', path, info)
-                pass
+                assert path in current_folder and info == current_folder[path]
+                del current_folder[path]
 
         if 'add' in msg:
             add_dict = msg['add']
@@ -80,6 +81,9 @@ def main():
             return
 
         elif sys.argv[1] == 'add':
+            fullstate_dict = store_obj.get('fullstate_dict', {})
+            folder = store_obj['folder']
+
             path_to_add = sys.argv[2]
             chunks = []
             path_to_add_size = 0
@@ -92,10 +96,17 @@ def main():
                     else:
                         break
 
+            print(chunks)
             store_obj.setdefault('add', {})[path_to_add] = {
                 'chunks': chunks,
                 'size': path_to_add_size
             }
+            state_folders = fullstate_dict.setdefault('folder_storage', {})
+            state_folder = state_folders.setdefault(folder, {})
+            info_to_add = state_folder.get(path_to_add)
+            if info_to_add:
+                store_obj.setdefault('remove', {})[path_to_add] = info_to_add
+            print(store_obj)
             with open('./store.json', 'w') as f:
                 f.write(json.dumps(store_obj))
             return
@@ -105,27 +116,46 @@ def main():
 
     elif len(sys.argv) == 2:
         if sys.argv[1] == 'status':
-            pprint.pprint(store_obj.get('add', {}))
-            pprint.pprint(store_obj.get('del', {}))
+            add = store_obj.get('add', {})
+            remove = store_obj.get('remove', {})
+
+            print('add')
+            pprint.pprint(add)
+            print('remove')
+            pprint.pprint(remove)
+
+            for path in add:
+                with open(path, 'rb') as f:
+                    chunks = []
+                    path_to_add_size = 0
+                    while True:
+                        chunk = f.read(2**20*8)
+                        if chunk:
+                            chunks.append(hashlib.sha256(chunk).hexdigest())
+                            path_to_add_size += len(chunk)
+                        else:
+                            break
+                print(path, chunks, path_to_add_size)
+
             return
 
         elif sys.argv[1] == 'sync':
+            # will update local state and file if matched
             key = store_obj['key']
             host = store_obj['host']
             port = store_obj['port']
             folder = store_obj['folder']
             sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
             sender = sender_sk.public_key.to_checksum_address()
-            # fullstate_hash = store_obj.get('fullstate_hash')
-            # fullstate_dict = store_obj.get('fullstate_dict', {})
-            fullstate_dict = {}
+            fullstate_hash = store_obj.get('fullstate_hash', '0'*64)
+            fullstate_dict = store_obj.get('fullstate_dict', {})
 
             rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
             highest_subchain_hash = rsp.json()['hash']
             block_hash = highest_subchain_hash
             print('sender', sender)
             block_stack = []
-            while True:
+            while block_hash != fullstate_hash:
                 # print('  block_hash', block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
@@ -141,9 +171,9 @@ def main():
                     break
 
             print('block stack', block_stack)
-            while True:
-                if not block_stack:
-                    break
+            while block_stack:
+                # if not block_stack:
+                #     break
                 block_hash = block_stack.pop()
                 print(block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
@@ -154,18 +184,31 @@ def main():
                 fullstate_dict = state_transfer_function(fullstate_dict, msg)
                 print('    new', fullstate_dict)
                 print('')
-            print('fullstate dict', fullstate_dict)
 
+            print('fullstate dict', fullstate_dict)
+            store_obj['fullstate_dict'] = fullstate_dict
+            store_obj['fullstate_hash'] = highest_subchain_hash
+            if 'remove' in store_obj:
+                del store_obj['remove']
+            if 'add' in store_obj:
+                del store_obj['add']
+            with open('./store.json', 'w') as f:
+                f.write(json.dumps(store_obj))
             return
 
         elif sys.argv[1] == 'reset':
-            store_obj['add'] = {}
-            store_obj['del'] = {}
+            # reset file from chain at certain hash
+            if 'remove' in store_obj:
+                del store_obj['remove']
+            if 'add' in store_obj:
+                del store_obj['add']
             with open('./store.json', 'w') as f:
                 f.write(json.dumps(store_obj))
             return
 
         elif sys.argv[1] == 'commit':
+            # will not sync
+            # will not commit if local state not matching latest state on chain
             key = store_obj['key']
             host = store_obj['host']
             port = store_obj['port']
@@ -180,7 +223,7 @@ def main():
             subchain_blocks = set()
             subchain_proofs = set()
 
-            fullstate_hash = store_obj.get('fullstate_hash')
+            fullstate_hash = store_obj.get('fullstate_hash', '0'*64)
             fullstate_dict = store_obj.get('fullstate_dict', {})
 
             rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
@@ -188,11 +231,11 @@ def main():
             block_hash = highest_subchain_hash
             print('sender', sender)
             block_stack = []
-            while True:
+            while block_hash != fullstate_hash:
                 print('  block_hash', block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
                 subchain_block = rsp.json()['msg']
-                print('    block', subchain_block[5])
+                # print('    block', subchain_block[5])
                 if subchain_block is None:
                     break
                 block_stack.append(block_hash)
@@ -203,9 +246,9 @@ def main():
                     break
 
             print('block stack', block_stack)
-            while True:
-                if not block_stack:
-                    break
+            while block_stack:
+                # if not block_stack:
+                #     break
                 block_hash = block_stack.pop()
                 print(block_hash)
                 rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
@@ -217,8 +260,7 @@ def main():
                 print('    new', fullstate_dict)
                 print('')
 
-            print('fullstate dict', fullstate_dict)
-
+            # print('fullstate dict', fullstate_dict)
             data = {
                 'type': 'folder_storage',
                 'name': folder,
@@ -240,16 +282,33 @@ def main():
                 highest_prev_hash = '0'*64
 
             new_timestamp = time.time()
-            # receiver = '0x'
             receiver = sender
             block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
             signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
             # print('signature', signature.to_hex())
-            new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
-            rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
-            # new_contract_address = '0x%s' % new_subchain_block[0]
-            # print("new contract address", new_contract_address)
-            print("new subchain block", new_subchain_block)
+            try:
+                new_fullstate_dict = state_transfer_function(fullstate_dict, data)
+                new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
+                rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
+                # new_contract_address = '0x%s' % new_subchain_block[0]
+                new_fullstate_hash = new_subchain_block[0]
+                # print("new contract address", new_contract_address)
+                print("new subchain block", new_subchain_block)
+            except AssertionError:
+                print('failed')
+                print(fullstate_dict)
+                print(data)
+
+            if 'remove' in store_obj:
+                del store_obj['remove']
+            if 'add' in store_obj:
+                del store_obj['add']
+            store_obj['fullstate_dict'] = new_fullstate_dict
+            store_obj['fullstate_hash'] = new_fullstate_hash
+
+            with open('./store.json', 'w') as f:
+                f.write(json.dumps(store_obj))
+            return
 
             # t0 = time.time()
             # for i in range(1):
