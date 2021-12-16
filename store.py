@@ -112,6 +112,34 @@ def main():
             return
 
         elif sys.argv[1] == 'remove':
+            fullstate_dict = store_obj.get('fullstate_dict', {})
+            folder = store_obj['folder']
+
+            path_to_remove = sys.argv[2]
+            chunks = []
+            path_to_add_size = 0
+            with open(path_to_remove, 'rb') as f:
+                while True:
+                    chunk = f.read(2**20*8)
+                    if chunk:
+                        chunks.append(hashlib.sha256(chunk).hexdigest())
+                        path_to_add_size += len(chunk)
+                    else:
+                        break
+
+            print(chunks)
+            store_obj.setdefault('remove', {})[path_to_remove] = {
+                'chunks': chunks,
+                'size': path_to_add_size
+            }
+            # state_folders = fullstate_dict.setdefault('folder_storage', {})
+            # state_folder = state_folders.setdefault(folder, {})
+            # info_to_add = state_folder.get(path_to_add)
+            # if info_to_add:
+            #     store_obj.setdefault('remove', {})[path_to_add] = info_to_add
+            print(store_obj)
+            with open('./store.json', 'w') as f:
+                f.write(json.dumps(store_obj))
             return
 
     elif len(sys.argv) == 2:
@@ -167,8 +195,8 @@ def main():
                 block_hash = subchain_block[1]
                 assert subchain_block[2] == sender
                 data = subchain_block[6]
-                if subchain_block[4] == 1:
-                    break
+                # if subchain_block[4] == 1:
+                #     break
 
             print('block stack', block_stack)
             while block_stack:
@@ -218,10 +246,10 @@ def main():
             sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
             sender = sender_sk.public_key.to_checksum_address()
 
-            chain_blocks = set()
-            chain_proofs = set()
-            subchain_blocks = set()
-            subchain_proofs = set()
+            # chain_blocks = set()
+            # chain_proofs = set()
+            # subchain_blocks = set()
+            # subchain_proofs = set()
 
             fullstate_hash = store_obj.get('fullstate_hash', '0'*64)
             fullstate_dict = store_obj.get('fullstate_dict', {})
@@ -242,8 +270,8 @@ def main():
                 block_hash = subchain_block[1]
                 assert subchain_block[2] == sender
                 data = subchain_block[6]
-                if subchain_block[4] == 1:
-                    break
+                # if subchain_block[4] == 1:
+                #     break
 
             print('block stack', block_stack)
             while block_stack:
@@ -290,24 +318,27 @@ def main():
                 new_fullstate_dict = state_transfer_function(fullstate_dict, data)
                 new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
                 rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
-                # new_contract_address = '0x%s' % new_subchain_block[0]
                 new_fullstate_hash = new_subchain_block[0]
+                store_obj['fullstate_dict'] = new_fullstate_dict
+                store_obj['fullstate_hash'] = new_fullstate_hash
+
+                # new_contract_address = '0x%s' % new_subchain_block[0]
                 # print("new contract address", new_contract_address)
                 print("new subchain block", new_subchain_block)
+
+                if 'remove' in store_obj:
+                    del store_obj['remove']
+                if 'add' in store_obj:
+                    del store_obj['add']
+
+                with open('./store.json', 'w') as f:
+                    f.write(json.dumps(store_obj))
+
             except AssertionError:
                 print('failed')
                 print(fullstate_dict)
                 print(data)
 
-            if 'remove' in store_obj:
-                del store_obj['remove']
-            if 'add' in store_obj:
-                del store_obj['add']
-            store_obj['fullstate_dict'] = new_fullstate_dict
-            store_obj['fullstate_hash'] = new_fullstate_hash
-
-            with open('./store.json', 'w') as f:
-                f.write(json.dumps(store_obj))
             return
 
             # t0 = time.time()
@@ -346,6 +377,37 @@ def main():
             #     rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
             #     # print("new subchain block", new_subchain_block)
             # print(time.time() - t0)
+
+        elif sys.argv[1] == 'log':
+            key = store_obj['key']
+            host = store_obj['host']
+            port = store_obj['port']
+
+            sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+            sender = sender_sk.public_key.to_checksum_address()
+
+            rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
+            highest_subchain_hash = rsp.json()['hash']
+            block_hash = highest_subchain_hash
+            print('sender', sender)
+            # block_stack = []
+            while block_hash != '0'*64:
+                print('  block_hash', block_hash)
+                rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
+                subchain_block = rsp.json()['msg']
+                if subchain_block is None:
+                    break
+                print('    block', subchain_block[5])
+                # block_stack.append(block_hash)
+                block_hash = subchain_block[1]
+                assert subchain_block[2] == sender
+                data = subchain_block[6]
+                # if subchain_block[4] == 1:
+                #     break
+
+            return
+
+        elif sys.argv[1] == 'diff':
             return
 
     elif len(sys.argv) == 1:
