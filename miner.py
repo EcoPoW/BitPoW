@@ -3,14 +3,13 @@ from __future__ import print_function
 import sys
 import os
 import math
-import argparse
+import json
 import time
 import uuid
 import hashlib
 import copy
 import base64
 import threading
-# import urllib.request
 import secrets
 
 import tornado.web
@@ -287,43 +286,103 @@ def worker_thread():
     # print(tree.current_port, "miner")
 
 
+def main():
+
+    # print(sys.argv)
+    if len(sys.argv) < 2:
+        print('help')
+        print('  miner.py key')
+        print('  miner.py host')    
+        print('  miner.py port')
+        print('  miner.py mine')
+        return
+
+    miner_obj = {}
+    try:
+        with open('./.miner.json', 'r') as f:
+            miner_obj = json.loads(f.read())
+            print(miner_obj)
+
+    except:
+        print('error')
+        # return
+
+    if sys.argv[1] in ['key', 'host', 'port']:
+        miner_obj[sys.argv[1]] = sys.argv[2]
+        with open('./.miner.json', 'w') as f:
+            f.write(json.dumps(miner_obj))
+        return
+
+    elif sys.argv[1] == 'mine':
+        # host = miner_obj['host']
+        # port = miner_obj['port']
+        ws = websocket.WebSocketApp("ws://192.168.1.9:9001/miner",
+                              on_open=on_open,
+                              on_message=on_message,
+                              on_error=on_error,
+                              on_close=on_close)
+
+        ws.run_forever()
+
+
+
+def on_message(ws, message):
+    print(message)
+
+def on_error(ws, error):
+    print(error)
+
+def on_close(ws, close_status_code, close_msg):
+    print("### closed ###")
+
+def on_open(ws):
+    pass
+    # def run(*args):
+    #     for i in range(3):
+    #         time.sleep(1)
+    #         ws.send("Hello %d" % i)
+    #     time.sleep(1)
+    #     ws.close()
+    #     print("thread terminating...")
+    # _thread.start_new_thread(run, ())
+
+
 if __name__ == '__main__':
+    import _thread
+    import websocket
+
+    main()
     # print("run python node.py pls")
     # tree.current_port = "8001"
 
-    tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
+    # tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 
-    parser = argparse.ArgumentParser(description="python3 node.py --name=<miner_name> [--host=<127.0.0.1>] [--port=<8001>]")
-    parser.add_argument('--name')
-    parser.add_argument('--host')
-    parser.add_argument('--port')
+    # args = parser.parse_args()
+    # if not args.name:
+    #     print('--name reqired')
+    #     sys.exit()
+    # tree.current_name = args.name
+    # tree.current_host = args.host
+    # tree.current_port = args.port
+    # sk_filename = "miners/%s.key" % tree.current_name
+    # if os.path.exists(sk_filename):
+    #     f = open(sk_filename, 'rb')
+    #     raw_key = f.read(32)
+    #     f.close()
+    #     tree.node_sk = eth_keys.keys.PrivateKey(raw_key)
+    # else:
+    #     raw_key = secrets.token_bytes(32)
+    #     f = open(sk_filename, "wb")
+    #     f.write(raw_key)
+    #     f.close()
+    #     tree.node_sk = eth_keys.keys.PrivateKey(raw_key)
 
-    args = parser.parse_args()
-    if not args.name:
-        print('--name reqired')
-        sys.exit()
-    tree.current_name = args.name
-    tree.current_host = args.host
-    tree.current_port = args.port
-    sk_filename = "miners/%s.key" % tree.current_name
-    if os.path.exists(sk_filename):
-        f = open(sk_filename, 'rb')
-        raw_key = f.read(32)
-        f.close()
-        tree.node_sk = eth_keys.keys.PrivateKey(raw_key)
-    else:
-        raw_key = secrets.token_bytes(32)
-        f = open(sk_filename, "wb")
-        f.write(raw_key)
-        f.close()
-        tree.node_sk = eth_keys.keys.PrivateKey(raw_key)
+    # database.main()
 
-    database.main()
+    # setting.MINING = True
+    # tree.MinerConnector(tree.current_host, tree.current_port)
+    # worker_threading = threading.Thread(target=worker_thread)
+    # worker_threading.start()
 
-    setting.MINING = True
-    tree.MinerConnector(tree.current_host, tree.current_port)
-    worker_threading = threading.Thread(target=worker_thread)
-    worker_threading.start()
-
-    tornado.ioloop.IOLoop.instance().start()
+    # tornado.ioloop.IOLoop.instance().start()
     # worker_threading.join()

@@ -6,48 +6,33 @@ import time
 import hashlib
 import json
 import pprint
-import copy
 
 import requests
-# import ecdsa
 import eth_keys
 
+from stf import state_transfer_function
 
-def state_transfer_function(state, msg):
-    new_state = copy.deepcopy(state)
-    if msg.get('type') == 'folder_storage':
-        folder = msg.get('name')
-        assert folder
-        new_state.setdefault('folder_storage', {})
-        current_folder = new_state['folder_storage'].setdefault(folder, {})
-        # print('current folder', current_folder)
-        if 'remove' in msg:
-            remove_dict = msg['remove']
-            for path, info in remove_dict.items():
-                # print('remove', path, info)
-                assert path in current_folder and info == current_folder[path]
-                del current_folder[path]
-
-        if 'add' in msg:
-            add_dict = msg['add']
-            for path, info in add_dict.items():
-                # print('add', path, info)
-                assert path not in current_folder
-                current_folder[path] = info
-        # print('fullstate dict', fullstate_dict)
-
-    return new_state
 
 
 def main():
     # print(sys.argv)
     if len(sys.argv) < 2:
-        print('help')
+        print('help:')
+        print('  store.py key <key_path>')
+        print('  store.py host <IP or domain>')
+        print('  store.py port <port>')
+        print('  store.py add <file_path>')
+        print('  store.py remove <file_path>')
+        print('  store.py status')
+        print('  store.py sync')
+        print('  store.py reset')
+        print('  store.py commit')
+        print('  store.py log')
         return
 
     store_obj = {}
     try:
-        with open('./store.json', 'r') as f:
+        with open('./.store.json', 'r') as f:
             store_obj = json.loads(f.read())
             print(store_obj)
 
@@ -56,11 +41,11 @@ def main():
 
     except:
         print('error')
-        return
+        # return
 
     if sys.argv[1] in ['key', 'host', 'port', 'folder']:
         store_obj[sys.argv[1]] = sys.argv[2]
-        with open('./store.json', 'w') as f:
+        with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -94,7 +79,7 @@ def main():
         if info_to_add:
             store_obj.setdefault('remove', {})[path_to_add] = info_to_add
         print(store_obj)
-        with open('./store.json', 'w') as f:
+        with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -125,7 +110,7 @@ def main():
         # if info_to_add:
         #     store_obj.setdefault('remove', {})[path_to_add] = info_to_add
         print(store_obj)
-        with open('./store.json', 'w') as f:
+        with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -206,7 +191,7 @@ def main():
             del store_obj['remove']
         if 'add' in store_obj:
             del store_obj['add']
-        with open('./store.json', 'w') as f:
+        with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -216,7 +201,7 @@ def main():
             del store_obj['remove']
         if 'add' in store_obj:
             del store_obj['add']
-        with open('./store.json', 'w') as f:
+        with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -325,7 +310,7 @@ def main():
             if 'add' in store_obj:
                 del store_obj['add']
 
-            with open('./store.json', 'w') as f:
+            with open('./.store.json', 'w') as f:
                 f.write(json.dumps(store_obj))
 
         except AssertionError:
