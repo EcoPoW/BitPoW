@@ -5,27 +5,30 @@ import os
 import math
 import json
 import time
-import uuid
 import hashlib
-import copy
-import base64
-import threading
-import secrets
+# import uuid
+# import copy
+# import base64
+# import threading
+# import secrets
 
-import tornado.web
-import tornado.websocket
-import tornado.ioloop
-import tornado.httpclient
-import tornado.gen
-import tornado.escape
+if __name__ == '__main__':
+    import _thread
+    import pprint
+    import websocket
+else:
+    import tornado.web
+    import tornado.websocket
+    import tornado.ioloop
+    import tornado.httpclient
+    import tornado.gen
+    import tornado.escape
 
-import setting
-import tree
-# import node
-import chain
-import database
+    import setting
+    import tree
+    import chain
+    import database
 
-# import ecdsa
 import eth_keys
 
 
@@ -110,34 +113,8 @@ def miner_looping():
     tornado.ioloop.IOLoop.instance().call_later(1, miner_looping)
 
 
-nonce = 0
-def mining():
-    global nonce
-    global messages_out
-
-    # TODO: move to validate
-    # db = database.get_conn()
-    # highest_block_hash = db.get(b'chain')
-    # if highest_block_hash:
-    #     highest_block_json = db.get(b'block%s' % highest_block_hash)
-    #     if highest_block_json:
-    #         highest_block = tornado.escape.json_decode(highest_block_json)
-
-    #         if chain.highest_block_height < highest_block[chain.HEIGHT]:
-    #             chain.highest_block_hash = highest_block_hash
-    #             chain.highest_block_height = highest_block[chain.HEIGHT]
-
-    # chain.nodes_in_chain = copy.copy(chain.frozen_nodes_in_chain)
-    # for i in chain.recent_longest:
-    #     data = tornado.escape.json_decode(i[8])#.data
-    #     # for j in data.get("nodes", {}):
-    #     #     print("recent longest", i.height, j, data["nodes"][j])
-    #     chain.nodes_in_chain.update(data.get("nodes", {}))
-
-    # if tree.current_nodeid not in nodes_in_chain and tree.parent_node_id_msg:
-    #     tree.forward(tree.parent_node_id_msg)
-    #     print(tree.current_port, 'parent_node_id_msg', tree.parent_node_id_msg)
-
+def get_new_difficulty(recent_longest):
+    new_difficulty = 2**248
     if len(chain.recent_longest):
         timecost = chain.recent_longest[0][chain.TIMESTAMP] - chain.recent_longest[-1][chain.TIMESTAMP]
         if timecost < 1:
@@ -148,10 +125,19 @@ def mining():
         if adjust < 1/4:
             adjust = 1/4
         difficulty = chain.recent_longest[0][chain.DIFFICULTY]
-        block_difficulty = 2**difficulty * adjust
-    else:
-        block_difficulty = 2**248
+        new_difficulty = 2**difficulty * adjust
+    return new_difficulty, timecost
 
+
+nonce = 0
+def mining():
+    global nonce
+    global messages_out
+
+    # TODO: validate with state transfer function
+    highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+    chain.recent_longest = chain.get_recent_longest(highest_block_hash)
+    block_difficulty, timecost = get_new_difficulty(chain.recent_longest)
     if setting.EASY_MINING:
         block_difficulty = 2**248
 
@@ -163,11 +149,6 @@ def mining():
             if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][1]:
                 # print("nodes_to_update", nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][1], last_synctime)
                 nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
-
-    # nodes_in_chain.update(tree.nodes_pool)
-    # tree.nodes_pool = nodes_in_chain
-    # print(tree.nodes_pool)
-    # print(nodes_to_update)
 
     # print(frozen_block_hash, longest)
     nodeno = str(tree.nodeid2no(tree.current_nodeid))
@@ -206,8 +187,6 @@ def mining():
             nonce = 0
 
             chain.new_chain_block(message)
-            # db = database.get_conn()
-
             break
 
         if int(block_hash, 16) < block_difficulty*2:
@@ -223,17 +202,9 @@ def mining():
 def validate():
     global nonce
 
-    db = database.get_conn()
-    highest_block_hash = db.get(b"chain")
-    if highest_block_hash:
-        block_json = db.get(b'block%s' % highest_block_hash)
-        if block_json:
-            block = tornado.escape.json_decode(block_json)
-            highest_block_height = block[chain.HEIGHT]
-    else:
-        highest_block_hash = b'0'*64
-        highest_block_height = 0
+    highest_block_height, highest_block_hash, _ = chain.get_highest_block()
 
+    db = database.get_conn()
     print('validate nodes_to_fetch', chain.nodes_to_fetch)
     fetched_nodes = set()
     for nodeid in chain.nodes_to_fetch:
@@ -246,16 +217,7 @@ def validate():
             highest_block_height = new_chain_height
             db.put(b"chain", highest_block_hash)
 
-    block_hash = highest_block_hash
-    chain.recent_longest = []
-    for i in range(setting.BLOCK_DIFFICULTY_CYCLE):
-        block_json = db.get(b'block%s' % block_hash)
-        if block_json:
-            block = tornado.escape.json_decode(block_json)
-            block_hash = block[chain.PREV_HASH].encode('utf8')
-            chain.recent_longest.append(block)
-        else:
-            break
+    chain.recent_longest = chain.get_recent_longest(highest_block_hash)
 
     chain.nodes_to_fetch = chain.nodes_to_fetch - fetched_nodes
     if not chain.nodes_to_fetch:
@@ -265,6 +227,7 @@ def validate():
 
 
 def worker_thread():
+    print(1)
     while True:
         time.sleep(2)
         if chain.worker_thread_pause:
@@ -301,7 +264,7 @@ def main():
     try:
         with open('./.miner.json', 'r') as f:
             miner_obj = json.loads(f.read())
-            print(miner_obj)
+            pprint.pprint(miner_obj)
 
     except:
         print('error')
@@ -314,9 +277,9 @@ def main():
         return
 
     elif sys.argv[1] == 'mine':
-        # host = miner_obj['host']
-        # port = miner_obj['port']
-        ws = websocket.WebSocketApp("ws://192.168.1.9:9001/miner",
+        host = miner_obj['host']
+        port = miner_obj['port']
+        ws = websocket.WebSocketApp("ws://%s:%s/miner" % (host, port),
                               on_open=on_open,
                               on_message=on_message,
                               on_error=on_error,
@@ -324,10 +287,15 @@ def main():
 
         ws.run_forever()
 
-
-
 def on_message(ws, message):
     print(message)
+    seq = json.loads(message)
+    if seq[0] == 'HIGHEST_BLOCK':
+        highest_block_height = seq[1]
+        highest_block_hash = seq[2]
+        new_difficulty = seq[3]
+        print(math.log(int(new_difficulty), 2))
+        # highest_block = seq[4]
 
 def on_error(ws, error):
     print(error)
@@ -336,21 +304,11 @@ def on_close(ws, close_status_code, close_msg):
     print("### closed ###")
 
 def on_open(ws):
-    pass
-    # def run(*args):
-    #     for i in range(3):
-    #         time.sleep(1)
-    #         ws.send("Hello %d" % i)
-    #     time.sleep(1)
-    #     ws.close()
-    #     print("thread terminating...")
+    ws.send(json.dumps(['GET_HIGHEST_BLOCK']))
     # _thread.start_new_thread(run, ())
 
 
 if __name__ == '__main__':
-    import _thread
-    import websocket
-
     main()
     # print("run python node.py pls")
     # tree.current_port = "8001"

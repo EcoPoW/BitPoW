@@ -333,17 +333,37 @@ def new_subchain_block(seq):
     # except Exception as e:
     #     print("new_subchain_block Error: %s" % e)
 
+def get_recent_longest(highest_block_hash):
+    db = database.get_conn()
+    block_hash = highest_block_hash
+    recent_longest = []
+    for i in range(setting.BLOCK_DIFFICULTY_CYCLE):
+        block_json = db.get(b'block%s' % block_hash)
+        if block_json:
+            block = tornado.escape.json_decode(block_json)
+            block_hash = block[PREV_HASH].encode('utf8')
+            recent_longest.append(block)
+        else:
+            break
+    return recent_longest
+
+def get_highest_block():
+    db = database.get_conn()
+    highest_block = None
+    highest_block_height = 0
+    highest_block_hash = db.get(b"chain")
+    if highest_block_hash:
+        block_json = db.get(b'block%s' % highest_block_hash)
+        if block_json:
+            block = tornado.escape.json_decode(block_json)
+            highest_block_height = block[HEIGHT]
+    else:
+        highest_block_hash = b'0'*64
+    return highest_block_height, highest_block_hash, highest_block
 
 class GetHighestBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
-        db = database.get_conn()
-        highest_block_height = 0
-        highest_block_hash = db.get(b'chain')
-        if highest_block_hash:
-            highest_block_json = db.get(b'block%s' % highest_block_hash)
-            if highest_block_json:
-                highest_block = tornado.escape.json_decode(highest_block_json)
-                highest_block_height = highest_block[HEIGHT]
+        highest_block_height, highest_block_hash, _ = get_highest_block()
 
         self.finish({'hash': highest_block_hash.decode('utf8'), 'height': highest_block_height})
 

@@ -124,6 +124,12 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
             self.write_message(tornado.escape.json_encode(["MINER_NODE_ID", current_nodeid]))
 
+        elif seq[0] == "GET_HIGHEST_BLOCK":
+            highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+            recent_longest = chain.get_recent_longest(highest_block_hash)
+            new_difficulty, _timecost = miner.get_new_difficulty(recent_longest)
+            self.write_message(tornado.escape.json_encode(["HIGHEST_BLOCK", highest_block_height, highest_block_hash.decode('utf8'), new_difficulty]))
+
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("MinerHandler NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
@@ -724,8 +730,8 @@ def main():
         f.close()
         node_sk = eth_keys.keys.PrivateKey(raw_key)
 
-    tornado.ioloop.IOLoop.instance().call_later(int(current_port)-setting.DASHBOARD_PORT, connect)
-    # tornado.ioloop.IOLoop.instance().add_callback(connect)
+    # tornado.ioloop.IOLoop.instance().call_later(int(current_port)-setting.DASHBOARD_PORT, connect)
+    tornado.ioloop.IOLoop.instance().add_callback(connect)
 
 if __name__ == '__main__':
     print("run python node.py pls")

@@ -34,7 +34,7 @@ def main():
     try:
         with open('./.store.json', 'r') as f:
             store_obj = json.loads(f.read())
-            print(store_obj)
+            pprint.pprint(store_obj)
 
         if not os.path.exists('./.chunks/'):
             os.mkdir('./.chunks/')
