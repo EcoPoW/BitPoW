@@ -274,6 +274,14 @@ def main():
             print('    new', fullstate_dict)
             print('')
 
+        # verified by STF
+        for path, info in add.items():
+            for chunk_hash in info.get('chunks', []):
+                # upload
+                with open('./.chunks/%s' % chunk_hash, 'rb') as c:
+                    rsp = requests.post('http://%s:%s/upload_chunk?hash=%s' % (host, port, chunk_hash), data = c.read())
+                    print(rsp.json())
+
         # print('fullstate dict', fullstate_dict)
         data = {
             'type': 'folder_storage',

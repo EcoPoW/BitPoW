@@ -1,9 +1,9 @@
 from __future__ import print_function
 
+import os
 import time
-# import socket
+import hashlib
 # import subprocess
-# import argparse
 # import base64
 import uuid
 import threading
@@ -39,6 +39,7 @@ class Application(tornado.web.Application):
                     (r"/chain_explorer", ChainExplorerHandler),
                     (r"/subchain_explorer", SubchainExplorerHandler),
                     (r"/user_explorer", UserExplorerHandler),
+                    (r"/upload_chunk", UploadChunkHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
                     (r"/", MainHandler),
@@ -251,6 +252,18 @@ class UserExplorerHandler(tornado.web.RequestHandler):
             elif len(k) == 64+5:
                 self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
 
+class UploadChunkHandler(tornado.web.RequestHandler):
+    def post(self):
+        hash = self.get_argument('hash')
+        chunk = self.request.body
+        hash_verify = hashlib.sha256(chunk).hexdigest()
+        assert hash_verify == hash
+
+        if not os.path.exists('./chunks/'):
+            os.mkdir('./chunks/')
+        with open('./chunks/%s' % hash, 'wb') as c:
+            c.write(chunk)
+        self.finish({'len': len(chunk)})
 
 def main():
     tree.main()
