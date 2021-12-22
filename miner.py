@@ -13,9 +13,12 @@ import hashlib
 # import secrets
 
 if __name__ == '__main__':
-    import _thread
+    import multiprocessing
+    import select
     import pprint
+
     import websocket
+
 else:
     import tornado.web
     import tornado.websocket
@@ -227,7 +230,6 @@ def validate():
 
 
 def worker_thread():
-    print(1)
     while True:
         time.sleep(2)
         if chain.worker_thread_pause:
@@ -249,8 +251,41 @@ def worker_thread():
     # print(tree.current_port, "miner")
 
 
-def main():
+class Dispatcher:
+    def __init__(self, app):
+        self.app = app
+        self.ping_timeout = 10
 
+    def read(self, sock, read_callback, check_callback):
+        global parent_conns
+        while self.app.keep_running:
+            r, w, e = select.select(
+                    (self.app.sock.sock, ), (), (), 0.1)
+            if r:
+                if not read_callback():
+                    break
+            check_callback()
+
+            for i in parent_conns:
+                if i.poll():
+                    print(i.recv())
+
+
+def mine(conn):
+    '''EPoW mining'''
+    # msg = conn.recv()
+    # conn.close()
+    nonce = 0
+    while True:
+        hashlib.sha256(('%s' % nonce).encode())
+        nonce += 1
+        if nonce % 1000000 == 0:
+            # print(nonce)
+            conn.send(nonce)
+
+parent_conns = []
+def main():
+    global parent_conns
     # print(sys.argv)
     if len(sys.argv) < 2:
         print('help')
@@ -268,7 +303,6 @@ def main():
 
     except:
         print('error')
-        # return
 
     if sys.argv[1] in ['key', 'host', 'port']:
         miner_obj[sys.argv[1]] = sys.argv[2]
@@ -277,6 +311,16 @@ def main():
         return
 
     elif sys.argv[1] == 'mine':
+        process_number = int(sys.argv[2])
+        parent_conns = []
+
+        for i in range(process_number):
+            parent_conn, child_conn = multiprocessing.Pipe()
+            parent_conns.append(parent_conn)
+            p = multiprocessing.Process(target=mine, args=(child_conn,))
+            p.start()
+
+
         host = miner_obj['host']
         port = miner_obj['port']
         ws = websocket.WebSocketApp("ws://%s:%s/miner" % (host, port),
@@ -284,8 +328,11 @@ def main():
                               on_message=on_message,
                               on_error=on_error,
                               on_close=on_close)
+        dispatcher = Dispatcher(ws)
+        ws.run_forever(dispatcher=dispatcher)
 
-        ws.run_forever()
+        # print(parent_conn.recv())
+        # p.join()
 
 def on_message(ws, message):
     print(message)
@@ -301,7 +348,7 @@ def on_error(ws, error):
     print(error)
 
 def on_close(ws, close_status_code, close_msg):
-    print("### closed ###")
+    print("close")
 
 def on_open(ws):
     ws.send(json.dumps(['GET_HIGHEST_BLOCK']))
