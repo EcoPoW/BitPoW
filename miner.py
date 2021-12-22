@@ -6,7 +6,7 @@ import math
 import json
 import time
 import hashlib
-# import uuid
+import random
 # import copy
 # import base64
 # import threading
@@ -276,14 +276,34 @@ def mine(conn):
     # msg = conn.recv()
     # conn.close()
     nonce = 0
+    step = 0
+    hex_to_encode = ''
     while True:
-        hashlib.sha256(('%s' % nonce).encode())
-        nonce += 1
-        if nonce % 1000000 == 0:
-            # print(nonce)
-            conn.send(nonce)
+        if nonce % 1000000 == 0 and conn.poll():
+            msg_json = conn.recv()
+            conn.send(msg_json)
+
+            msg = json.loads(msg_json)
+            if msg[0] == 'ENCODE':
+                hex_to_encode = msg[1]
+                nonce = msg[2]
+                step = msg[3]
+
+        if hex_to_encode:
+            output = hashlib.sha256(('%s' % nonce).encode()).hexdigest()
+            if output.endswith(hex_to_encode):
+                conn.send(json.dumps(['RESULT', nonce]))
+                hex_to_encode = ''
+
+            nonce += step
+            if nonce % 1000000 == 0:
+                # print(nonce)
+                conn.send(nonce)
+        else:
+            time.sleep(0.1)
 
 parent_conns = []
+hex_encoding = ''
 def main():
     global parent_conns
     # print(sys.argv)
@@ -335,6 +355,8 @@ def main():
         # p.join()
 
 def on_message(ws, message):
+    global hex_encoding
+    global parent_conns
     print(message)
     seq = json.loads(message)
     if seq[0] == 'HIGHEST_BLOCK':
@@ -344,6 +366,12 @@ def on_message(ws, message):
         print(math.log(int(new_difficulty), 2))
         # highest_block = seq[4]
 
+    if not hex_encoding:
+        hex_encoding = 'fff'
+        for idx, conn in enumerate(parent_conns):
+            conn.send(json.dumps(['ENCODE', hex_encoding, idx, len(parent_conns)]))
+
+
 def on_error(ws, error):
     print(error)
 
@@ -352,7 +380,6 @@ def on_close(ws, close_status_code, close_msg):
 
 def on_open(ws):
     ws.send(json.dumps(['GET_HIGHEST_BLOCK']))
-    # _thread.start_new_thread(run, ())
 
 
 if __name__ == '__main__':
