@@ -118,6 +118,7 @@ def miner_looping():
 
 def get_new_difficulty(recent_longest):
     new_difficulty = 2**248
+    timecost = 0
     if len(chain.recent_longest):
         timecost = chain.recent_longest[0][chain.TIMESTAMP] - chain.recent_longest[-1][chain.TIMESTAMP]
         if timecost < 1:
@@ -258,6 +259,9 @@ class Dispatcher:
 
     def read(self, sock, read_callback, check_callback):
         global parent_conns
+        global hex_encoding
+        nonce = 0
+        task = 0
         while self.app.keep_running:
             r, w, e = select.select(
                     (self.app.sock.sock, ), (), (), 0.1)
@@ -266,9 +270,21 @@ class Dispatcher:
                     break
             check_callback()
 
-            for i in parent_conns:
-                if i.poll():
-                    print(i.recv())
+            for idx, conn in enumerate(parent_conns):
+                if conn.poll():
+                    msg_json = conn.recv()
+                    print(idx, msg_json)
+                    msg = json.loads(msg_json)
+                    if msg[0] == 'RESULT' and msg[1] == task:
+                        hex_encoding = ''
+                        task += 1
+                        nonce = msg[2] + 1
+
+            if not hex_encoding:
+                hex_encoding = 'ffffff'
+                for idx, conn in enumerate(parent_conns):
+                    # print(hex_encoding)
+                    conn.send(json.dumps(['ENCODE', task, hex_encoding, nonce+idx, len(parent_conns)]))
 
 
 def mine(conn):
@@ -279,26 +295,26 @@ def mine(conn):
     step = 0
     hex_to_encode = ''
     while True:
-        if nonce % 1000000 == 0 and conn.poll():
+        if (nonce % 10000 == 0 or hex_to_encode == '') and conn.poll():
             msg_json = conn.recv()
             conn.send(msg_json)
 
             msg = json.loads(msg_json)
             if msg[0] == 'ENCODE':
-                hex_to_encode = msg[1]
-                nonce = msg[2]
-                step = msg[3]
+                task = msg[1]
+                hex_to_encode = msg[2]
+                nonce = msg[3]
+                step = msg[4]
 
         if hex_to_encode:
             output = hashlib.sha256(('%s' % nonce).encode()).hexdigest()
             if output.endswith(hex_to_encode):
-                conn.send(json.dumps(['RESULT', nonce]))
+                conn.send(json.dumps(['RESULT', task, nonce]))
                 hex_to_encode = ''
 
             nonce += step
-            if nonce % 1000000 == 0:
-                # print(nonce)
-                conn.send(nonce)
+            # if nonce % 1000000 == 0:
+            #     conn.send(nonce)
         else:
             time.sleep(0.1)
 
@@ -310,7 +326,7 @@ def main():
     if len(sys.argv) < 2:
         print('help')
         print('  miner.py key')
-        print('  miner.py host')    
+        print('  miner.py host')
         print('  miner.py port')
         print('  miner.py mine')
         return
@@ -355,8 +371,8 @@ def main():
         # p.join()
 
 def on_message(ws, message):
-    global hex_encoding
-    global parent_conns
+    # global hex_encoding
+    # global parent_conns
     print(message)
     seq = json.loads(message)
     if seq[0] == 'HIGHEST_BLOCK':
@@ -365,12 +381,6 @@ def on_message(ws, message):
         new_difficulty = seq[3]
         print(math.log(int(new_difficulty), 2))
         # highest_block = seq[4]
-
-    if not hex_encoding:
-        hex_encoding = 'fff'
-        for idx, conn in enumerate(parent_conns):
-            conn.send(json.dumps(['ENCODE', hex_encoding, idx, len(parent_conns)]))
-
 
 def on_error(ws, error):
     print(error)
