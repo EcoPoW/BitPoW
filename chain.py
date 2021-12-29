@@ -25,6 +25,7 @@ import tree
 # import node
 # import leader
 import database
+import stf
 
 # import ecdsa
 # import eth_keys
@@ -136,25 +137,26 @@ def new_chain_block(seq):
         highest_block_hash = b'0'*64
 
     if highest_block_height == height - 1 and highest_block_hash.decode() == prev_hash:
-        # try:
-        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
-        db.put(b'chain', block_hash.encode('utf8'))
-        # except Exception as e:
-        #     print("new_chain_block Error: %s" % e)
+        highest_fullstate = {}
+        fullstate = {}
 
         if highest_block_height: # is 0
             highest_fullstate_json = db.get(b'fullstate%s' % highest_block_hash)
             if highest_fullstate_json:
                 highest_fullstate = tornado.escape.json_decode(highest_fullstate_json)
                 # check/fetch subchains msg in detail, compare with prev fullstate, eg, balance
-                fullstate = highest_fullstate
-                fullstate.setdefault('nodes', {}).update(data.get('nodes', {}))
-                fullstate.setdefault('subchains', {}).update(data.get('subchains', {}))
-        else:
-            highest_fullstate = {}
-            fullstate = {}
+                # fullstate = highest_fullstate
+                # fullstate.setdefault('nodes', {}).update(data.get('nodes', {}))
+                # fullstate.setdefault('subchains', {}).update(data.get('subchains', {}))
+
+                fullstate = stf.chain_stf(highest_fullstate, data)
         print(block_hash)
         db.put(b'fullstate%s' % block_hash.encode('utf8'), tornado.escape.json_encode(fullstate).encode('utf8'))
+        # try:
+        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
+        db.put(b'chain', block_hash.encode('utf8'))
+        # except Exception as e:
+        #     print("new_chain_block Error: %s" % e)
 
         recent_longest.insert(0, seq[1:])
         if len(recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:

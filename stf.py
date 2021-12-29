@@ -1,6 +1,7 @@
+import hashlib
 import copy
 
-def state_transfer_function(state, msg):
+def subchain_stf(state, msg):
     new_state = copy.deepcopy(state)
     if msg.get('type') == 'folder_storage':
         folder = msg.get('name')
@@ -24,3 +25,13 @@ def state_transfer_function(state, msg):
         # print('fullstate dict', fullstate_dict)
 
     return new_state
+
+def chain_stf(state, data):
+    subchains = state.get('subchains', {})
+    subchains.update(data.get('subchains', {}))
+    new_state = {}
+    new_state['subchains'] = subchains
+    return new_state
+
+def chain_block_validator(block, new_block):
+    pass

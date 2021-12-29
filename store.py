@@ -10,24 +10,25 @@ import pprint
 import requests
 import eth_keys
 
-from stf import state_transfer_function
+from stf import subchain_stf
 
 
 
 def main():
     # print(sys.argv)
     if len(sys.argv) < 2:
-        print('help:')
-        print('  store.py key <key_path>')
-        print('  store.py host <IP or domain>')
-        print('  store.py port <port>')
-        print('  store.py add <file_path>')
-        print('  store.py remove <file_path>')
-        print('  store.py status')
-        print('  store.py sync')
-        print('  store.py reset')
-        print('  store.py commit')
-        print('  store.py log')
+        print('''help:
+  store.py key <key_path>
+  store.py host <IP or domain>
+  store.py port <port>
+  store.py add <file_path>
+  store.py remove <file_path>
+  store.py status
+  store.py sync
+  store.py reset
+  store.py commit
+  store.py log
+''')
         return
 
     store_obj = {}
@@ -180,7 +181,7 @@ def main():
             msg = subchain_block[5]
             print('    msg', subchain_block[5])
             print('    old', fullstate_dict)
-            fullstate_dict = state_transfer_function(fullstate_dict, msg)
+            fullstate_dict = subchain_stf(fullstate_dict, msg)
             print('    new', fullstate_dict)
             print('')
 
@@ -255,7 +256,7 @@ def main():
             msg = subchain_block[5]
             print('    msg', subchain_block[5])
             print('    old', fullstate_dict)
-            fullstate_dict = state_transfer_function(fullstate_dict, msg)
+            fullstate_dict = subchain_stf(fullstate_dict, msg)
             print('    new', fullstate_dict)
             print('')
 
@@ -294,7 +295,7 @@ def main():
         signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
         # print('signature', signature.to_hex())
         try:
-            new_fullstate_dict = state_transfer_function(fullstate_dict, data)
+            new_fullstate_dict = subchain_stf(fullstate_dict, data)
             new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
             rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
             new_fullstate_hash = new_subchain_block[0]
