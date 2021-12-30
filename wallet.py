@@ -72,6 +72,60 @@ def main():
         # is a contract
         # set the balance and rate
         # set the balance
+
+        key = store_obj['key']
+        host = store_obj['host']
+        port = store_obj['port']
+
+        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        sender = sender_sk.public_key.to_checksum_address()
+        # receiver = sender
+        receiver = '0x'
+
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
+        highest_subchain_hash = rsp.json()['hash']
+        block_hash = highest_subchain_hash
+        print('sender', sender)
+        print('block_hash', block_hash)
+        while True:
+            rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
+            # print(rsp.json())
+            subchain_block = rsp.json()['msg']
+            print('subchain_block', subchain_block)
+            if subchain_block is None:
+                break
+            block_hash = subchain_block[1]
+            assert subchain_block[2] == sender
+            data = subchain_block[6]
+            # subchain_blocks.update(data.get("blocks", []))
+            # subchain_proofs.update(data.get("proofs", []))
+            # print(subchain_block[4])
+            if subchain_block[4] == 1:
+                break
+
+
+        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, highest_subchain_hash))
+        highest_subchain_block = rsp.json()['msg']
+        if highest_subchain_block:
+            height = highest_subchain_block[4]
+            highest_prev_hash = highest_subchain_block[0]
+        else:
+            height = 0
+            highest_prev_hash = '0'*64
+
+        # data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
+        data = {}
+        data_json = json.dumps(data)
+
+        new_timestamp = time.time()
+        block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
+        signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        print('signature', signature.to_hex())
+        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
+        rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
+        print("new subchain block", new_subchain_block)
+
+
         return
 
     elif sys.argv[1] == 'create_smart_contract':
@@ -90,7 +144,6 @@ def main():
         # subchain_blocks = set()
         # subchain_proofs = set()
 
-        # sender_sk = ecdsa.SigningKey.from_pem(open("%s.pem" % name).read())
         sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         sender = sender_sk.public_key.to_checksum_address()
         receiver = sender
@@ -202,57 +255,19 @@ def main():
             #     # check each subchain all the way to see if any message/transaction sent to me?
 
 
-        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
-        highest_subchain_hash = rsp.json()['hash']
-        block_hash = highest_subchain_hash
-        print('sender', sender)
-        print('block_hash', block_hash)
-        while True:
-            rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
-            # print(rsp.json())
-            subchain_block = rsp.json()['msg']
-            print('assert', subchain_block)
-            if subchain_block is None:
-                break
-            block_hash = subchain_block[1]
-            assert subchain_block[2] == sender
-            data = subchain_block[6]
-            subchain_blocks.update(data.get("blocks", []))
-            subchain_proofs.update(data.get("proofs", []))
-            # print(subchain_block[4])
-            if subchain_block[4] == 1:
-                break
-            # print('-')
-
+    elif sys.argv[1] == 'send':
         return
 
 
-    amount = 0
-    proofs = chain_proofs - subchain_proofs
-    for hash in proofs:
-        amount += int(2**256/int(hash, 16))
-    blocks = chain_blocks - subchain_blocks
-    for hash in blocks:
-        amount += int(2**256/int(hash, 16))
-    data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
-    data_json = json.dumps(data)
-
-    rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, highest_subchain_hash))
-    highest_subchain_block = rsp.json()['msg']
-    if highest_subchain_block:
-        height = highest_subchain_block[4]
-        highest_prev_hash = highest_subchain_block[0]
-    else:
-        height = 0
-        highest_prev_hash = '0'*64
-
-    new_timestamp = time.time()
-    block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-    signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
-    print('signature', signature.to_hex())
-    new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
-    rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
-    print("new subchain block", new_subchain_block)
+    # amount = 0
+    # proofs = chain_proofs - subchain_proofs
+    # for hash in proofs:
+    #     amount += int(2**256/int(hash, 16))
+    # blocks = chain_blocks - subchain_blocks
+    # for hash in blocks:
+    #     amount += int(2**256/int(hash, 16))
+    # data = {'proofs': list(proofs), 'blocks': list(blocks), "amount": amount}
+    # data_json = json.dumps(data)
 
 
 if __name__ == '__main__':
