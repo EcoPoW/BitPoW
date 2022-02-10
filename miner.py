@@ -219,7 +219,7 @@ def validate():
         if new_chain_height > highest_block_height:
             highest_block_hash = new_chain_hash
             highest_block_height = new_chain_height
-            db.put(b"chain", highest_block_hash)
+            db.put(b'chain', highest_block_hash)
 
     chain.recent_longest = chain.get_recent_longest(highest_block_hash)
 

@@ -444,6 +444,7 @@ def fetch_chain(nodeid):
 
     # validate
     block_hash = highest_block_hash
+    block_hashes_to_playback = []
     while block_hash != '0'*64:
         block_json = db.get(b'block%s' % block_hash.encode('utf8'))
         fullstate_json = db.get(b'fullstate%s' % block_hash.encode('utf8'))
@@ -462,13 +463,34 @@ def fetch_chain(nodeid):
         result = tornado.escape.json_decode(response.read())
         block = result['block']
         # if block['height'] % 1000 == 0:
-        print('fetch_chain block', block[HASH])
+        print('fetch_chain block', block[HASH], block[HEIGHT])
 
         # try:
         db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(block).encode('utf8'))
+        block_hashes_to_playback.append(block_hash)
         # except Exception as e:
         #     print('fetch_chain Error: %s' % e)
         block_hash = block[PREV_HASH]
+
+    if block_hashes_to_playback:
+        while block_hashes_to_playback:
+            block_hash = block_hashes_to_playback.pop()
+            response = urllib.request.urlopen('http://%s:%s/get_block?hash=%s' % (host, port, block_hash))
+            result = tornado.escape.json_decode(response.read())
+            block = result['block']
+            prev_hash = block[PREV_HASH]
+            if prev_hash == '0'*64:
+                prev_fullstate = {}
+            else:
+                prev_fullstate_json = db.get(b'fullstate%s' % prev_hash.encode('utf8'))
+                if prev_fullstate_json:
+                    prev_fullstate = tornado.escape.json_decode(prev_fullstate_json)
+            data = block[DATA]
+            fullstate = stf.chain_stf(prev_fullstate, data)
+            db.put(b'fullstate%s' % block_hash.encode('utf8'), tornado.escape.json_encode(fullstate).encode('utf8'))
+
+            # print(block_hash, block[HEIGHT])
+
 
     return highest_block_hash.encode('utf8'), highest_block_height
 
