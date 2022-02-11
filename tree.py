@@ -274,6 +274,9 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         message = ["NODE_PARENTS", node_parents, uuid.uuid4().hex]
         self.write_message(tornado.escape.json_encode(message))
 
+        message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
+        self.write_message(tornado.escape.json_encode(message))
+
     def on_close(self):
         print(current_port, "child disconnected from parent")
         if self.branch in NodeHandler.child_nodes and self.remove_node:
