@@ -154,11 +154,12 @@ def new_chain_block(seq):
         db.put(b'fullstate%s' % block_hash.encode('utf8'), tornado.escape.json_encode(fullstate).encode('utf8'))
         # try:
         db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
-        db.put(b'chain', block_hash.encode('utf8'))
+        if highest_block_height == height - 1:
+            db.put(b'chain', block_hash.encode('utf8'))
+            recent_longest.insert(0, seq[1:])
         # except Exception as e:
         #     print("new_chain_block Error: %s" % e)
 
-        recent_longest.insert(0, seq[1:])
         if len(recent_longest) > setting.BLOCK_DIFFICULTY_CYCLE:
             recent_longest.pop()
         highest_block_height = height
