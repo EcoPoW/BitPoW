@@ -7,6 +7,7 @@ import json
 import time
 import hashlib
 import random
+import uuid
 # import copy
 # import base64
 # import threading
@@ -184,8 +185,8 @@ def mining():
             if chain.recent_longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
-            # txid = uuid.uuid4().hex
-            message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno]
+            txid = uuid.uuid4().hex
+            message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]
             messages_out.append(message)
             print(tree.current_port, 'mining block', height+1, block_hash, nonce)
             nonce = 0
@@ -197,8 +198,8 @@ def mining():
             # if longest:
             #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
-            # txid = uuid.uuid4().hex
-            message = ['NEW_CHAIN_PROOF', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp]
+            txid = uuid.uuid4().hex
+            message = ['NEW_CHAIN_PROOF', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, txid]
             messages_out.append(message)
 
         nonce += 1

@@ -121,8 +121,8 @@ def new_chain_block(seq):
     global hash_proofs
     global last_hash_proofs
     global subchains_block_to_mine
-    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno = seq
-    # validate
+    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno, txid = seq
+    # validate hash
     # check difficulty
 
     db = database.get_conn()
@@ -136,21 +136,21 @@ def new_chain_block(seq):
         highest_block_height = 0
         highest_block_hash = b'0'*64
 
-    if highest_block_height == height - 1 and highest_block_hash.decode() == prev_hash:
-        highest_fullstate = {}
+    print('new_chain_block', block_hash, identity)
+    if highest_block_height >= height - 1: # and highest_block_hash.decode() == prev_hash
+        prev_fullstate = {}
         fullstate = {}
 
         if highest_block_height: # is 0
-            highest_fullstate_json = db.get(b'fullstate%s' % highest_block_hash)
-            if highest_fullstate_json:
-                highest_fullstate = tornado.escape.json_decode(highest_fullstate_json)
+            prev_fullstate_json = db.get(b'fullstate%s' % prev_hash.encode('utf8'))
+            if prev_fullstate_json:
+                prev_fullstate = tornado.escape.json_decode(prev_fullstate_json)
                 # check/fetch subchains msg in detail, compare with prev fullstate, eg, balance
-                # fullstate = highest_fullstate
+                # fullstate = prev_fullstate
                 # fullstate.setdefault('nodes', {}).update(data.get('nodes', {}))
                 # fullstate.setdefault('subchains', {}).update(data.get('subchains', {}))
 
-                fullstate = stf.chain_stf(highest_fullstate, data)
-        print(block_hash)
+                fullstate = stf.chain_stf(prev_fullstate, data)
         db.put(b'fullstate%s' % block_hash.encode('utf8'), tornado.escape.json_encode(fullstate).encode('utf8'))
         # try:
         db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
@@ -178,14 +178,16 @@ def new_chain_block(seq):
         subchains_block_to_mine = {}
         it = db.iteritems()
         it.seek(b'pool')
+        # verify subchains
         for k, msg_hash_to_confirm in it:
             if not k.startswith(b'pool'):
                 break
             parent_msg_hash = msg_hash_to_confirm
-            # print(highest_fullstate)
-            last_confirmed_msg_hash = highest_fullstate.setdefault('subchains', {}).get(k.decode('utf8')[4:], '0'*64).encode('utf8')
+            # print(prev_fullstate)
+            last_confirmed_msg_hash = prev_fullstate.setdefault('subchains', {}).get(k.decode('utf8')[4:], '0'*64).encode('utf8')
             # print(last_confirmed_msg_hash)
             contracts_to_create = []
+            # verify messages on subchain
             while True:
                 msg_json = db.get(b'msg%s' % parent_msg_hash)
                 msg = tornado.escape.json_decode(msg_json)
@@ -281,10 +283,10 @@ def new_chain_proof(seq):
     global hash_proofs
     global last_hash_proofs
 
-    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp = seq
+    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, txid = seq
     # validate
     # check difficulty
-    print('new_chain_proof', last_highest_block_height, height)
+    # print('new_chain_proof', last_highest_block_height, height)
 
     db = database.get_conn()
     # try:
@@ -292,7 +294,7 @@ def new_chain_proof(seq):
     # except Exception as e:
     #     print("new_chain_proof Error: %s" % e)
 
-    print(last_highest_block_height, height, identity)
+    # print(last_highest_block_height, height, identity)
     # if highest_block_height + 1 < height:
     #     no, pk = identity.split(":")
     #     if int(no) not in nodes_to_fetch:
