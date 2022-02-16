@@ -124,6 +124,12 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
             self.write_message(tornado.escape.json_encode(["MINER_NODE_ID", current_nodeid]))
 
+        elif seq[0] == "GET_HIGHEST_BLOCK":
+            highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+            recent_longest = chain.get_recent_longest(highest_block_hash)
+            new_difficulty, _timecost = miner.get_new_difficulty(recent_longest)
+            self.write_message(tornado.escape.json_encode(["HIGHEST_BLOCK", highest_block_height, highest_block_hash.decode('utf8'), new_difficulty]))
+
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("MinerHandler NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
@@ -194,7 +200,7 @@ class MinerConnector(object):
             print("MinerConnector got MINER_NODE_ID", seq)
             current_nodeid = seq[1]
             if current_nodeid is not None and self.conn:
-                chain.nodes_to_fetch.append(current_nodeid)
+                chain.nodes_to_fetch.add(current_nodeid)
                 chain.worker_thread_pause = False
                 # chain.worker_thread_mining = True
             else:
@@ -266,6 +272,9 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         node_parents[current_nodeid] = [current_host, current_port]
         message = ["NODE_PARENTS", node_parents, uuid.uuid4().hex]
+        self.write_message(tornado.escape.json_encode(message))
+
+        message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
         self.write_message(tornado.escape.json_encode(message))
 
     def on_close(self):
@@ -482,7 +491,7 @@ class NodeConnector(object):
             if parent_nodeid is not None:
                 nodes_pool[parent_nodeid] = [parent_pk, timestamp]
                 node_parents[parent_nodeid] = [self.host, self.port]
-                chain.nodes_to_fetch.append(parent_nodeid)
+                chain.nodes_to_fetch.add(parent_nodeid)
             nodes_pool[nodeid] = [pk, timestamp]
             print(current_port, 'NODE_ID', nodeid, pk, 'PARENT_ID', parent_nodeid, parent_pk, seq[-1])
             if self.branch == nodeid:
@@ -553,19 +562,19 @@ class NodeConnector(object):
 def bootstrap(addr):
     global available_branches
 
-    print(current_port, "fetch", addr)
+    print(current_port, 'fetch available branches', addr)
     http_client = tornado.httpclient.AsyncHTTPClient()
     try:
-        response = yield http_client.fetch("http://%s:%s/available_branches" % tuple(addr))
+        response = yield http_client.fetch('http://%s:%s/available_branches' % tuple(addr))
     except Exception as e:
-        print("bootstrap Error: %s" % e)
+        print('bootstrap Error: %s' % e)
         tornado.ioloop.IOLoop.instance().call_later(1.0, functools.partial(bootstrap, addr))
         return
 
     result = tornado.escape.json_decode(response.body)
-    branches = result["available_branches"]
+    branches = result['available_branches']
     branches.sort(key=lambda l:len(l[2]))
-    print(current_port, "fetch result", [tuple(i) for i in branches])
+    print(current_port, '  fetch result', [tuple(i) for i in branches])
 
     if branches:
         available_branches = set([tuple(i) for i in branches])
@@ -724,8 +733,8 @@ def main():
         f.close()
         node_sk = eth_keys.keys.PrivateKey(raw_key)
 
-    tornado.ioloop.IOLoop.instance().call_later(int(current_port)-setting.DASHBOARD_PORT, connect)
-    # tornado.ioloop.IOLoop.instance().add_callback(connect)
+    # tornado.ioloop.IOLoop.instance().call_later(int(current_port)-setting.DASHBOARD_PORT, connect)
+    tornado.ioloop.IOLoop.instance().add_callback(connect)
 
 if __name__ == '__main__':
     print("run python node.py pls")
