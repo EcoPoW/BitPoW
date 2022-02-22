@@ -122,7 +122,10 @@ def new_chain_block(seq):
     global last_hash_proofs
     global subchains_block_to_mine
     _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno, txid = seq
+
     # validate hash
+    data_json = tornado.escape.json_encode(data)
+    assert block_hash == hashlib.sha256((prev_hash + str(height) + str(nonce) + str(difficulty) + identity + data_json + str(timestamp)).encode('utf8')).hexdigest()
     # check difficulty
 
     db = database.get_conn()

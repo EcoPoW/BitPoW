@@ -17,62 +17,103 @@ import requests
 import eth_keys
 
 
-USER_NO = 10
-count = 10
+width = 20000
+count = 1000000
 users = {}
-subchain_blocks = []
+subchain_blockhash = {}
+send_queue = []
 
 
 def main():
-    for n in range(USER_NO):
+    for n in range(width):
         user_sk = eth_keys.keys.PrivateKey(open("users/sk%s.key" % n, 'rb').read())
         users[n] = user_sk
         print("load key", n)
 
-    for n in range(count):
-        # user_nos = set(range(USER_NO))
-        # i = random.choice(list(user_nos))
-        sender_sk = random.choice(list(users.values()))
-        # sender_vk = sender_sk.get_verifying_key()
-        # sender = base64.b32encode(sender_vk.to_string()).decode("utf8")
-        # sender = str(n*2)
-        # sender = sender_sk.public_key.to_address()[2:]
 
-        # j = random.choice(list(user_nos - set([i])))
-        receiver_sk = random.choice(list(users.values()))
-        # receiver_vk = receiver_sk.get_verifying_key()
-        # receiver = base64.b32encode(receiver_vk.to_string()).decode("utf8")
-        # receiver = receiver_sk.public_key.to_address()[2:]
-        # receiver = str(n*2+1)
-
-        amount = random.randint(1, 20)
-        print('sender', sender_sk.public_key, 'receiver', receiver_sk.public_key)
-        rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender_sk.public_key.to_checksum_address())
+        sender_address = user_sk.public_key.to_checksum_address()
+        rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender_address)
         prev_hash = rsp.json()['hash']
-        print('prev_hash', prev_hash)
+        # print('prev_hash', prev_hash)
         rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
-        # print(rsp.json())
         block = rsp.json()['msg']
-        print('prev_block', block)
+        # print('block', sender_address, block)
+        subchain_blockhash[sender_address] = block
+
+    print(subchain_blockhash)
+    rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
+    block_hash_before_transactions = rsp.json()['hash']
+
+    # print('')
+    for n in range(count):
+        sender_sk = random.choice(list(users.values()))
+        sender_address = sender_sk.public_key.to_checksum_address()
+        receiver_sk = random.choice(list(users.values()))
+        # print('sender', sender_sk.public_key, 'receiver', receiver_sk.public_key)
+
+        block = subchain_blockhash.get(sender_address)
+        # print('prev_block', block)
+        amount = random.randint(1, 20)
         new_timestamp = time.time()
         if block:
             height = block[4]
+            prev_hash = block[0]
             data = {'amount': amount}
         else:
             height = 0
+            prev_hash = '0'*64
             data = {'amount': amount}
 
         data_json = json.dumps(data)
-        block_hash = hashlib.sha256((prev_hash + sender_sk.public_key.to_checksum_address() + receiver_sk.public_key.to_checksum_address() + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
+        block_hash = hashlib.sha256((prev_hash + sender_address + receiver_sk.public_key.to_checksum_address() + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
         signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
-        print('sender', sender_sk.public_key.to_checksum_address())
-        print('receiver', receiver_sk.public_key.to_checksum_address())
-        print('signature', signature)
+        # print('sender', sender_address)
+        # print('receiver', receiver_sk.public_key.to_checksum_address())
+        # print('signature', signature)
         block = [block_hash, prev_hash, sender_sk.public_key.to_checksum_address(), receiver_sk.public_key.to_checksum_address(), height+1, data, new_timestamp, signature.to_hex()]
-        print('block', json.dumps(block))
-        rsp = requests.post('http://127.0.0.1:9001/new_subchain_block?sender=%s' % sender_sk.public_key.to_checksum_address(), json=block)
-        # print("gen subchain block", block)
+        subchain_blockhash[sender_address] = block
+        # print('block', json.dumps(block))
+        send_queue.append((sender_address, block))
+        if n%1000 == 0:
+            print(n)
 
+    last_transaction_block_hash = block_hash
+    while send_queue:
+        print(len(send_queue))
+        blocks = []
+        for i in range(1000):
+            if send_queue:
+                sender_address, block = send_queue.pop(0)
+                blocks.append(block)
+        # print(sender_address, block)
+        rsp = requests.post('http://127.0.0.1:9001/new_subchain_block_batch', json=blocks)
+        # print("gen subchain block", block)
+        # print('')
+
+    while True:
+        rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
+        block_hash = rsp.json()['hash']
+        # print('prev_hash', prev_hash)
+        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
+        block = rsp.json()['block']
+        if last_transaction_block_hash in block[6]['subchains'].values():
+            t_finished = block[7]
+            print('block', block[0], block[2], t_finished)
+            block_hash = block[1]
+            break
+        time.sleep(1)
+
+    while True:
+        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
+        block = rsp.json()['block']
+        if not block[6]['subchains']:
+            t_start = block[7]
+            print('block', block[0], block[2], t_start)
+            break
+        block_hash = block[1]
+        time.sleep(0.1)
+
+    print(count/(t_finished - t_start))
 
 if __name__ == '__main__':
     main()
