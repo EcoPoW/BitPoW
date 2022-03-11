@@ -7,6 +7,7 @@ import hashlib
 # import base64
 import uuid
 import threading
+import tracemalloc
 
 import tornado.web
 import tornado.ioloop
@@ -22,6 +23,8 @@ import tree
 import miner
 import chain
 import database
+
+tracemalloc.start()
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -41,6 +44,7 @@ class Application(tornado.web.Application):
                     (r"/subchain_explorer", SubchainExplorerHandler),
                     (r"/user_explorer", UserExplorerHandler),
                     (r"/upload_chunk", UploadChunkHandler),
+                    (r"/tracemalloc", TraceHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
                     (r"/", MainHandler),
@@ -208,8 +212,8 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
                 return
             self.write("<code>%s</code><br><br>" % block_json)
 
-            fullstate_json = db.get(b'fullstate%s' % block_hash)
-            self.write("<code>%s</code><br><br><br>" % fullstate_json)
+            # fullstate_json = db.get(b'fullstate%s' % block_hash)
+            # self.write("<code>%s</code><br><br><br>" % fullstate_json)
 
             block = tornado.escape.json_decode(block_json)
             block_hash = block[chain.PREV_HASH].encode('utf8')
@@ -275,6 +279,17 @@ class UploadChunkHandler(tornado.web.RequestHandler):
         with open('./chunks/%s' % hash, 'wb') as c:
             c.write(chunk)
         self.finish({'len': len(chunk)})
+
+class TraceHandler(tornado.web.RequestHandler):
+    def get(self):
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+
+        # self.write('[ Top 20 ]<br>')
+        for stat in top_stats[:20]:
+            print(stat)
+            self.write(str(stat)+'<br>')
+
 
 def main():
     tree.main()

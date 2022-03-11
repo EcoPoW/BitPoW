@@ -17,18 +17,17 @@ import requests
 import eth_keys
 
 
-width = 20000
-count = 1000000
 users = {}
 subchain_blockhash = {}
 send_queue = []
 
 
-def main():
+def main(width, count):
+    f = open("users/sk.keys", 'rb')
     for n in range(width):
-        user_sk = eth_keys.keys.PrivateKey(open("users/sk%s.key" % n, 'rb').read())
+        user_sk = eth_keys.keys.PrivateKey(f.read(32))
         users[n] = user_sk
-        print("load key", n)
+        # print("load key", n)
 
 
         sender_address = user_sk.public_key.to_checksum_address()
@@ -39,8 +38,9 @@ def main():
         block = rsp.json()['msg']
         # print('block', sender_address, block)
         subchain_blockhash[sender_address] = block
+    f.close()
 
-    print(subchain_blockhash)
+    # print(subchain_blockhash)
     rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
     block_hash_before_transactions = rsp.json()['hash']
 
@@ -74,12 +74,12 @@ def main():
         subchain_blockhash[sender_address] = block
         # print('block', json.dumps(block))
         send_queue.append((sender_address, block))
-        if n%1000 == 0:
-            print(n)
+        # if n%100000 == 0:
+        #     print(n)
 
     last_transaction_block_hash = block_hash
     while send_queue:
-        print(len(send_queue))
+        # print(len(send_queue))
         blocks = []
         for i in range(1000):
             if send_queue:
@@ -98,7 +98,7 @@ def main():
         block = rsp.json()['block']
         if last_transaction_block_hash in block[6]['subchains'].values():
             t_finished = block[7]
-            print('block', block[0], block[2], t_finished)
+            # print('block', block[0], block[2], t_finished)
             block_hash = block[1]
             break
         time.sleep(1)
@@ -108,12 +108,14 @@ def main():
         block = rsp.json()['block']
         if not block[6]['subchains']:
             t_start = block[7]
-            print('block', block[0], block[2], t_start)
+            # print('block', block[0], block[2], t_start)
             break
         block_hash = block[1]
         time.sleep(0.1)
 
-    print(count/(t_finished - t_start))
+    print(width, count, count/(t_finished - t_start))
 
 if __name__ == '__main__':
-    main()
+    count = 1000000
+    for width in range(33000, 100000, 1000):
+        main(width, count)

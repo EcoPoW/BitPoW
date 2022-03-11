@@ -184,6 +184,8 @@ def new_chain_block(seq):
         it.seek(b'pool')
         # verify subchains
         for k, msg_hash_to_confirm in it:
+            if len(subchains_block_to_mine) >= 9400:
+                break
             if not k.startswith(b'pool'):
                 break
             parent_msg_hash = msg_hash_to_confirm
