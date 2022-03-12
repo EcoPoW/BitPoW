@@ -28,7 +28,8 @@ import database
 import stf
 
 # import ecdsa
-# import eth_keys
+import eth_keys
+import eth_utils
 
 HASH = 0
 PREV_HASH = 1
@@ -121,7 +122,7 @@ def new_chain_block(seq):
     global hash_proofs
     global last_hash_proofs
     global subchains_block_to_mine
-    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, nodeno, txid = seq
+    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, signature, txid = seq
 
     # validate hash
     data_json = tornado.escape.json_encode(data)
@@ -139,7 +140,11 @@ def new_chain_block(seq):
         highest_block_height = 0
         highest_block_hash = b'0'*64
 
-    print('new_chain_block', block_hash, identity)
+    print('new_chain_block', block_hash, signature)
+    sig = eth_keys.keys.Signature(eth_utils.hexadecimal.decode_hex(signature))
+    pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
+    print('sig', pk)
+    print('id', pk.to_checksum_address(), identity)
     if highest_block_height >= height - 1: # and highest_block_hash.decode() == prev_hash
         prev_fullstate = {}
         fullstate = {}

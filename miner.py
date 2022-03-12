@@ -156,7 +156,7 @@ def mining():
                 nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
 
     # print(frozen_block_hash, longest)
-    nodeno = str(tree.nodeid2no(tree.current_nodeid))
+    # nodeno = str(tree.nodeid2no(tree.current_nodeid))
     pk = tree.node_sk.public_key
     if chain.recent_longest:
         prev_hash = chain.recent_longest[0][chain.HASH]
@@ -180,13 +180,17 @@ def mining():
     if nonce % 1000 == 0:
         print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_block_to_mine))
     for i in range(100):
-        block_hash = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
+        block_hash_obj = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        block_hash_bytes = block_hash_obj.digest()
         if int(block_hash, 16) < block_difficulty:
             if chain.recent_longest:
                 print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
+            sig = tree.node_sk.sign_msg_hash(block_hash_bytes)
+            print(sig)
             txid = uuid.uuid4().hex
-            message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, nodeno, txid]
+            message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, sig.to_hex(), txid]
             messages_out.append(message)
             print(tree.current_port, 'mining block', height+1, block_hash, nonce)
             nonce = 0
