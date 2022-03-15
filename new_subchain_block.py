@@ -65,12 +65,14 @@ def main(width, count):
             data = {'amount': amount}
 
         data_json = json.dumps(data)
-        block_hash = hashlib.sha256((prev_hash + sender_address + receiver_sk.public_key.to_checksum_address() + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-        signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        block_hash_obj = hashlib.sha256((prev_hash + sender_address + receiver_sk.public_key.to_checksum_address() + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        block_hash_bytes = block_hash_obj.digest()
+        sig = sender_sk.sign_msg_hash(block_hash_bytes)
         # print('sender', sender_address)
         # print('receiver', receiver_sk.public_key.to_checksum_address())
-        # print('signature', signature)
-        block = [block_hash, prev_hash, sender_sk.public_key.to_checksum_address(), receiver_sk.public_key.to_checksum_address(), height+1, data, new_timestamp, signature.to_hex()]
+        # print('signature', sig)
+        block = [block_hash, prev_hash, sender_sk.public_key.to_checksum_address(), receiver_sk.public_key.to_checksum_address(), height+1, data, new_timestamp, sig.to_hex()]
         subchain_blockhash[sender_address] = block
         # print('block', json.dumps(block))
         send_queue.append((sender_address, block))
@@ -117,5 +119,5 @@ def main(width, count):
 
 if __name__ == '__main__':
     count = 1000000
-    for width in range(33000, 100000, 1000):
+    for width in range(20000, 100000, 1000):
         main(width, count)

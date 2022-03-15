@@ -335,6 +335,10 @@ def new_subchain_block(seq):
     # validate
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
     # print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
+    sig = eth_keys.keys.Signature(eth_utils.hexadecimal.decode_hex(signature))
+    pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
+    print('sig', pk)
+    print('id', pk.to_checksum_address(), sender)
     # subchains_block[sender] = block_hash
 
     db = database.get_conn()
