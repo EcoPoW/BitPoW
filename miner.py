@@ -144,7 +144,7 @@ def mining():
     chain.recent_longest = chain.get_recent_longest(highest_block_hash)
     block_difficulty, timecost = get_new_difficulty(chain.recent_longest)
     if setting.EASY_MINING:
-        block_difficulty = 2**248
+        block_difficulty = 2**255
 
     now = int(time.time())
     last_synctime = now - now % setting.NETWORK_SPREADING_SECONDS - setting.NETWORK_SPREADING_SECONDS
@@ -237,7 +237,12 @@ def validate():
 
 def worker_thread():
     while True:
-        time.sleep(2)
+        if setting.EASY_MINING:
+            time.sleep(setting.BLOCK_INTERVAL_SECONDS)
+            print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
+        else:
+            time.sleep(2)
+
         if chain.worker_thread_pause:
             continue
 

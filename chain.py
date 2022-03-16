@@ -325,7 +325,8 @@ def new_chain_proof(seq):
     # print('hash_proofs', hash_proofs)
     # print('last_hash_proofs', last_hash_proofs)
 
-# @tornado.gen.coroutine
+http_client = tornado.httpclient.AsyncHTTPClient()
+@tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_block_to_mine
     _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
@@ -335,11 +336,17 @@ def new_subchain_block(seq):
     # validate
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
     # print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
-    sig = eth_keys.keys.Signature(eth_utils.hexadecimal.decode_hex(signature))
-    pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
-    print('sig', pk)
-    print('id', pk.to_checksum_address(), sender)
     # subchains_block[sender] = block_hash
+
+    # sig = eth_keys.keys.Signature(eth_utils.hexadecimal.decode_hex(signature))
+    # pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
+    # print('sig', pk)
+    # print('id', pk.to_checksum_address(), sender)
+    url = "http://127.0.0.1:7001/recover_public_key_from_msg_hash?signature=%s&hash=%s" % (signature, block_hash)
+    try:
+        response = yield http_client.fetch(url, connect_timeout=60, request_timeout=60)#, method="POST", body=tornado.escape.json_encode(data)
+    except:
+        pass
 
     db = database.get_conn()
     # try:
@@ -395,6 +402,16 @@ class GetBlockHandler(tornado.web.RequestHandler):
             self.finish({"block": tornado.escape.json_decode(block_json)})
         else:
             self.finish({"block": None})
+
+class GetStateHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        db = database.get_conn()
+        block_json = db.get(b'fullstate%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"state": tornado.escape.json_decode(block_json)})
+        else:
+            self.finish({"state": None})
 
 # class GetProofHandler(tornado.web.RequestHandler):
 #     def get(self):

@@ -35,6 +35,7 @@ class Application(tornado.web.Application):
                     (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
                     (r"/get_block", chain.GetBlockHandler),
                     # (r"/get_proof", chain.GetProofHandler),
+                    (r"/get_state", chain.GetStateHandler),
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
@@ -210,13 +211,14 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
             block_json = db.get(b'block%s' % block_hash)
             if not block_json:
                 return
-            self.write("<code>%s</code><br><br>" % block_json)
-
-            # fullstate_json = db.get(b'fullstate%s' % block_hash)
-            # self.write("<code>%s</code><br><br><br>" % fullstate_json)
 
             block = tornado.escape.json_decode(block_json)
             block_hash = block[chain.PREV_HASH].encode('utf8')
+
+            self.write("<a href='/get_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
+            self.write("<code>%s</code><br><br>" % block_json)
+            # fullstate_json = db.get(b'fullstate%s' % block_hash)
+            # self.write("<code>%s</code><br><br><br>" % fullstate_json)
 
         self.write("<a href='/chain_explorer?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
 
