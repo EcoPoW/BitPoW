@@ -261,10 +261,9 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         message = ["DISCARDED_BRANCHES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
         forward(message)
 
-        # message = ["NODE_ID", self.branch, [ip, port], timestamp, current_nodeid, sig]
         timestamp = time.time()
-        message = ["NODE_ID", self.pk, self.branch,
-                    node_sk.public_key.to_hex(), current_nodeid, timestamp]
+        message = ['NODE_ID', self.branch, self.pk, self.from_host, self.from_port,
+                    current_nodeid, node_sk.public_key.to_hex(), current_host, current_port, timestamp]
         sign_msg(message)
         self.write_message(tornado.escape.json_encode(message))
         # miner.nodes_to_fetch.append(self.branch)
@@ -296,7 +295,10 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         message = ["DISCARDED_BRANCHES", [[self.from_host, self.from_port, self.branch+"0"], [self.from_host, self.from_port, self.branch+"1"]], uuid.uuid4().hex]
         forward(message)
 
-        message = ["NODE_ID", None, self.branch, None, current_nodeid, time.time()]
+        if self.branch in nodes_pool:
+            del nodes_pool[self.branch]
+        message = ['NODE_ID', self.branch, None, None, None, 
+                current_nodeid, node_sk.public_key.to_hex(), current_host, current_port, time.time()]
         sign_msg(message)
         forward(message)
 
@@ -319,17 +321,25 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
                 branch_host, branch_port, branch = i
                 available_branches.add(tuple([branch_host, branch_port, branch]))
 
-        elif seq[0] == "NODE_ID":
-            pk = seq[1]
-            nodeid = seq[2]
-            parent_pk = seq[3]
-            parent_nodeid = seq[4]
-            timestamp = seq[5]
+        elif seq[0] == 'NODE_ID':
+            nodeid = seq[1]
+            pk = seq[2]
+            ip = seq[3]
+            port = seq[4]
+            parent_nodeid = seq[5]
+            parent_pk = seq[6]
+            parent_ip = seq[7]
+            parent_port = seq[8]
+            timestamp = seq[9]
+            singature = seq[10]
 
             if parent_nodeid == "":
-                nodes_pool[parent_nodeid] = [parent_pk, timestamp]
-            nodes_pool[nodeid] = [pk, timestamp]
-            print(current_port, "NODE_ID", nodeid, pk, parent_nodeid, parent_pk, seq[-1])
+                nodes_pool[parent_nodeid] = [parent_pk, parent_ip, parent_port, timestamp]
+            if ip and port:
+                nodes_pool[nodeid] = [pk, ip, port, timestamp]
+            else:
+                del nodes_pool[nodeid]
+            print(current_port, 'NODE_ID', nodeid, pk, parent_nodeid, parent_pk, seq[-1])
 
         elif seq[0] == "NODE_NEIGHBOURHOODS":
             nodeid = seq[1]
@@ -481,18 +491,23 @@ class NodeConnector(object):
             message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
             forward(message)
 
-        elif seq[0] == "NODE_ID":
-            pk = seq[1]
-            nodeid = seq[2]
-            parent_pk = seq[3]
-            parent_nodeid = seq[4]
-            timestamp = seq[5]
+        elif seq[0] == 'NODE_ID':
+            nodeid = seq[1]
+            pk = seq[2]
+            ip = seq[3]
+            port = seq[4]
+            parent_nodeid = seq[5]
+            parent_pk = seq[6]
+            parent_ip = seq[7]
+            parent_port = seq[8]
+            timestamp = seq[9]
+            singature = seq[10]
 
             if parent_nodeid is not None:
-                nodes_pool[parent_nodeid] = [parent_pk, timestamp]
+                nodes_pool[parent_nodeid] = [parent_pk, parent_ip, parent_port, timestamp]
                 node_parents[parent_nodeid] = [self.host, self.port]
                 chain.nodes_to_fetch.add(parent_nodeid)
-            nodes_pool[nodeid] = [pk, timestamp]
+            nodes_pool[nodeid] = [pk, ip, port, timestamp]
             print(current_port, 'NODE_ID', nodeid, pk, 'PARENT_ID', parent_nodeid, parent_pk, seq[-1])
             if self.branch == nodeid:
                 current_nodeid = nodeid

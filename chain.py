@@ -284,7 +284,8 @@ def new_chain_block(seq):
         # if int(no) not in nodes_to_fetch:
 
         # need to fetch the missing block
-        nodes_to_fetch.add(tree.nodeno2id(int(nodeno)))
+        print('need to fetch the missing block', identity, int(identity[2:], 16))
+        nodes_to_fetch.add(tree.nodeno2id(int(identity[2:], 16)))
         worker_thread_mining = False
 
 # @tornado.gen.coroutine

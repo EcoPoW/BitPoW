@@ -150,9 +150,9 @@ def mining():
     last_synctime = now - now % setting.NETWORK_SPREADING_SECONDS - setting.NETWORK_SPREADING_SECONDS
     nodes_to_update = {}
     for nodeid in tree.nodes_pool:
-        if tree.nodes_pool[nodeid][1] < last_synctime:
-            if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][1]:
-                # print("nodes_to_update", nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][1], last_synctime)
+        if tree.nodes_pool[nodeid][3] < last_synctime:
+            if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][3]:
+                # print('nodes_to_update', nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][3], last_synctime)
                 nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
 
     # print(frozen_block_hash, longest)
@@ -164,13 +164,13 @@ def mining():
         identity = chain.recent_longest[0][chain.IDENTITY]
 
     else:
-        prev_hash, height, identity = '0'*64, 0, ":"
+        prev_hash, height, identity = '0'*64, 0, ':'
     new_difficulty = int(math.log(block_difficulty, 2))
 
     data = {}
-    data["nodes"] = nodes_to_update
-    data["proofs"] = list([list(p) for p in chain.last_hash_proofs])
-    data["subchains"] = chain.subchains_block_to_mine
+    data['nodes'] = nodes_to_update
+    data['proofs'] = list([list(p) for p in chain.last_hash_proofs])
+    data['subchains'] = chain.subchains_block_to_mine
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
