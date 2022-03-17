@@ -12,7 +12,7 @@ EASY_MINING = True
 
 BOOTSTRAP_BY_PORT_NO = False
 
-SHARDING = False
+SHARDING = True
 
 PYTHON_EXECUTABLE = 'python3'
 

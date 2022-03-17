@@ -285,7 +285,7 @@ def new_chain_block(seq):
 
         # need to fetch the missing block
         print('need to fetch the missing block', identity, int(identity[2:], 16))
-        nodes_to_fetch.add(tree.nodeno2id(int(identity[2:], 16)))
+        nodes_to_fetch.add(bin(int(identity[2:], 16))[2:].zfill(160))
         worker_thread_mining = False
 
 # @tornado.gen.coroutine
@@ -331,6 +331,12 @@ http_client = tornado.httpclient.AsyncHTTPClient()
 def new_subchain_block(seq):
     # global subchains_block_to_mine
     _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
+    if setting.SHARDING:
+        sender_bin = bin(int(sender[2:], 16))[2:].zfill(160)
+        print('current_nodeid', tree.current_nodeid, sender_bin)
+        if not sender_bin.startswith(tree.current_nodeid):
+            return
+
     assert sender.startswith('0x')
     assert len(sender) == 42
     assert (receiver.startswith('0x') and len(receiver) == 42) or (receiver.startswith('0x') or len(receiver) == 66) or len(receiver) == 64 or receiver == '0x' #valid address or empty to create contract
