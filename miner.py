@@ -237,17 +237,16 @@ def validate():
 
 def worker_thread():
     while True:
-        if setting.EASY_MINING:
-            time.sleep(setting.BLOCK_INTERVAL_SECONDS)
-            print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
-        else:
-            time.sleep(2)
-
         if chain.worker_thread_pause:
             continue
 
         if chain.worker_thread_mining:
             mining()
+            if setting.EASY_MINING:
+                print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
+                time.sleep(setting.BLOCK_INTERVAL_SECONDS)
+            else:
+                time.sleep(2)
             continue
 
         if tree.current_nodeid is None:

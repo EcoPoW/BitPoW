@@ -284,13 +284,15 @@ class UploadChunkHandler(tornado.web.RequestHandler):
 
 class TraceHandler(tornado.web.RequestHandler):
     def get(self):
+        import html
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
 
         # self.write('[ Top 20 ]<br>')
         for stat in top_stats[:20]:
             print(stat)
-            self.write(str(stat)+'<br>')
+            stat = html.escape(str(stat))
+            self.write(stat+'<br>\n')
 
 
 def main():

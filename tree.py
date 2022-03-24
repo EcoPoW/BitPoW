@@ -48,14 +48,22 @@ nodes_pool = dict()
 parent_node_id_msg = None
 
 processed_message_ids = set()
+processed_message_queue = []
 
 def forward(seq):
-    # global processed_message_ids
+    global processed_message_ids
+    global processed_message_queue
+    if processed_message_queue and processed_message_queue[0][1] < time.time() - 60:
+        msg_id, msg_timestamp = processed_message_queue.pop(0)
+        if msg_id in processed_message_ids:
+            processed_message_ids.remove(msg_id)
 
     message_id = seq[-1]
     if message_id in processed_message_ids:
         return
     processed_message_ids.add(message_id)
+    processed_message_queue.append((message_id, time.time()))
+
     message = tornado.escape.json_encode(seq)
 
     for child_node in NodeHandler.child_nodes.values():

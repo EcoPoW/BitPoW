@@ -176,9 +176,9 @@ def new_chain_block(seq):
         # print(subchains)
         for k, v in subchains.items():
             msg_hash = db.get(b'pool%s' % k.encode('utf8'))
-            print(msg_hash, k, v)
+            # print(msg_hash, k, v)
             if msg_hash and msg_hash == v.encode('utf8'):
-                print('>>> delete from pool', k, v)
+                # print('>>> delete from pool', k, v)
                 db.delete(b'pool%s' % k.encode('utf8'))
 
         # init the data for mining next block?
@@ -191,6 +191,8 @@ def new_chain_block(seq):
         for k, msg_hash_to_confirm in it:
             if len(subchains_block_to_mine) >= 9400:
                 break
+            # if len(subchains_block_to_mine) >= 400:
+            #     break
             if not k.startswith(b'pool'):
                 break
             parent_msg_hash = msg_hash_to_confirm
@@ -201,6 +203,8 @@ def new_chain_block(seq):
             # verify messages on subchain
             while True:
                 msg_json = db.get(b'msg%s' % parent_msg_hash)
+                if not msg_json:
+                    continue
                 msg = tornado.escape.json_decode(msg_json)
                 # print('new_chain_block msg', msg)
 
@@ -208,7 +212,7 @@ def new_chain_block(seq):
                     contracts_to_create.append(msg[HASH])
 
                 parent_msg_hash = msg[PREV_HASH].encode('utf8')
-                print('new_chain_block msg parent hash', parent_msg_hash)
+                # print('new_chain_block msg parent hash', parent_msg_hash)
                 if parent_msg_hash == last_confirmed_msg_hash:
                     # print('new_chain_block meet last_confirmed_msg_hash', last_confirmed_msg_hash)
 
@@ -326,14 +330,13 @@ def new_chain_proof(seq):
     # print('hash_proofs', hash_proofs)
     # print('last_hash_proofs', last_hash_proofs)
 
-http_client = tornado.httpclient.AsyncHTTPClient()
 @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_block_to_mine
     _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
     if setting.SHARDING:
         sender_bin = bin(int(sender[2:], 16))[2:].zfill(160)
-        print('current_nodeid', tree.current_nodeid, sender_bin)
+        # print('current_nodeid', tree.current_nodeid, sender_bin)
         if not sender_bin.startswith(tree.current_nodeid):
             return
 
@@ -349,11 +352,13 @@ def new_subchain_block(seq):
     # pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
     # print('sig', pk)
     # print('id', pk.to_checksum_address(), sender)
-    url = "http://127.0.0.1:7001/recover_public_key_from_msg_hash?signature=%s&hash=%s" % (signature, block_hash)
-    try:
-        response = yield http_client.fetch(url, connect_timeout=60, request_timeout=60)#, method="POST", body=tornado.escape.json_encode(data)
-    except:
-        pass
+
+    # http_client = tornado.httpclient.AsyncHTTPClient()
+    # url = "http://127.0.0.1:7001/recover_public_key_from_msg_hash?signature=%s&hash=%s" % (signature, block_hash)
+    # try:
+    #     response = yield http_client.fetch(url, connect_timeout=60, request_timeout=60)#, method="POST", body=tornado.escape.json_encode(data)
+    # except:
+    #     pass
 
     db = database.get_conn()
     # try:
