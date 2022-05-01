@@ -23,6 +23,7 @@ import tree
 import miner
 import chain
 import database
+import rpc
 
 tracemalloc.start()
 
@@ -48,60 +49,20 @@ class Application(tornado.web.Application):
                     (r"/tracemalloc", TraceHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
-                    (r"/eth_rpc", EthRpcHandler),
+                    (r"/eth_rpc", rpc.EthRpcHandler),
+                    (r"/chat_contact_add", DashboardHandler),
+                    (r"/chat_contact_remove", DashboardHandler),
+                    (r"/chat_group_new", DashboardHandler),
+                    (r"/chat_group_join", DashboardHandler),
+                    (r"/chat_group_leave", DashboardHandler),
+                    (r"/chat_group_kick", DashboardHandler),
+                    (r"/chat_msg_new", DashboardHandler),
                     (r"/", MainHandler),
                     ]
         settings = {"debug":True}
 
         tornado.web.Application.__init__(self, handlers, **settings)
 
-class EthRpcHandler(tornado.web.RequestHandler):
-    def options(self):
-        print('-----options-------')
-        print(self.request.arguments)
-        print(self.request.body)
-
-        # rsp = requests.options('http://127.0.0.1:9933/')
-        # print(rsp)
-        # print(rsp.text)
-        # self.add_header('allow', 'OPTIONS, POST')
-        # self.add_header('accept', 'application/json')
-        # self.add_header('vary', 'origin')
-        self.add_header('access-control-allow-methods', 'OPTIONS, POST')
-        self.add_header('access-control-allow-origin', 'moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8')
-        self.add_header('access-control-allow-headers', 'content-type')
-        self.add_header('accept', 'application/json')
-        # allow: OPTIONS, POST\r\n
-        # accept: application/json\r\n
-        # vary: origin\r\n
-        # access-control-allow-methods: OPTIONS, POST\r\n
-        # access-control-allow-origin: moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8\r\n
-        # access-control-allow-headers: content-type\r\n
-        # content-length: 0\r\n
-        # date: Thu, 24 Mar 2022 08:58:57 GMT
-        # self.write('\n')
-
-    def post(self):
-        # print('------post------')
-        print(self.request.arguments)
-        print(self.request.body)
-        self.add_header('access-control-allow-methods', 'OPTIONS, POST')
-        self.add_header('access-control-allow-origin', 'moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8')
-        req = tornado.escape.json_decode(self.request.body)
-        rpc_id = req['id']
-        if req.get('method') == 'eth_chainId':
-            resp = {'jsonrpc':'2.0', 'result':hex(520),'id':rpc_id}
-        elif req.get('method') == 'eth_blockNumber':
-            resp = {'jsonrpc':'2.0', 'result':hex(10),'id':rpc_id}
-        elif req.get('method') == 'eth_getBalance':
-            resp = {'jsonrpc':'2.0', 'result':hex(520*(10**18)),'id':rpc_id}
-        elif req.get('method') == 'eth_getBlockByNumber':
-            resp = {'jsonrpc':'2.0', 'result':hex(520),'id':rpc_id}
-        elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result':hex(520),'id':rpc_id}
-
-        print(resp)
-        self.write(tornado.escape.json_encode(resp))
 
 
 class MainHandler(tornado.web.RequestHandler):
