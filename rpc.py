@@ -95,32 +95,57 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': hex(balance*(10**18)), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getTransactionReceipt':
-            resp = {'jsonrpc':'2.0', 'result': {}, 'id':rpc_id}
+            msg_hash = req['params'][0]
+            db = database.get_conn()
+            msg_json = db.get(b'msg%s' % msg_hash[2:].encode('utf8'))
+            print(msg_json)
+            msg = tornado.escape.json_decode(msg_json)
+
+            result = {
+                'transactionHash': msg_hash,
+                'transactionIndex': 0,
+                'blockHash': msg_hash,
+                'blockNumber': 0,
+                'from': msg[chain.SENDER],
+                'to': msg[chain.RECEIVER],
+                'cumulativeGasUsed': 0,
+                'gasUsed':0,
+                'contractAddress': '',
+                'logs': [],
+                'logsBloom': ''
+            }
+            resp = {'jsonrpc':'2.0', 'result': result, 'id': rpc_id}
 
         elif req.get('method') == 'eth_getCode':
-            resp = {'jsonrpc':'2.0', 'result': '0x0208', 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x0208', 'id': rpc_id}
 
         elif req.get('method') == 'eth_gasPrice':
-            resp = {'jsonrpc':'2.0', 'result': '0x00', 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_estimateGas':
-            resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id': rpc_id}
 
         elif req.get('method') == 'eth_getTransactionCount':
-            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
+
+        elif req.get('method') == 'eth_getBlockByHash':
+            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_sendRawTransaction':
             raw_tx = req['params'][0]
             print('raw_tx', raw_tx)
-            tx, tx_from, tx_to, tx_nonce, tx_hash = tx_info(raw_tx)
+            _tx, tx_from, tx_to, tx_nonce, _tx_hash = tx_info(raw_tx)
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8')) or b'0'*64
-            assert prev_hash
-
-            msg_json = db.get(b'msg%s' % prev_hash)
-            msg = tornado.escape.json_decode(msg_json)
-            print(msg)
-            assert msg[chain.MSG_HEIGHT] + 1 == tx_nonce
+            prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8'))
+            if prev_hash:
+                msg_json = db.get(b'msg%s' % prev_hash)
+                print(msg_json)
+                msg = tornado.escape.json_decode(msg_json)
+                print(msg)
+                assert msg[chain.MSG_HEIGHT] + 1 == tx_nonce
+            else:
+                prev_hash = b'0'*64
+                assert 0 == tx_nonce
 
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
             data = {'eth_raw_tx': raw_tx}
@@ -130,16 +155,16 @@ class EthRpcHandler(tornado.web.RequestHandler):
             block_hash = block_hash_obj.hexdigest()
             signature = 'eth'
 
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce+1, data, new_timestamp, signature])
-            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce+1, data, new_timestamp, signature])
+            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce, data, new_timestamp, signature])
+            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce, data, new_timestamp, signature])
 
-            resp = {'jsonrpc':'2.0', 'result': tx_hash, 'id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
         elif req.get('method') == 'web3_clientVersion':
-            resp = {'jsonrpc':'2.0', 'result':'ByteChain', 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
 
         elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result': hex(520),'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': hex(520),'id': rpc_id}
 
         print(resp)
         self.write(tornado.escape.json_encode(resp))
