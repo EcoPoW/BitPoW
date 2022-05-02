@@ -1,6 +1,9 @@
 import hashlib
 import copy
 
+import setting
+import rpc
+
 def subchain_stf(state, msg):
     new_state = copy.deepcopy(state)
     if msg.get('type') == 'folder_storage':
@@ -27,10 +30,17 @@ def subchain_stf(state, msg):
     return new_state
 
 def chain_stf(state, data):
+    new_state = {}
+
     subchains = state.get('subchains', {})
     subchains.update(data.get('subchains', {}))
-    new_state = {}
     new_state['subchains'] = subchains
+
+    shares = state.get('shares', {})
+    if setting.POS_MASTER_ADDRESS not in shares:
+        shares[setting.POS_MASTER_ADDRESS] = setting.POS_SHARES
+    new_state['shares'] = shares
+
     return new_state
 
 def chain_block_validator(block, new_block):
