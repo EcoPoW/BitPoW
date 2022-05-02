@@ -33,12 +33,11 @@ def tx_info(raw_tx):
     print('r', tx.r)
     print('s', tx.s)
     print('v', tx.v)
-    tx.tx_from = tx_from
-    return tx, tx_from, tx_from, tx.nonce, tx_hash
+    return tx, tx_from, tx_to, tx.nonce, tx_hash
 
 class EthRpcHandler(tornado.web.RequestHandler):
     def options(self):
-        print('-----options-------')
+        # print('-----options-------')
         # print(self.request.arguments)
         # print(self.request.body)
 
@@ -72,8 +71,15 @@ class EthRpcHandler(tornado.web.RequestHandler):
         rpc_id = req['id']
         if req.get('method') == 'eth_chainId':
             resp = {'jsonrpc':'2.0', 'result': hex(520), 'id':rpc_id}
+
         elif req.get('method') == 'eth_blockNumber':
-            resp = {'jsonrpc':'2.0', 'result': hex(10), 'id':rpc_id}
+            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            resp = {'jsonrpc':'2.0', 'result': hex(highest_block_height), 'id':rpc_id}
+
+        elif req.get('method') == 'eth_getBlockByNumber':
+            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            resp = {'jsonrpc':'2.0', 'result': highest_block_hash.decode('utf8'), 'id':rpc_id}
+
         elif req.get('method') == 'eth_getBalance':
             address = web3.Web3.toChecksumAddress(req['params'][0])
             # block_height = req['params'][1]
@@ -84,14 +90,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             fullstate = tornado.escape.json_decode(block_json)
             print('fullstate', fullstate)
             print('address', address)
-            balance = fullstate.get('tokens', {}).get('SHARES', {}).get(address, 0)
+            balance = fullstate.get('shares', {}).get(address, 0)
 
             resp = {'jsonrpc':'2.0', 'result': hex(balance*(10**18)), 'id':rpc_id}
+
         elif req.get('method') == 'eth_getTransactionReceipt':
             resp = {'jsonrpc':'2.0', 'result': {}, 'id':rpc_id}
-
-        elif req.get('method') == 'eth_getBlockByNumber':
-            resp = {'jsonrpc':'2.0', 'result': hex(520), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getCode':
             resp = {'jsonrpc':'2.0', 'result': '0x0208', 'id':rpc_id}
@@ -110,19 +114,24 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('raw_tx', raw_tx)
             tx, tx_from, tx_to, tx_nonce, tx_hash = tx_info(raw_tx)
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8')) or '0'*64
+            prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8')) or b'0'*64
             assert prev_hash
 
-            new_timestamp = time.time()
+            msg_json = db.get(b'msg%s' % prev_hash)
+            msg = tornado.escape.json_decode(msg_json)
+            print(msg)
+            assert msg[chain.MSG_HEIGHT] + 1 == tx_nonce
+
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
             data = {'eth_raw_tx': raw_tx}
             data_json = json.dumps(data)
-            block_hash_obj = hashlib.sha256((prev_hash + tx_from + tx_to + str(tx_nonce+1) + data_json + str(new_timestamp)).encode('utf8'))
+            new_timestamp = time.time()
+            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx_nonce) + data_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
             signature = 'eth'
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash, tx_from, tx_to, tx_nonce+1, data, new_timestamp, signature])
 
-            tree.forward(['NEW_SUBCHAIN_BLOCK', tx_from, tx_to, tx_nonce])
+            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce+1, data, new_timestamp, signature])
+            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce+1, data, new_timestamp, signature])
 
             resp = {'jsonrpc':'2.0', 'result': tx_hash, 'id': rpc_id}
 
