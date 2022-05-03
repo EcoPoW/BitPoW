@@ -32,7 +32,7 @@ def subchain_stf(state, msg):
 def chain_stf(state, data):
     new_state = {}
 
-    subchains = state.get('subchains', {})
+    subchains = copy.copy(state.get('subchains', {}))
     subchains.update(data.get('subchains', {}))
     new_state['subchains'] = subchains
 
