@@ -6,6 +6,15 @@ import rpc
 
 def subchain_stf(state, msg):
     new_state = copy.deepcopy(state)
+    if 'eth_raw_tx' in msg:
+        raw_tx = msg['eth_raw_tx']
+        tx, tx_from, tx_to, tx_nonce, _tx_hash = rpc.tx_info(raw_tx)
+        balance = new_state.get('balances', {}).get('SHA', 10**15)
+        print('balance', balance, tx.value)
+        balance -= int(tx.value/10**18)
+        new_state.setdefault('balances', {})
+        new_state['balances']['SHA'] = balance
+
     if msg.get('type') == 'folder_storage':
         folder = msg.get('name')
         assert folder
@@ -25,7 +34,7 @@ def subchain_stf(state, msg):
                 # print('add', path, info)
                 assert path not in current_folder
                 current_folder[path] = info
-        # print('fullstate dict', fullstate_dict)
+        # print('blockstate_ dict', fullstate_dict)
 
     return new_state
 

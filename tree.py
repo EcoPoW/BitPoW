@@ -145,7 +145,7 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         elif seq[0] == 'GET_BLOCK_STATE':
             block_hash = seq[1]
             db = database.get_conn()
-            block_json = db.get(b'fullstate%s' % block_hash.encode('utf8'))
+            block_json = db.get(b'blockstate_%s' % block_hash.encode('utf8'))
             self.write_message(tornado.escape.json_encode(["BLOCK_STATE", block_hash, tornado.escape.json_decode(block_json)]))
 
         elif seq[0] == 'NEW_CHAIN_STAKING':

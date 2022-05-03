@@ -64,10 +64,10 @@ class Application(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, **settings)
 
 
-
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.redirect('/dashboard')
+
 
 class AvailableBranchesHandler(tornado.web.RequestHandler):
     def get(self):
@@ -77,6 +77,7 @@ class AvailableBranchesHandler(tornado.web.RequestHandler):
         self.finish({"available_branches": branches,
                      #"parent": parent,
                      "nodeid": tree.current_nodeid})
+
 
 class GetNodeHandler(tornado.web.RequestHandler):
     def get(self):
@@ -98,6 +99,7 @@ class GetNodeHandler(tornado.web.RequestHandler):
                      "nodeid": target_nodeid,
                      "current_nodeid": tree.current_nodeid})
 
+
 class DisconnectHandler(tornado.web.RequestHandler):
     def get(self):
         if tree.NodeConnector.node_parent:
@@ -107,12 +109,14 @@ class DisconnectHandler(tornado.web.RequestHandler):
         self.finish({})
         tornado.ioloop.IOLoop.instance().stop()
 
+
 class BroadcastHandler(tornado.web.RequestHandler):
     def get(self):
         test_msg = ["TEST_MSG", tree.current_nodeid, time.time(), uuid.uuid4().hex]
 
         tree.forward(test_msg)
         self.finish({"test_msg": test_msg})
+
 
 class NewSubchainBlockHandler(tornado.web.RequestHandler):
     # def get(self):
@@ -127,6 +131,7 @@ class NewSubchainBlockHandler(tornado.web.RequestHandler):
         chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK'] + block)
         tree.forward(['NEW_SUBCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
         self.finish({"block": block})
+
 
 class NewSubchainBlockBatchHandler(tornado.web.RequestHandler):
     def post(self):
@@ -228,10 +233,11 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
 
             self.write("<a href='/get_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
             self.write("<code>%s</code><br><br>" % block_json)
-            # fullstate_json = db.get(b'fullstate%s' % block_hash)
+            # fullstate_json = db.get(b'blockstate_%s' % block_hash)
             # self.write("<code>%s</code><br><br><br>" % fullstate_json)
 
         self.write("<a href='/chain_explorer?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
+
 
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
