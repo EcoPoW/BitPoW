@@ -176,12 +176,12 @@ def main():
         store_obj['chain_hash_every_100'] = chain_hash_every_100
 
         state = {}
-        chain_fullstate_every_100 = store_obj.get('chain_fullstate_every_100', {})
+        chain_blockstate_every_100 = store_obj.get('chain_blockstate_every_100', {})
         i = 0
         for i in range(100, highest_block_height, 100):
             print('>', i, chain_hash_every_100[str(i)])
-            if str(i) in chain_fullstate_every_100:
-                state = chain_fullstate_every_100[str(i)]
+            if str(i) in chain_blockstate_every_100:
+                state = chain_blockstate_every_100[str(i)]
                 print('load state', state)
                 continue
 
@@ -203,9 +203,9 @@ def main():
                 # print(block[2])
                 if block[2] % 100 == 0:
                     print('save state', block[2])
-                    chain_fullstate_every_100[str(block[2])] = state
+                    chain_blockstate_every_100[str(block[2])] = state
 
-        store_obj['chain_fullstate_every_100'] = chain_fullstate_every_100
+        store_obj['chain_blockstate_every_100'] = chain_blockstate_every_100
         with open('./.store.json', 'w') as f:
             f.write(json.dumps(store_obj))
 

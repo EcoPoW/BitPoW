@@ -193,7 +193,7 @@ class DashboardHandler(tornado.web.RequestHandler):
             self.write("%s:%s %s <br>" % branch)
 
         self.write("<br>subchain block to mine:<br>")
-        for i, h in chain.subchains_block_to_mine.items():
+        for i, h in chain.subchains_to_block.items():
             self.write("%s %s<br>" % (i, h))
 
         self.write("<br>pool:<br>")
@@ -233,8 +233,8 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
 
             self.write("<a href='/get_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
             self.write("<code>%s</code><br><br>" % block_json)
-            # fullstate_json = db.get(b'blockstate_%s' % block_hash)
-            # self.write("<code>%s</code><br><br><br>" % fullstate_json)
+            # blockstate_json = db.get(b'blockstate_%s' % block_hash)
+            # self.write("<code>%s</code><br><br><br>" % blockstate_json)
 
         self.write("<a href='/chain_explorer?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
 

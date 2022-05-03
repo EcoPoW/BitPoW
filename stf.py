@@ -34,21 +34,27 @@ def subchain_stf(state, msg):
                 # print('add', path, info)
                 assert path not in current_folder
                 current_folder[path] = info
-        # print('blockstate_ dict', fullstate_dict)
+        # print('blockstate_ dict', blockstate_dict)
 
     return new_state
 
 def chain_stf(state, data):
     new_state = {}
 
-    subchains = copy.copy(state.get('subchains', {}))
-    subchains.update(data.get('subchains', {}))
-    new_state['subchains'] = subchains
+    if 'nodes' in data:
+        nodes = copy.copy(state.get('nodes', {}))
 
-    shares = state.get('shares', {})
-    if setting.POS_MASTER_ADDRESS not in shares:
-        shares[setting.POS_MASTER_ADDRESS] = setting.POS_SHARES
-    new_state['shares'] = shares
+    if 'proofs' in data:
+        proofs = copy.copy(state.get('ptoofs', {}))
+
+    if 'subchains' in data:
+        subchains = copy.copy(state.get('subchains', {}))
+        subchains.update(data.get('subchains', {}))
+        new_state['subchains'] = subchains
+
+    if 'tokens' in data:
+        tokens = copy.copy(state.get('tokens', {}))
+        subchains.update(data.get('tokens', {}))
 
     return new_state
 

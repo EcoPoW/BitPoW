@@ -87,12 +87,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             _highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
             db = database.get_conn()
             block_json = db.get(b'blockstate_%s' % highest_block_hash)
-            fullstate = tornado.escape.json_decode(block_json)
-            # print('blockstate_', fullstate)
+            blockstate = tornado.escape.json_decode(block_json)
+            # print('blockstate_', blockstate)
             # print('address', address)
-            balance = fullstate.get('shares', {}).get(address, 0)
+            balance = blockstate.get('shares', {}).get(address, 0)
 
-            msg_hash = fullstate.get('subchains', {}).get(address[2:])
+            msg_hash = blockstate.get('subchains', {}).get(address[2:])
             if not msg_hash:
                 msg_hash = b'0'*64
 

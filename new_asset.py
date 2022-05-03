@@ -35,6 +35,7 @@ def main():
 
 
     data = {
+        'type': 'new_asset',
         'token': 'SHA',
         'amount': 10**15,
         'decimal': 0,
