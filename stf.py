@@ -15,6 +15,13 @@ def subchain_stf(state, msg):
         new_state.setdefault('balances', {})
         new_state['balances']['SHA'] = balance
 
+    if msg.get('type') == 'new_asset':
+        print('msg -------', msg)
+        balances = new_state.get('balances', {})
+        balances[msg['name']] = msg['amount']
+        new_state['balances'] = balances
+        print('state -------', new_state)
+
     if msg.get('type') == 'folder_storage':
         folder = msg.get('name')
         assert folder
@@ -54,7 +61,8 @@ def chain_stf(state, data):
 
     if 'tokens' in data:
         tokens = copy.copy(state.get('tokens', {}))
-        subchains.update(data.get('tokens', {}))
+        tokens.update(data.get('tokens', {}))
+        new_state['tokens'] = tokens
 
     return new_state
 

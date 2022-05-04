@@ -36,7 +36,8 @@ class Application(tornado.web.Application):
                     (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
                     (r"/get_block", chain.GetBlockHandler),
                     # (r"/get_proof", chain.GetProofHandler),
-                    (r"/get_state", chain.GetStateHandler),
+                    (r"/get_blockstate", chain.GetBlockStateHandler),
+                    (r"/get_msgstate", chain.GetMsgStateHandler),
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
@@ -231,7 +232,7 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
             block = tornado.escape.json_decode(block_json)
             block_hash = block[chain.PREV_HASH].encode('utf8')
 
-            self.write("<a href='/get_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
+            self.write("<a href='/get_blockstate?hash=%s'>%s</a><br>" % (block[0], block[2]))
             self.write("<code>%s</code><br><br>" % block_json)
             # blockstate_json = db.get(b'blockstate_%s' % block_hash)
             # self.write("<code>%s</code><br><br><br>" % blockstate_json)
@@ -261,8 +262,9 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
             if not msg_json:
                 return
 
-            self.write("<code>%s</code><br><br>" % msg_json)
+            self.write("<code>%s</code>" % msg_json)
             msg = tornado.escape.json_decode(msg_json)
+            self.write(" <a href='/get_msgstate?hash=%s'>state</a><br><br>" % msg[0])
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 
         self.write("<a href='/subchain_explorer?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
@@ -286,6 +288,7 @@ class UserExplorerHandler(tornado.web.RequestHandler):
             elif len(k) == 64+5:
                 self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
 
+
 class UploadChunkHandler(tornado.web.RequestHandler):
     def post(self):
         hash = self.get_argument('hash')
@@ -298,6 +301,7 @@ class UploadChunkHandler(tornado.web.RequestHandler):
         with open('./chunks/%s' % hash, 'wb') as c:
             c.write(chunk)
         self.finish({'len': len(chunk)})
+
 
 class TraceHandler(tornado.web.RequestHandler):
     def get(self):

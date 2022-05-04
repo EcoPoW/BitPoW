@@ -36,12 +36,11 @@ def main():
 
     data = {
         'type': 'new_asset',
-        'token': 'SHA',
+        'name': 'SHA',
         'amount': 10**15,
         'decimal': 0,
         'description': '',
-        'chain': None,
-        'contract': None,
+        'bridges': {},
         'creator': sender_address
     }
 

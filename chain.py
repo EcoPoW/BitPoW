@@ -238,7 +238,7 @@ def new_chain_block(seq):
                 print('new_chain_block msg', msg)
 
                 if msg[MSG_DATA].get('type') == 'new_asset':
-                    token = msg[MSG_DATA]['token']
+                    token = msg[MSG_DATA]['name']
                     address = msg[MSG_DATA]['creator']
                     tokens_to_block[token] = address
 
@@ -408,6 +408,7 @@ def new_subchain_block(seq):
     msgstate = stf.subchain_stf(prev_msgstate, data)
     print('msgstate', msgstate)
     msgstate_json = tornado.escape.json_encode(msgstate)
+    print('msgstate_json', msgstate_json)
     db.put(b'msgstate_%s' % msg_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
     # verify
@@ -417,7 +418,7 @@ def new_subchain_block(seq):
         blockstate_json = db.get(b'blockstate_%s' % block_hash)
         blockstate = tornado.escape.json_decode(blockstate_json)
         print('blockstate', blockstate)
-        assert data['token'] not in blockstate.get('tokens', {})
+        assert data['name'] not in blockstate.get('tokens', {})
 
 
     # try:
@@ -474,11 +475,21 @@ class GetBlockHandler(tornado.web.RequestHandler):
         else:
             self.finish({"block": None})
 
-class GetStateHandler(tornado.web.RequestHandler):
+class GetBlockStateHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
         block_json = db.get(b'blockstate_%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"state": tornado.escape.json_decode(block_json)})
+        else:
+            self.finish({"state": None})
+
+class GetMsgStateHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        db = database.get_conn()
+        block_json = db.get(b'msgstate_%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"state": tornado.escape.json_decode(block_json)})
         else:
