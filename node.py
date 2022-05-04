@@ -262,9 +262,9 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
             if not msg_json:
                 return
 
-            self.write("<code>%s</code>" % msg_json)
             msg = tornado.escape.json_decode(msg_json)
-            self.write(" <a href='/get_msgstate?hash=%s'>state</a><br><br>" % msg[0])
+            self.write("<a href='/get_msgstate?hash=%s'>%s</a><br>" % (msg[0], msg[4]))
+            self.write("<code>%s</code><br><br>" % msg_json)
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 
         self.write("<a href='/subchain_explorer?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))

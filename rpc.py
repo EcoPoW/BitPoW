@@ -15,16 +15,16 @@ import database
 import tree
 
 def tx_info(raw_tx):
-    tx_from = eth_account.Account.recover_transaction(raw_tx)
     raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
     tx_hash = web3.Web3.toHex(eth_utils.keccak(raw_bytes))
-    # print('from', tx_from)
+    tx_from = eth_account.Account.recover_transaction(raw_tx)
     tx_to = web3.Web3.toChecksumAddress(tx.to) if tx.to else None
-    # print('to', tx_to)
-    tx_data = web3.Web3.toHex(tx.data)
-    # print('data', tx_data)
     chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
+    # print('from', tx_from)
+    # print('to', tx_to)
+    # tx_data = web3.Web3.toHex(tx.data)
+    # print('data', tx_data)
     # print('chain_id', chain_id)
     # print('nonce', tx.nonce)
     # print('value', tx.value)
@@ -33,7 +33,7 @@ def tx_info(raw_tx):
     # print('r', tx.r)
     # print('s', tx.s)
     # print('v', tx.v)
-    return tx, tx_from, tx_to, tx.nonce, tx_hash
+    return tx, tx_from, tx_to, tx_hash
 
 class EthRpcHandler(tornado.web.RequestHandler):
     def options(self):
@@ -155,8 +155,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_sendRawTransaction':
             raw_tx = req['params'][0]
             # print('raw_tx', raw_tx)
-            _tx, tx_from, tx_to, tx_nonce, _tx_hash = tx_info(raw_tx)
-            print('nonce', tx_nonce)
+            tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx)
+            print('nonce', tx.nonce)
             db = database.get_conn()
             prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8'))
             if prev_hash:
@@ -164,21 +164,21 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
                 # print(msg)
-                assert msg[chain.MSG_HEIGHT] + 1 == tx_nonce
+                assert msg[chain.MSG_HEIGHT] + 1 == tx.nonce
             else:
                 prev_hash = b'0'*64
-                assert 1 == tx_nonce
+                assert 1 == tx.nonce
 
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
             data = {'eth_raw_tx': raw_tx}
             data_json = json.dumps(data)
             new_timestamp = time.time()
-            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx_nonce) + data_json + str(new_timestamp)).encode('utf8'))
+            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
             signature = 'eth'
 
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce, data, new_timestamp, signature])
-            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx_nonce, data, new_timestamp, signature])
+            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
+            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
