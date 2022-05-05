@@ -191,8 +191,8 @@ def new_chain_block(seq):
                     raw_tx = msg[MSG_DATA]['eth_raw_tx']
                     tx, _tx_from, tx_to, _tx_hash = rpc.tx_info(raw_tx)
                     print('tx_to', tx_to, tx.value)
-                    balances_to_collect.setdefault(tx_to, set())
-                    balances_to_collect[tx_to].add(prev_msg_hash)
+                    balances_to_collect.setdefault(tx_to[2:], set())
+                    balances_to_collect[tx_to[2:]].add(prev_msg_hash)
 
                 prev_msg_hash = msg[PREV_HASH]
                 # print('new_chain_block msg parent hash', prev_msg_hash)

@@ -59,15 +59,17 @@ def chain_stf(state, data):
         subchains.update(data.get('subchains', {}))
         new_state['subchains'] = subchains
 
+    tokens = copy.copy(state.get('tokens', {}))
     if 'tokens' in data:
-        tokens = copy.copy(state.get('tokens', {}))
         tokens.update(data.get('tokens', {}))
-        new_state['tokens'] = tokens
+    new_state['tokens'] = tokens
 
+    balances_to_collect = state.get('balances_to_collect', {})
     if 'balances_to_collect' in data:
-        new_state.setdefault('balances_to_collect', {})
         for address, msg_hashes in data['balances_to_collect'].items():
-            new_state['balances_to_collect'][address] = list(msg_hashes)
+            hashes = set(balances_to_collect.get(address, []))
+            balances_to_collect[address] = list(hashes|msg_hashes)
+    new_state['balances_to_collect'] = balances_to_collect
 
     return new_state
 

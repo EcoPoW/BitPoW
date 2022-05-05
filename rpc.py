@@ -102,6 +102,18 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 msg_hash = b'0'*64
                 balance = 0
 
+            msg_hashes = blockstate.get('balances_to_collect', {}).get(address[2:], [])
+            for msg_hash in msg_hashes:
+                print('msg_hash', msg_hash)
+                msg_json = db.get(b'msg%s' % msg_hash.encode('utf8'))
+                msg = tornado.escape.json_decode(msg_json)
+                print('msg', msg)
+                if 'eth_raw_tx' in msg[chain.MSG_DATA]:
+                    raw_tx = msg[chain.MSG_DATA]['eth_raw_tx']
+                    tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx)
+                    if tx_to == address:
+                        balance += int(tx.value/10**18)
+
             resp = {'jsonrpc':'2.0', 'result': hex(balance*(10**18)), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getTransactionReceipt':
