@@ -108,6 +108,7 @@ venv.bak/
 .DS_Store
 .store.json
 .miner.json
+.messager.json
 .chunks/
 chunks/
 data/

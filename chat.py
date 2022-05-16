@@ -4,21 +4,16 @@ import hashlib
 import time
 import secrets
 import base64
-# from base64 import a85decode, a85encode
 
 import tornado
-# import web3
-# import eth_account
-# import eth_typing
-# import eth_utils
+import nacl.public
+# from nacl.public import Box, PrivateKey, PublicKey #x25519-xsalsa20-poly1305
 
 import chain
 import database
 import tree
 import setting
 
-import nacl.public
-# from nacl.public import Box, PrivateKey, PublicKey #x25519-xsalsa20-poly1305
 
 
                     # (r"/chat_enable", chat.ChatEnableHandler),
@@ -33,8 +28,6 @@ class ChatDisableHandler(tornado.web.RequestHandler):
     def get(self):
         pass
 
-                    # (r"/chat_contact_new", chat.ChatContactNewHandler),
-                    # (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
 
 class ChatContactNewHandler(tornado.web.RequestHandler):
     def get(self):
