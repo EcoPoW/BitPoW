@@ -378,7 +378,7 @@ def new_chain_proof(seq):
     # print('hash_proofs', hash_proofs)
     # print('last_hash_proofs', last_hash_proofs)
 
-@tornado.gen.coroutine
+# @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
     _msg_header, msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
@@ -444,6 +444,10 @@ def new_subchain_block(seq):
     db.put(b'pool%s' % sender[2:].encode('utf8'), msg_hash.encode('utf8'))
     # except Exception as e:
     #     print("new_subchain_block Error: %s" % e)
+
+def new_tempchain_block(seq):
+    # global subchains_to_block
+    _msg_header, msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
 
 def get_recent_longest(highest_block_hash):
     db = database.get_conn()

@@ -24,6 +24,7 @@ import miner
 import chain
 import database
 import rpc
+import chat
 
 tracemalloc.start()
 
@@ -42,6 +43,7 @@ class Application(tornado.web.Application):
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
+                    (r"/new_tempchain_block", NewTempchainBlockHandler),
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_explorer", ChainExplorerHandler),
                     (r"/subchain_explorer", SubchainExplorerHandler),
@@ -51,8 +53,8 @@ class Application(tornado.web.Application):
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
                     (r"/eth_rpc", rpc.EthRpcHandler),
-                    (r"/chat_contact_add", DashboardHandler),
-                    (r"/chat_contact_remove", DashboardHandler),
+                    (r"/chat_contact_new", chat.ChatContactNewHandler),
+                    (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
                     (r"/chat_group_new", DashboardHandler),
                     (r"/chat_group_join", DashboardHandler),
                     (r"/chat_group_leave", DashboardHandler),
@@ -142,6 +144,21 @@ class NewSubchainBlockBatchHandler(tornado.web.RequestHandler):
             tree.forward(['NEW_SUBCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
         # self.finish({"block": block})
         self.finish({})
+
+class NewTempchainBlockHandler(tornado.web.RequestHandler):
+    # def get(self):
+    #     block =  ["58745b596bcfc8376527fd37cb2ca34224ff4d1d4f1d41053a889742f4bc77a8", "0000000000000000000000000000000000000000000000000000000000000000", "0xb88744C14D2E92cC653493df18bEF2E4b263c1FD", "0x504E18e367F32050951452Affc56082847628d28", 1, {"amount": 6}, 1633745105.8568707, "0x64a7f9a8b19cfd7597ecc6a49ada434b2101a7a8afc0ac78e59a59af3152eedc1a26e9a9b660373b8eae7bc2c646b393f0a51bd904e5a16336ebc3c3d77710c401"]
+    #     chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
+    #     tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
+    #     self.finish({"block": block})
+
+    def post(self):
+        block = tornado.escape.json_decode(self.request.body)
+
+        chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
+        tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
+        self.finish({"block": block})
+
 
 class DashboardHandler(tornado.web.RequestHandler):
     def get(self):
