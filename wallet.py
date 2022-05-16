@@ -32,7 +32,7 @@ def main():
 
     store_obj = {}
     try:
-        with open('./.store.json', 'r') as f:
+        with open('./.wallet.json', 'r') as f:
             store_obj = json.loads(f.read())
             # pprint.pprint(store_obj)
 
@@ -45,7 +45,7 @@ def main():
 
     if sys.argv[1] in ['key', 'host', 'port']:
         store_obj[sys.argv[1]] = sys.argv[2]
-        with open('./.store.json', 'w') as f:
+        with open('./.wallet.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
@@ -206,7 +206,7 @@ def main():
                     chain_blockstate_every_100[str(block[2])] = state
 
         store_obj['chain_blockstate_every_100'] = chain_blockstate_every_100
-        with open('./.store.json', 'w') as f:
+        with open('./.wallet.json', 'w') as f:
             f.write(json.dumps(store_obj))
 
         print('highest_block_height', highest_block_height)
