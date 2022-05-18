@@ -12,6 +12,7 @@ import pprint
 import requests
 import eth_keys
 import nacl.public
+import ecdsa
 
 import stf
 import pre
@@ -243,31 +244,52 @@ def main():
         chat_master_sk = nacl.public.PrivateKey(base64.b16decode(chat_master_sk_hex))
 
         channel_id = secrets.token_bytes(32) # tempchain id
-        chat_temp_sk = nacl.public.PrivateKey.generate()
+        chat_temp_sk_bytes = secrets.token_bytes(32)
+        chat_temp_sk = pre.load_sk(chat_temp_sk_bytes)
         chat_temp_pk = chat_temp_sk.public_key
         # print('chat_temp_sk', len(chat_temp_sk._private_key))
-        knockdoor_data = ['KNOCKDOOR', base64.b16encode(channel_id).decode('utf8'), base64.b16encode(chat_temp_sk._private_key).decode('utf8'), time.time()]
+        knockdoor_data = ['KNOCKDOOR', base64.b16encode(channel_id).decode('utf8'), base64.b16encode(chat_temp_sk_bytes).decode('utf8'), time.time()]
         knockdoor_data_json = json.dumps(knockdoor_data)
         knockdoor_data_json_bytes = knockdoor_data_json.encode('utf8')
         knockdoor_data_encrypted = encrypt_nacl(target_chat_master_pk._public_key, knockdoor_data_json_bytes)
-        print(base64.b16encode(knockdoor_data_encrypted), len(knockdoor_data_encrypted))
         # knockdoor_data_encrypted broadcast
+        print(base64.b16encode(knockdoor_data_encrypted), len(knockdoor_data_encrypted))
         # or encode in QR code without encrypting
         print(knockdoor_data_json, len(knockdoor_data_json))
 
         # decrypted_data = decrypt_nacl(chat_master_sk._private_key, encrypted_data)
         # print(decrypted_data)
 
-        chat_sk = nacl.public.PrivateKey.generate()
+        chat_sk_bytes = secrets.token_bytes(32)
+        chat_sk = pre.load_sk(chat_sk_bytes)
         chat_pk = chat_sk.public_key
         # print('chat_pk', len(chat_sk.public_key._public_key))
+        sender = base64.b16encode(chat_pk.point.to_bytes()).decode('utf8')
 
         tempchain_init_data = {
             'type': 'chat',
-            'channel_id': base64.b16encode(channel_id),
-            'contacts': [base64.b16encode(chat_pk._public_key)],
-            'temp_contacts': [base64.b16encode(chat_temp_pk._public_key)]
+            'channel_id': base64.b16encode(channel_id).decode('utf8'),
+            'contacts': [sender],
+            'temp_contacts': [base64.b16encode(chat_temp_pk.point.to_bytes()).decode('utf8')]
         }
+        tempchain_init_data_json = json.dumps(tempchain_init_data)
+        print(tempchain_init_data)
+
+        print(chat_sk.secret_multiplier)
+        chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
+        print('chat_sig_sk', chat_sig_sk)
+
+        height = 0
+        highest_prev_hash = '0'*64
+
+        new_timestamp = time.time()
+        block_hash = hashlib.sha256((highest_prev_hash + sender + str(height+1) + tempchain_init_data_json + str(new_timestamp)).encode('utf8'))
+        signature = chat_sig_sk.sign_digest(block_hash.digest())
+        # print('signature', signature)
+
+        new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_init_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
+        print('new_tempchain_block', new_tempchain_block)
+        rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, base64.b16encode(channel_id)), json = new_tempchain_block)
 
 
     elif sys.argv[1] == 'accept':
@@ -275,15 +297,26 @@ def main():
         port = store_obj['port']
         encrypted = sys.argv[2]
 
+        chat_master_sk_hex = store_obj['chat_master_sk']
+        chat_master_sk_bytes = base64.b16decode(chat_master_sk_hex)
+        # chat_master_sk = nacl.public.PrivateKey(base64.b16decode(chat_master_sk_hex))
+        knockdoor_data_json_bytes = base64.b16decode(encrypted)
+        knockdoor_data_json = decrypt_nacl(chat_master_sk_bytes, knockdoor_data_json_bytes)
+        knockdoor_data = json.loads(knockdoor_data_json)
+        # print(knockdoor_data)
+        assert knockdoor_data[0] == 'KNOCKDOOR'
+        channel_id = knockdoor_data[1]
+        chat_temp_sk_bytes = base64.b16decode(knockdoor_data[2])
+
     elif sys.argv[1] == 'block':
-        pass
-        pass
         host = store_obj['host']
         port = store_obj['port']
         address = sys.argv[2]
 
     elif sys.argv[1] == 'send':
-        pass
+        host = store_obj['host']
+        port = store_obj['port']
+        address = sys.argv[2]
 
 if __name__ == '__main__':
     main()
