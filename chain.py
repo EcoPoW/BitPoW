@@ -523,6 +523,16 @@ class GetMsgStateHandler(tornado.web.RequestHandler):
         else:
             self.finish({"state": None})
 
+class GetTempMsgStateHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        db = database.get_conn()
+        block_json = db.get(b'tempmsgstate_%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"state": tornado.escape.json_decode(block_json)})
+        else:
+            self.finish({"state": None})
+
 # class GetProofHandler(tornado.web.RequestHandler):
 #     def get(self):
 #         proof_hash = self.get_argument("hash")
@@ -545,11 +555,34 @@ class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
         else:
             self.finish({"hash": '0'*64})
 
+class GetHighestTempchainBlockHashHandler(tornado.web.RequestHandler):
+    def get(self):
+        # TODO: fixed key 'chain0x0000' for rocksdb
+        chain = self.get_argument('chain')
+        # assert sender.startswith('0x')
+        # assert len(sender) == 42
+        db = database.get_conn()
+        highest_block_hash = db.get(b'tempchain%s' % chain.encode('utf8'))
+        if highest_block_hash:
+            self.finish({"hash": highest_block_hash.decode('utf8')})
+        else:
+            self.finish({"hash": '0'*64})
+
 class GetSubchainBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
         block_json = db.get(b'msg%s' % block_hash.encode('utf8'))
+        if block_json:
+            self.finish({"msg": tornado.escape.json_decode(block_json)})
+        else:
+            self.finish({"msg": None})
+
+class GetTempchainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_hash = self.get_argument("hash")
+        db = database.get_conn()
+        block_json = db.get(b'tempmsg%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"msg": tornado.escape.json_decode(block_json)})
         else:

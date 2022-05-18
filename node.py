@@ -39,10 +39,13 @@ class Application(tornado.web.Application):
                     # (r"/get_proof", chain.GetProofHandler),
                     (r"/get_blockstate", chain.GetBlockStateHandler),
                     (r"/get_msgstate", chain.GetMsgStateHandler),
+                    (r"/get_tempmsgstate", chain.GetTempMsgStateHandler),
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
+                    (r"/get_highest_tempchain_block_hash", chain.GetHighestTempchainBlockHashHandler),
+                    (r"/get_tempchain_block", chain.GetTempchainBlockHandler),
                     (r"/new_tempchain_block", NewTempchainBlockHandler),
 
                     (r"/dashboard", DashboardHandler),
