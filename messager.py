@@ -243,12 +243,13 @@ def main():
         chat_master_sk_hex = store_obj['chat_master_sk']
         chat_master_sk = nacl.public.PrivateKey(base64.b16decode(chat_master_sk_hex))
 
-        channel_id = secrets.token_bytes(32) # tempchain id
+        channel_id_bytes = secrets.token_bytes(32) # tempchain id
+        channel_id = base64.b16encode(channel_id_bytes).decode('utf8')
         chat_temp_sk_bytes = secrets.token_bytes(32)
         chat_temp_sk = pre.load_sk(chat_temp_sk_bytes)
         chat_temp_pk = chat_temp_sk.public_key
         # print('chat_temp_sk', len(chat_temp_sk._private_key))
-        knockdoor_data = ['KNOCKDOOR', base64.b16encode(channel_id).decode('utf8'), base64.b16encode(chat_temp_sk_bytes).decode('utf8'), time.time()]
+        knockdoor_data = ['KNOCKDOOR', channel_id, base64.b16encode(chat_temp_sk_bytes).decode('utf8'), time.time()]
         knockdoor_data_json = json.dumps(knockdoor_data)
         knockdoor_data_json_bytes = knockdoor_data_json.encode('utf8')
         knockdoor_data_encrypted = encrypt_nacl(target_chat_master_pk._public_key, knockdoor_data_json_bytes)
@@ -268,7 +269,7 @@ def main():
 
         tempchain_init_data = {
             'type': 'chat',
-            'channel_id': base64.b16encode(channel_id).decode('utf8'),
+            'channel_id': channel_id,
             'contacts': [sender],
             'temp_contacts': [base64.b16encode(chat_temp_pk.point.to_bytes()).decode('utf8')]
         }
@@ -289,8 +290,12 @@ def main():
 
         new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_init_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
         print('new_tempchain_block', new_tempchain_block)
-        rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, base64.b16encode(channel_id)), json = new_tempchain_block)
+        rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
 
+        store_obj.setdefault('channels', {})
+        store_obj['channels'][channel_id] = base64.b16encode(chat_sk_bytes).decode('utf8')
+        with open('./.messager.json', 'w') as f:
+            f.write(json.dumps(store_obj))
 
     elif sys.argv[1] == 'accept':
         host = store_obj['host']
@@ -385,6 +390,11 @@ def main():
         new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_accept_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
         print('new_tempchain_block', new_tempchain_block)
         rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
+
+        store_obj.setdefault('channels', {})
+        store_obj['channels'][channel_id] = base64.b16encode(chat_sk_bytes).decode('utf8')
+        with open('./.messager.json', 'w') as f:
+            f.write(json.dumps(store_obj))
 
 
     elif sys.argv[1] == 'block':
