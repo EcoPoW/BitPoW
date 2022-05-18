@@ -108,7 +108,7 @@ def main():
             print('    block', subchain_block[4])
             print('    msg', subchain_block[5])
             print('    old', blockstate_dict)
-            blockstate_dict = stf.subchain_stf(blockstate_dict, msg)
+            blockstate_dict = stf.tempchain_chat_stf(blockstate_dict, msg)
             print('    new', blockstate_dict)
             print('')
 
@@ -188,7 +188,7 @@ def main():
             print('    block', subchain_block[4])
             print('    msg', subchain_block[5])
             print('    old', blockstate_dict)
-            blockstate_dict = stf.subchain_stf(blockstate_dict, msg)
+            blockstate_dict = stf.tempchain_chat_stf(blockstate_dict, msg)
             print('    new', blockstate_dict)
             print('')
 
@@ -333,39 +333,44 @@ def main():
         # print('block_hash', block_hash)
         # print('sender', sender)
 
-        # block_stack = []
-        # while block_hash != '0'*64:
-        print('  block_hash', block_hash)
-        rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-        subchain_block = rsp.json()['msg']
-        # print('    block', subchain_block)
-        # if subchain_block is None:
-        #     break
-        # block_stack.append(block_hash)
-        # block_hash = subchain_block[1]
-        assert subchain_block[3] == 1
-        data = subchain_block[4]
-        print('    data', data)
+        block_stack = []
+        while block_hash != '0'*64:
+            print('  block_hash', block_hash)
+            rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+            subchain_block = rsp.json()['msg']
+            # print('    block', subchain_block)
+            # if subchain_block is None:
+            #     break
+            block_stack.append(block_hash)
+            block_hash = subchain_block[1]
+            # assert subchain_block[3] == 1
+            data = subchain_block[4]
+            print('    data', data)
 
         # if subchain_block[4] == 1:
         #     break
 
-        # print('block stack', block_stack)
-        # tempstate = {}
-        # while block_stack:
-        #     # if not block_stack:
-        #     #     break
-        #     block_hash = block_stack.pop()
-        #     # print(block_hash)
-        #     rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-        #     subchain_block = rsp.json()['msg']
-        #     msg = subchain_block[4]
-        #     print('    block', subchain_block[0])
-        #     print('    msg', subchain_block[4])
-        #     print('    old', tempstate)
-        #     tempstate = stf.subchain_stf(tempstate, msg)
-        #     print('    new', tempstate)
-        #     print('')
+        print('block stack', block_stack)
+        tempstate = {}
+        while block_stack:
+            # if not block_stack:
+            #     break
+            block_hash = block_stack.pop()
+            # print(block_hash)
+            rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+            subchain_block = rsp.json()['msg']
+            highest_prev_hash = subchain_block[0]
+            height = subchain_block[3]
+            msg = subchain_block[4]
+            print('    block', subchain_block[0])
+            print('    msg', subchain_block[4])
+            print('    old', tempstate)
+            tempstate = stf.tempchain_chat_stf(tempstate, msg)
+            print('    new', tempstate)
+            print('')
+
+        if not tempstate.get('temp_contacts'):
+            return
 
         tempchain_accept_data = {
             # 'type': 'chat',
@@ -378,9 +383,6 @@ def main():
         # print(chat_sk.secret_multiplier)
         chat_temp_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_temp_sk.secret_multiplier, ecdsa.SECP256k1)
         print('chat_temp_sig_sk', chat_temp_sig_sk)
-
-        height = 1
-        highest_prev_hash = highest_subchain_hash
 
         new_timestamp = time.time()
         block_hash = hashlib.sha256((highest_prev_hash + sender + str(height+1) + tempchain_accept_data_json + str(new_timestamp)).encode('utf8'))
@@ -397,7 +399,7 @@ def main():
             f.write(json.dumps(store_obj))
 
 
-    elif sys.argv[1] == 'block':
+    elif sys.argv[1] == 'ban':
         host = store_obj['host']
         port = store_obj['port']
         address = sys.argv[2]
@@ -405,7 +407,52 @@ def main():
     elif sys.argv[1] == 'send':
         host = store_obj['host']
         port = store_obj['port']
-        address = sys.argv[2]
+        channel_id = sys.argv[2]
+        msg = sys.argv[3]
+
+        chat_sk_hex = store_obj['channels'].get(channel_id)
+        assert chat_sk_hex
+        chat_sk_bytes = base64.b16decode(chat_sk_hex)
+        print(chat_sk_bytes, len(chat_sk_bytes))
+
+        chat_sk = pre.load_sk(chat_sk_bytes)
+        chat_pk = chat_sk.public_key
+        sender = base64.b16encode(chat_pk.point.to_bytes()).decode('utf8')
+
+        rsp = requests.get('http://%s:%s/get_highest_tempchain_block_hash?chain=%s' % (host, port, channel_id))
+        highest_subchain_hash = rsp.json()['hash']
+        block_hash = highest_subchain_hash
+        print('  block_hash', block_hash)
+
+        rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+        subchain_block = rsp.json()['msg']
+        # assert subchain_block[3] == 1
+        highest_prev_hash = subchain_block[0]
+        height = subchain_block[3]
+        data = subchain_block[4]
+        print('    data', data)
+
+        rk, r, encrypted = pre.encrypt(chat_sk, msg.encode('utf8'))
+        message = (base64.b16encode(encrypted)).decode('utf8')
+
+        tempchain_accept_data = {
+            'channel_id': channel_id,
+            'message': message,
+        }
+        tempchain_accept_data_json = json.dumps(tempchain_accept_data)
+
+        chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
+        print('chat_sig_sk', chat_sig_sk)
+
+        new_timestamp = time.time()
+        block_hash = hashlib.sha256((highest_prev_hash + sender + str(height+1) + tempchain_accept_data_json + str(new_timestamp)).encode('utf8'))
+        signature = chat_sig_sk.sign_digest(block_hash.digest())
+        # print('signature', signature)
+
+        new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_accept_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
+        print('new_tempchain_block', new_tempchain_block)
+        # rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
+
 
 if __name__ == '__main__':
     main()

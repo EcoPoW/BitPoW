@@ -4,6 +4,22 @@ import copy
 import setting
 import rpc
 
+def tempchain_chat_stf(state, data):
+    new_state = copy.deepcopy(state)
+    if 'channel_id' not in new_state and 'channel_id' in data:
+        new_state['channel_id'] = data['channel_id']
+    assert new_state['channel_id'] == data['channel_id']
+
+    if 'contacts' in data and len(data['contacts']) > 0:
+        new_state.setdefault('contacts', []).extend(data['contacts'])
+        if 'temp_contacts' in new_state:
+            del new_state['temp_contacts']
+
+    if 'temp_contacts' in data and len(data['temp_contacts']) > 0:
+        new_state['temp_contacts'] = data['temp_contacts']
+
+    return new_state
+
 def subchain_stf(state, data):
     new_state = copy.deepcopy(state)
     if 'eth_raw_tx' in data:
