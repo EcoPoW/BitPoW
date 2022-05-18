@@ -31,6 +31,43 @@ def decrypt_nacl(private_key: bytes, data: bytes) -> bytes:
     return base64.a85decode(box.decrypt(ciphertext))
 
 
+def get_tempchain_state(host, port, channel_id):
+    rsp = requests.get('http://%s:%s/get_highest_tempchain_block_hash?chain=%s' % (host, port, channel_id))
+    highest_tempchain_hash = rsp.json()['hash']
+    block_hash = highest_tempchain_hash
+
+    block_stack = []
+    while block_hash != '0'*64:
+        # print('  block_hash', block_hash)
+        rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+        subchain_block = rsp.json()['msg']
+
+        block_stack.append(block_hash)
+        block_hash = subchain_block[1]
+
+        # data = subchain_block[4]
+        # print('    data', data)
+
+    # print('block stack', block_stack)
+    tempstate = {}
+    while block_stack:
+        block_hash = block_stack.pop()
+        # print(block_hash)
+        rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+        subchain_block = rsp.json()['msg']
+        prev_hash = subchain_block[0]
+        prev_height = subchain_block[3]
+        msg = subchain_block[4]
+        print('    block', subchain_block[0])
+        print('    msg', subchain_block[4])
+        print('    old', tempstate)
+        tempstate = stf.tempchain_chat_stf(tempstate, msg)
+        print('    new', tempstate)
+        print('')
+    
+    return tempstate, prev_hash, prev_height
+
+
 def main():
     store_obj = {}
     try:
@@ -327,69 +364,25 @@ def main():
         chat_pk = chat_sk.public_key
         sender = base64.b16encode(chat_pk.point.to_bytes()).decode('utf8')
 
-        rsp = requests.get('http://%s:%s/get_highest_tempchain_block_hash?chain=%s' % (host, port, channel_id))
-        highest_subchain_hash = rsp.json()['hash']
-        block_hash = highest_subchain_hash
-        # print('block_hash', block_hash)
-        # print('sender', sender)
-
-        block_stack = []
-        while block_hash != '0'*64:
-            print('  block_hash', block_hash)
-            rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-            subchain_block = rsp.json()['msg']
-            # print('    block', subchain_block)
-            # if subchain_block is None:
-            #     break
-            block_stack.append(block_hash)
-            block_hash = subchain_block[1]
-            # assert subchain_block[3] == 1
-            data = subchain_block[4]
-            print('    data', data)
-
-        # if subchain_block[4] == 1:
-        #     break
-
-        print('block stack', block_stack)
-        tempstate = {}
-        while block_stack:
-            # if not block_stack:
-            #     break
-            block_hash = block_stack.pop()
-            # print(block_hash)
-            rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-            subchain_block = rsp.json()['msg']
-            highest_prev_hash = subchain_block[0]
-            height = subchain_block[3]
-            msg = subchain_block[4]
-            print('    block', subchain_block[0])
-            print('    msg', subchain_block[4])
-            print('    old', tempstate)
-            tempstate = stf.tempchain_chat_stf(tempstate, msg)
-            print('    new', tempstate)
-            print('')
-
+        tempstate, prev_hash, prev_height = get_tempchain_state(host, port, channel_id)
         if not tempstate.get('temp_contacts'):
             return
 
         tempchain_accept_data = {
-            # 'type': 'chat',
             'channel_id': channel_id,
             'contacts': [sender],
-            # 'temp_contacts': [base64.b16encode(chat_temp_pk.point.to_bytes()).decode('utf8')]
         }
         tempchain_accept_data_json = json.dumps(tempchain_accept_data)
 
-        # print(chat_sk.secret_multiplier)
         chat_temp_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_temp_sk.secret_multiplier, ecdsa.SECP256k1)
         print('chat_temp_sig_sk', chat_temp_sig_sk)
 
         new_timestamp = time.time()
-        block_hash = hashlib.sha256((highest_prev_hash + sender + str(height+1) + tempchain_accept_data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = hashlib.sha256((prev_hash + sender + str(prev_height+1) + tempchain_accept_data_json + str(new_timestamp)).encode('utf8'))
         signature = chat_temp_sig_sk.sign_digest(block_hash.digest())
         # print('signature', signature)
 
-        new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_accept_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
+        new_tempchain_block = [block_hash.hexdigest(), prev_hash, sender, prev_height+1, tempchain_accept_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
         print('new_tempchain_block', new_tempchain_block)
         rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
 
@@ -413,46 +406,62 @@ def main():
         chat_sk_hex = store_obj['channels'].get(channel_id)
         assert chat_sk_hex
         chat_sk_bytes = base64.b16decode(chat_sk_hex)
-        print(chat_sk_bytes, len(chat_sk_bytes))
+        # print(chat_sk_bytes, len(chat_sk_bytes))
 
         chat_sk = pre.load_sk(chat_sk_bytes)
         chat_pk = chat_sk.public_key
         sender = base64.b16encode(chat_pk.point.to_bytes()).decode('utf8')
+        chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
+        # print('chat_sig_sk', chat_sig_sk)
 
-        rsp = requests.get('http://%s:%s/get_highest_tempchain_block_hash?chain=%s' % (host, port, channel_id))
-        highest_subchain_hash = rsp.json()['hash']
-        block_hash = highest_subchain_hash
-        print('  block_hash', block_hash)
+        tempstate, prev_hash, prev_height = get_tempchain_state(host, port, channel_id)
+        contacts = tempstate.get('contacts', [])
+        rekeys = tempstate.get('rekeys', {})
+        chat_rekeys = rekeys.get(sender, [])
+        print(contacts)
+        print(sender)
+        print(chat_rekeys)
+        if chat_rekeys:
+            r = chat_rekeys[0]
+        else:
+            r = ecdsa.util.randrange(ecdsa.SECP256k1.order)
+        new_chat_rekeys = [r]
 
-        rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-        subchain_block = rsp.json()['msg']
-        # assert subchain_block[3] == 1
-        highest_prev_hash = subchain_block[0]
-        height = subchain_block[3]
-        data = subchain_block[4]
-        print('    data', data)
+        for receiver in contacts:
+            if receiver != sender:
+                receiver_pk = pre.load_pk(base64.b16decode(receiver))
+                receiver_rk = pre.rekey(chat_sk, r, receiver_pk)
+                # print(receiver, receiver_rk)
+                new_chat_rekeys.append(base64.b16encode(receiver_rk).decode('utf8'))
+            else:
+                # print(' None ')
+                new_chat_rekeys.append(None)
+        print(new_chat_rekeys)
+            
 
-        rk, r, encrypted = pre.encrypt(chat_sk, msg.encode('utf8'))
+        rk, r, encrypted = pre.encrypt(chat_sk, msg.encode('utf8'), r)
         message = (base64.b16encode(encrypted)).decode('utf8')
-
-        tempchain_accept_data = {
+        tempchain_msg_data = {
             'channel_id': channel_id,
             'message': message,
         }
-        tempchain_accept_data_json = json.dumps(tempchain_accept_data)
-
-        chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
-        print('chat_sig_sk', chat_sig_sk)
+        if len(chat_rekeys) != len(new_chat_rekeys):
+            tempchain_msg_data['rekeys'] = {sender: new_chat_rekeys}
+        tempchain_msg_data_json = json.dumps(tempchain_msg_data)
 
         new_timestamp = time.time()
-        block_hash = hashlib.sha256((highest_prev_hash + sender + str(height+1) + tempchain_accept_data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = hashlib.sha256((prev_hash + sender + str(prev_height+1) + tempchain_msg_data_json + str(new_timestamp)).encode('utf8'))
         signature = chat_sig_sk.sign_digest(block_hash.digest())
         # print('signature', signature)
 
-        new_tempchain_block = [block_hash.hexdigest(), highest_prev_hash, sender, height+1, tempchain_accept_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
+        new_tempchain_block = [block_hash.hexdigest(), prev_hash, sender, prev_height+1, tempchain_msg_data, new_timestamp, base64.b16encode(signature).decode('utf8')]
         print('new_tempchain_block', new_tempchain_block)
-        # rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
+        rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
 
+    elif sys.argv[1] == 'read':
+        host = store_obj['host']
+        port = store_obj['port']
+        channel_id = sys.argv[2]
 
 if __name__ == '__main__':
     main()

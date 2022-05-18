@@ -18,6 +18,10 @@ def tempchain_chat_stf(state, data):
     if 'temp_contacts' in data and len(data['temp_contacts']) > 0:
         new_state['temp_contacts'] = data['temp_contacts']
 
+    if 'rekeys' in data:
+        new_state.setdefault('rekeys', {})
+        new_state['rekeys'].update(data['rekeys'])
+
     return new_state
 
 def subchain_stf(state, data):
