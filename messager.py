@@ -8,15 +8,13 @@ import json
 import base64
 import secrets
 import pprint
-# import string
-# import random
 
 import requests
 import eth_keys
 import nacl.public
-# import ecdsa
 
 import stf
+import pre
 
 
 def encrypt_nacl(public_key: bytes, data: bytes) -> bytes:
@@ -42,6 +40,11 @@ def main():
     except:
         print('error')
         # return
+
+    key = store_obj['key']
+    sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+    sender = sender_sk.public_key.to_checksum_address()
+    print('address', sender)
 
     if len(sys.argv) < 2:
         print('''help:
@@ -218,7 +221,7 @@ def main():
             with open('./.messager.json', 'w') as f:
                 f.write(json.dumps(store_obj))
 
-    elif sys.argv[1] == 'add':
+    elif sys.argv[1] == 'request':
         print(store_obj)
         if 'chat_master_sk' not in store_obj or not store_obj['chat_master_sk']:
             print('chat_master_sk not found, try enable')
@@ -247,8 +250,10 @@ def main():
         knockdoor_data_json = json.dumps(knockdoor_data)
         knockdoor_data_json_bytes = knockdoor_data_json.encode('utf8')
         knockdoor_data_encrypted = encrypt_nacl(target_chat_master_pk._public_key, knockdoor_data_json_bytes)
-        # print(encrypted_data)
+        print(base64.b16encode(knockdoor_data_encrypted), len(knockdoor_data_encrypted))
         # knockdoor_data_encrypted broadcast
+        # or encode in QR code without encrypting
+        print(knockdoor_data_json, len(knockdoor_data_json))
 
         # decrypted_data = decrypt_nacl(chat_master_sk._private_key, encrypted_data)
         # print(decrypted_data)
@@ -266,10 +271,16 @@ def main():
 
 
     elif sys.argv[1] == 'accept':
-        pass
+        host = store_obj['host']
+        port = store_obj['port']
+        encrypted = sys.argv[2]
 
-    elif sys.argv[1] == 'remove':
+    elif sys.argv[1] == 'block':
         pass
+        pass
+        host = store_obj['host']
+        port = store_obj['port']
+        address = sys.argv[2]
 
     elif sys.argv[1] == 'send':
         pass
