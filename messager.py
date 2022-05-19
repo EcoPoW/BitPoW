@@ -428,14 +428,10 @@ def main():
         new_chat_rekeys = [r]
 
         for receiver in contacts:
-            if receiver != sender:
-                receiver_pk = pre.load_pk(base64.b16decode(receiver))
-                receiver_rk = pre.rekey(chat_sk, r, receiver_pk)
-                # print(receiver, receiver_rk)
-                new_chat_rekeys.append(base64.b16encode(receiver_rk).decode('utf8'))
-            else:
-                # print(' None ')
-                new_chat_rekeys.append(None)
+            receiver_pk = pre.load_pk(base64.b16decode(receiver))
+            receiver_rk = pre.rekey(chat_sk, r, receiver_pk)
+            # print(receiver, receiver_rk)
+            new_chat_rekeys.append(base64.b16encode(receiver_rk).decode('utf8'))
         print(new_chat_rekeys)
             
 
@@ -462,6 +458,42 @@ def main():
         host = store_obj['host']
         port = store_obj['port']
         channel_id = sys.argv[2]
+
+        chat_sk_hex = store_obj['channels'].get(channel_id)
+        assert chat_sk_hex
+        chat_sk_bytes = base64.b16decode(chat_sk_hex)
+        # print(chat_sk_bytes, len(chat_sk_bytes))
+
+        chat_sk = pre.load_sk(chat_sk_bytes)
+        chat_pk = chat_sk.public_key
+        receiver = base64.b16encode(chat_pk.point.to_bytes()).decode('utf8')
+        chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
+        # print('chat_sig_sk', chat_sig_sk)
+
+        tempstate, block_hash, _ = get_tempchain_state(host, port, channel_id)
+        contacts = tempstate.get('contacts', [])
+        rekeys = tempstate.get('rekeys', {})
+
+        block_stack = []
+        while block_hash != '0'*64:
+            # print('  block_hash', block_hash)
+            rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
+            subchain_block = rsp.json()['msg']
+
+            # block_stack.append(block_hash)
+            block_hash = subchain_block[1]
+
+            sender = subchain_block[2]
+            # print(sender)
+            data = subchain_block[4]
+            message = data.get('message')
+            # pk_hex
+            if sender in rekeys:
+                rk_hex = rekeys[sender][contacts.index(receiver)+1]
+                # print(subchain_block[3], contacts.index(receiver)+1, rk_hex, message)
+                if rk_hex and message:
+                    decrypted = pre.decrypt(chat_sk, base64.b16decode(rk_hex.encode('utf8')), base64.b16decode(message.encode('utf8')))
+                    print(subchain_block[3], decrypted)
 
 if __name__ == '__main__':
     main()
