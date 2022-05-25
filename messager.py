@@ -264,7 +264,7 @@ def main():
             return
 
         address = sys.argv[2]
-        rsp = requests.get('http://%s:%s/chat_contact_new?address=%s' % (host, port, address))
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_state?sender=%s' % (host, port, address))
         # print(rsp.text)
         target_chat_master_pk_hex = rsp.json()['chat_master_pk']
         # print(target_chat_master_pk_hex)
@@ -487,10 +487,10 @@ def main():
     elif sys.argv[1] == 'bind':
         name = sys.argv[2]
 
-        rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender)
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
-        rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
+        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
         block = rsp.json()['msg']
 
         assert name[0] in string.ascii_lowercase
@@ -516,12 +516,37 @@ def main():
         block_hash = block_hash_obj.hexdigest()
         signature = uuid.uuid4().hex
         block = [block_hash, prev_hash, sender, '0x', height+1, data, new_timestamp, signature]
-        rsp = requests.post('http://127.0.0.1:9001/new_subchain_block', json=block)
+        rsp = requests.post('http://%s:%s/new_subchain_block'% (host, port), json=block)
 
     elif sys.argv[1] == 'designate':
-        address = sys.argv[2]
+        alias = sys.argv[2]
+        rsp = requests.get('http://%s:%s/get_highest_block_state' % (host, port))
+        # print(rsp.json()['aliases'])
+        print(rsp.json()['aliases'].get(alias))
+        address = rsp.json()['aliases'].get(alias)
+
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_state?sender=%s' % (host, port, address))
+        # print(rsp.text)
+        target_chat_master_pk_hex = rsp.json()['chat_master_pk']
+        # print(target_chat_master_pk_hex)
+        target_chat_master_pk_bytes = base64.b16decode(target_chat_master_pk_hex)
+        target_chat_master_pk = nacl.public.PublicKey(target_chat_master_pk_bytes)
+
+        recovery_sk_bytes = secrets.token_bytes(32)
+        recovery_sk_bytes_encrypted = encrypt_nacl(target_chat_master_pk_bytes, recovery_sk_bytes)
+        recovery_sk = nacl.public.PrivateKey(recovery_sk_bytes)
+        print(recovery_sk.public_key._public_key)
+        print(recovery_sk_bytes_encrypted)
+
+        data = {recovery_sk.public_key._public_key: recovery_sk_bytes_encrypted}
 
     elif sys.argv[1] == 'recover':
+        address = sys.argv[2]
+
+    elif sys.argv[1] == 'follow':
+        address = sys.argv[2]
+
+    elif sys.argv[1] == 'unfollow':
         address = sys.argv[2]
 
 if __name__ == '__main__':

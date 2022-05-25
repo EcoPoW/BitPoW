@@ -3,8 +3,6 @@ from __future__ import print_function
 import os
 import time
 import hashlib
-# import subprocess
-# import base64
 import uuid
 import threading
 import tracemalloc
@@ -13,8 +11,6 @@ import tornado.web
 import tornado.ioloop
 import tornado.options
 import tornado.httpserver
-# import tornado.httpclient
-# import tornado.websocket
 import tornado.gen
 import tornado.escape
 
@@ -35,12 +31,15 @@ class Application(tornado.web.Application):
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
                     (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
+                    (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
                     (r"/get_block", chain.GetBlockHandler),
                     # (r"/get_proof", chain.GetProofHandler),
                     (r"/get_blockstate", chain.GetBlockStateHandler),
                     (r"/get_msgstate", chain.GetMsgStateHandler),
                     (r"/get_tempmsgstate", chain.GetTempMsgStateHandler),
+
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
+                    (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),

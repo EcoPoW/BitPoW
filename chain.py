@@ -501,6 +501,13 @@ class GetHighestBlockHashHandler(tornado.web.RequestHandler):
 
         self.finish({'hash': highest_block_hash.decode('utf8'), 'height': highest_block_height})
 
+class GetHighestBlockStateHandler(tornado.web.RequestHandler):
+    def get(self):
+        db = database.get_conn()
+        block_hash = db.get(b'chain')
+        blockstate_json = db.get(b'blockstate_%s' % block_hash)
+        self.finish(blockstate_json)
+
 class GetBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
@@ -562,6 +569,17 @@ class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
             self.finish({"hash": highest_block_hash.decode('utf8')})
         else:
             self.finish({"hash": '0'*64})
+
+
+class GetHighestSubchainBlockStateHandler(tornado.web.RequestHandler):
+    def get(self):
+        sender = self.get_argument('sender')
+        db = database.get_conn()
+        msg_hash = db.get(b'chain%s' % sender[2:].encode('utf8'))
+        msgstate_json = db.get(b'msgstate_%s' % msg_hash)
+        # chat_master_pk
+        self.finish(msgstate_json)
+
 
 class GetHighestTempchainBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
