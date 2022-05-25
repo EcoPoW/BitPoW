@@ -91,6 +91,11 @@ def chain_stf(state, data):
         tokens.update(data.get('tokens', {}))
     new_state['tokens'] = tokens
 
+    aliases = copy.copy(state.get('aliases', {}))
+    if 'aliases' in data:
+        aliases.update(data.get('aliases', {}))
+    new_state['aliases'] = aliases
+
     balances_to_collect = state.get('balances_to_collect', {})
     if 'balances_to_collect' in data:
         for address, msg_hashes in data['balances_to_collect'].items():

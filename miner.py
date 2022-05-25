@@ -172,6 +172,7 @@ def mining():
     data['proofs'] = list([list(p) for p in chain.last_hash_proofs])
     data['subchains'] = chain.subchains_to_block
     data['tokens'] = chain.tokens_to_block
+    data['aliases'] = chain.aliases_to_block
     data_json = tornado.escape.json_encode(data)
 
     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)

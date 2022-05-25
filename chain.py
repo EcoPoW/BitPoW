@@ -116,6 +116,7 @@ last_hash_proofs = set()
 
 subchains_to_block = {}
 tokens_to_block = {}
+aliases_to_block = {}
 balances_to_collect = {}
 
 # @tornado.gen.coroutine
@@ -128,6 +129,7 @@ def new_chain_block(seq):
     global last_hash_proofs
     global subchains_to_block
     global tokens_to_block
+    global aliases_to_block
     global balances_to_collect
     _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, signature, txid = seq
 
@@ -228,6 +230,7 @@ def new_chain_block(seq):
         # prepare the data for mining next block
         subchains_to_block = {}
         tokens_to_block = {}
+        aliases_to_block = {}
 
         it = db.iteritems()
         it.seek(b'pool')
@@ -255,6 +258,11 @@ def new_chain_block(seq):
                     token = msg[MSG_DATA]['name']
                     address = msg[MSG_DATA]['creator']
                     tokens_to_block[token] = address
+
+                elif msg[MSG_DATA].get('type') == 'new_alias':
+                    alias = msg[MSG_DATA]['name']
+                    address = msg[MSG_DATA]['address']
+                    aliases_to_block[alias] = address
 
                 # if msg[RECEIVER] == '0x' or len(msg[RECEIVER]) == 66:
                 #     contracts_to_create.append(msg[HASH])

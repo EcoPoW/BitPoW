@@ -8,6 +8,8 @@ import json
 import base64
 import secrets
 import pprint
+import string
+import uuid
 
 import requests
 import eth_keys
@@ -79,6 +81,8 @@ def main():
         print('error')
         # return
 
+    host = store_obj['host']
+    port = store_obj['port']
     key = store_obj['key']
     sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
     sender = sender_sk.public_key.to_checksum_address()
@@ -91,9 +95,12 @@ def main():
   messager.py port
   messager.py enable
   messager.py disable
+  messager.py request
+  messager.py accept
+  messager.py send
+  messager.py read
 ''')
         return
-
 
     if sys.argv[1] in ['key', 'host', 'port']:
         store_obj[sys.argv[1]] = sys.argv[2]
@@ -102,10 +109,6 @@ def main():
         return
 
     elif sys.argv[1] == 'enable':
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         sender = sender_sk.public_key.to_checksum_address()
 
@@ -182,10 +185,6 @@ def main():
             f.write(json.dumps(store_obj))
 
     elif sys.argv[1] == 'disable':
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         sender = sender_sk.public_key.to_checksum_address()
 
@@ -260,13 +259,10 @@ def main():
                 f.write(json.dumps(store_obj))
 
     elif sys.argv[1] == 'request':
-        print(store_obj)
         if 'chat_master_sk' not in store_obj or not store_obj['chat_master_sk']:
             print('chat_master_sk not found, try enable')
             return
 
-        host = store_obj['host']
-        port = store_obj['port']
         address = sys.argv[2]
         rsp = requests.get('http://%s:%s/chat_contact_new?address=%s' % (host, port, address))
         # print(rsp.text)
@@ -335,8 +331,6 @@ def main():
             f.write(json.dumps(store_obj))
 
     elif sys.argv[1] == 'accept':
-        host = store_obj['host']
-        port = store_obj['port']
         encrypted = sys.argv[2]
 
         chat_master_sk_hex = store_obj['chat_master_sk']
@@ -393,13 +387,9 @@ def main():
 
 
     elif sys.argv[1] == 'ban':
-        host = store_obj['host']
-        port = store_obj['port']
         address = sys.argv[2]
 
     elif sys.argv[1] == 'send':
-        host = store_obj['host']
-        port = store_obj['port']
         channel_id = sys.argv[2]
         msg = sys.argv[3]
 
@@ -455,8 +445,6 @@ def main():
         rsp = requests.post('http://%s:%s/new_tempchain_block?chain=%s' % (host, port, channel_id), json = new_tempchain_block)
 
     elif sys.argv[1] == 'read':
-        host = store_obj['host']
-        port = store_obj['port']
         channel_id = sys.argv[2]
 
         chat_sk_hex = store_obj['channels'].get(channel_id)
@@ -494,6 +482,47 @@ def main():
                 if rk_hex and message:
                     decrypted = pre.decrypt(chat_sk, base64.b16decode(rk_hex.encode('utf8')), base64.b16decode(message.encode('utf8')))
                     print(subchain_block[3], decrypted)
+
+
+    elif sys.argv[1] == 'bind':
+        name = sys.argv[2]
+
+        rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender)
+        prev_hash = rsp.json()['hash']
+        # print('prev_hash', prev_hash)
+        rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
+        block = rsp.json()['msg']
+
+        assert name[0] in string.ascii_lowercase
+        for i in name[1:]:
+            assert i in string.ascii_lowercase + string.digits + '_'
+
+        data = {
+            'type': 'new_alias',
+            'name': name,
+            'address': sender
+        }
+
+        new_timestamp = time.time()
+        if block:
+            height = block[4]
+            prev_hash = block[0]
+        else:
+            height = 0
+            prev_hash = '0'*64
+
+        data_json = json.dumps(data)
+        block_hash_obj = hashlib.sha256((prev_hash + sender + '0x' + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        signature = uuid.uuid4().hex
+        block = [block_hash, prev_hash, sender, '0x', height+1, data, new_timestamp, signature]
+        rsp = requests.post('http://127.0.0.1:9001/new_subchain_block', json=block)
+
+    elif sys.argv[1] == 'designate':
+        address = sys.argv[2]
+
+    elif sys.argv[1] == 'recover':
+        address = sys.argv[2]
 
 if __name__ == '__main__':
     main()
