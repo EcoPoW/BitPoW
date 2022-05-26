@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import pprint
+import uuid
 # import random
 import string
 # import base64
@@ -23,10 +24,8 @@ def main():
   wallet.py host
   wallet.py port
   wallet.py balance
-  wallet.py create_token <token_name> [total_amount] (for test, 0 for unlimited)
+  wallet.py create_asset <token_name> [total_amount] (for test, 0 for unlimited)
   wallet.py create_storage_contract
-  wallet.py create_smart_contract
-  wallet.py create_name
 ''')
         return
 
@@ -49,24 +48,56 @@ def main():
             f.write(json.dumps(store_obj))
         return
 
-    elif sys.argv[1] == 'create_token':
+    elif sys.argv[1] == 'create_asset':
         # token must be UPPER CASE
         token = sys.argv[2]
         assert token[0] not in string.digits
-        assert token[0] in string.ascii_uppercase
         assert token == token.upper()
-        amount = sys.argv[3]
-        assert int(amount) > -1
-        return
+        amount = int(sys.argv[3])
+        assert amount > 0
+        try:
+            decimal = int(sys.argv[4])
+        except:
+            decimal = 0
 
-    elif sys.argv[1] == 'create_name':
-        # name must be lower case
-        name = sys.argv[2]
-        assert name[0] not in string.digits
-        assert name[0] in string.ascii_lowercase
-        assert name == name.lower()
+        key = store_obj['key']
+        host = store_obj['host']
+        port = store_obj['port']
 
-        return
+        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        sender_address = sender_sk.public_key.to_checksum_address()
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
+        prev_hash = rsp.json()['hash']
+        # print('prev_hash', prev_hash)
+        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
+        block = rsp.json()['msg']
+
+        data = {
+            'type': 'new_asset',
+            'name': token,
+            'amount': amount,
+            'decimal': decimal,
+            'description': '',
+            'bridges': {},
+            'creator': sender_address
+        }
+
+        new_timestamp = time.time()
+        if block:
+            height = block[4]
+            prev_hash = block[0]
+        else:
+            height = 0
+            prev_hash = '0'*64
+
+        data_json = json.dumps(data)
+        block_hash_obj = hashlib.sha256((prev_hash + sender_address + '0x' + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        signature = uuid.uuid4().hex
+        block = [block_hash, prev_hash, sender_address, '0x', height+1, data, new_timestamp, signature]
+        rsp = requests.post('http://%s:%s/new_subchain_block' % (host, port), json=block)
+
+
 
     elif sys.argv[1] == 'create_storage_contract':
         # is a contract
@@ -126,9 +157,6 @@ def main():
         print("new subchain block", new_subchain_block)
 
 
-        return
-
-    elif sys.argv[1] == 'create_smart_contract':
         return
 
     elif sys.argv[1] == 'balance':
