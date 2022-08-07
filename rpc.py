@@ -194,6 +194,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
+        elif req.get('method') == 'eth_call':
+            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
+
         elif req.get('method') == 'web3_clientVersion':
             resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
 

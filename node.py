@@ -30,22 +30,24 @@ class Application(tornado.web.Application):
                     (r"/miner", tree.MinerHandler),
                     (r"/available_branches", AvailableBranchesHandler),
                     (r"/get_node", GetNodeHandler),
+
                     (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
                     (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
                     (r"/get_block", chain.GetBlockHandler),
+                    (r"/get_block_state", chain.GetBlockStateHandler),
                     # (r"/get_proof", chain.GetProofHandler),
-                    (r"/get_blockstate", chain.GetBlockStateHandler),
-                    (r"/get_msgstate", chain.GetMsgStateHandler),
-                    (r"/get_tempmsgstate", chain.GetTempMsgStateHandler),
 
                     (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
+                    (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
+
                     (r"/get_highest_tempchain_block_hash", chain.GetHighestTempchainBlockHashHandler),
                     (r"/get_tempchain_block", chain.GetTempchainBlockHandler),
                     (r"/new_tempchain_block", NewTempchainBlockHandler),
+                    (r"/get_tempchain_block_state", chain.GetTempchainBlockStateHandler),
 
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_explorer", ChainExplorerHandler),
@@ -54,10 +56,10 @@ class Application(tornado.web.Application):
                     (r"/tempchain_explorer", TempchainExplorerHandler),
                     (r"/tempblock_explorer", TempblockExplorerHandler),
 
-                    (r"/upload_chunk", UploadChunkHandler),
-                    (r"/tracemalloc", TraceHandler),
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
+                    (r"/upload_chunk", UploadChunkHandler),
+                    (r"/tracemalloc", TraceHandler),
                     (r"/eth_rpc", rpc.EthRpcHandler),
                     (r"/chat_contact_new", chat.ChatContactNewHandler),
                     (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
@@ -67,7 +69,7 @@ class Application(tornado.web.Application):
                     (r"/chat_group_kick", DashboardHandler),
                     (r"/chat_msg_new", DashboardHandler),
                     (r"/", MainHandler),
-                    ]
+                ]
         settings = {"debug":True}
 
         tornado.web.Application.__init__(self, handlers, **settings)
@@ -257,7 +259,7 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
             block = tornado.escape.json_decode(block_json)
             block_hash = block[chain.PREV_HASH].encode('utf8')
 
-            self.write("<a href='/get_blockstate?hash=%s'>%s</a><br>" % (block[0], block[2]))
+            self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
             self.write("<code>%s</code><br><br>" % block_json)
             # blockstate_json = db.get(b'blockstate_%s' % block_hash)
             # self.write("<code>%s</code><br><br><br>" % blockstate_json)
@@ -289,7 +291,7 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
                 return
 
             msg = tornado.escape.json_decode(msg_json)
-            self.write("<a href='/get_msgstate?hash=%s'>%s</a><br>" % (msg[0], msg[4]))
+            self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (msg[0], msg[4]))
             self.write("<code>%s</code><br><br>" % msg_json)
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 
@@ -360,7 +362,7 @@ class TempblockExplorerHandler(tornado.web.RequestHandler):
                 return
 
             msg = tornado.escape.json_decode(msg_json)
-            self.write("<a href='/get_tempmsgstate?hash=%s'>%s</a><br>" % (msg[0], msg[3]))
+            self.write("<a href='/get_tempchain_block_state?hash=%s'>%s</a><br>" % (msg[0], msg[3]))
             self.write("<code>%s</code><br><br>" % msg_json)
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 

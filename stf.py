@@ -79,7 +79,7 @@ def chain_stf(state, data):
         nodes = copy.copy(state.get('nodes', {}))
 
     if 'proofs' in data:
-        proofs = copy.copy(state.get('ptoofs', {}))
+        proofs = copy.copy(state.get('proofs', {}))
 
     if 'subchains' in data:
         subchains = copy.copy(state.get('subchains', {}))

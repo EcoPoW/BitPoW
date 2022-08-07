@@ -538,7 +538,8 @@ def main():
         print(recovery_sk.public_key._public_key)
         print(recovery_sk_bytes_encrypted)
 
-        data = {recovery_sk.public_key._public_key: recovery_sk_bytes_encrypted}
+        data = {base64.b16encode(recovery_sk.public_key._public_key): base64.b16encode(recovery_sk_bytes_encrypted)}
+        print(data)
 
     elif sys.argv[1] == 'recover':
         address = sys.argv[2]

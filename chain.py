@@ -528,7 +528,7 @@ class GetBlockStateHandler(tornado.web.RequestHandler):
         else:
             self.finish({"state": None})
 
-class GetMsgStateHandler(tornado.web.RequestHandler):
+class GetSubchainBlockStateHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
@@ -538,7 +538,7 @@ class GetMsgStateHandler(tornado.web.RequestHandler):
         else:
             self.finish({"state": None})
 
-class GetTempMsgStateHandler(tornado.web.RequestHandler):
+class GetTempchainBlockStateHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
