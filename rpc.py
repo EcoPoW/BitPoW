@@ -91,8 +91,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('blockstate', blockstate)
             # print('address', address)
 
-            msg_hash = blockstate.get('subchains', {}).get(address[2:])
-            print('msg_hash', msg_hash, address[2:])
+            msg_hash = blockstate.get('subchains', {}).get(address)
+            print('msg_hash', msg_hash, address)
             if msg_hash:
                 msgstate_json = db.get(b'msgstate_%s' % msg_hash.encode('utf8'))
                 msgstate = tornado.escape.json_decode(msgstate_json)
@@ -102,7 +102,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 msg_hash = b'0'*64
                 balance = 0
 
-            msg_hashes = blockstate.get('balances_to_collect', {}).get(address[2:], [])
+            msg_hashes = blockstate.get('balances_to_collect', {}).get(address, [])
             for msg_hash in msg_hashes:
                 print('msg_hash', msg_hash)
                 msg_json = db.get(b'msg%s' % msg_hash.encode('utf8'))
@@ -119,7 +119,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_getTransactionReceipt':
             msg_hash = req['params'][0]
             db = database.get_conn()
-            msg_json = db.get(b'msg%s' % msg_hash[2:].encode('utf8'))
+            msg_json = db.get(b'msg%s' % msg_hash.encode('utf8'))
             print(msg_json)
             msg = tornado.escape.json_decode(msg_json)
 
@@ -150,7 +150,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_getTransactionCount':
             address = web3.Web3.toChecksumAddress(req['params'][0])
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % address[2:].encode('utf8'))
+            prev_hash = db.get(b'chain%s' % address.encode('utf8'))
             count = 0
             if prev_hash:
                 msg_json = db.get(b'msg%s' % prev_hash)
@@ -170,7 +170,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx)
             print('nonce', tx.nonce)
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % tx_from[2:].encode('utf8'))
+            prev_hash = db.get(b'chain%s' % tx_from.encode('utf8'))
             if prev_hash:
                 msg_json = db.get(b'msg%s' % prev_hash)
                 # print(msg_json)

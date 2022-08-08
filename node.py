@@ -279,7 +279,7 @@ class SubchainExplorerHandler(tornado.web.RequestHandler):
 
         db = database.get_conn()
         if hash is None:
-            msg_hash = db.get(b'chain%s' % sender[2:].encode('utf8'))
+            msg_hash = db.get(b'chain%s' % sender.encode('utf8'))
             if not msg_hash:
                 return
         else:
