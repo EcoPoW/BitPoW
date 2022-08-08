@@ -278,7 +278,7 @@ def new_chain_block(seq):
                         msg = tornado.escape.json_decode(msg_json)
                         # print(msg)
 
-                        if len(msg[RECEIVER]) == 66:
+                        if len(msg[RECEIVER]) == 42 and msg[RECEIVER].startswith('1x'):
                             msg_hash = msg[HASH]
                             print('new_chain_block msg to contract', msg_hash)
                             msg_sender = msg[SENDER]
@@ -309,7 +309,7 @@ def new_chain_block(seq):
                             # new_contract_address = '0x%s' % msg[HASH]
                             msg_hash = msg[HASH]
                             msg_sender = msg[SENDER]
-                            msg_data = msg[DATA]
+                            msg_data = msg[MSG_DATA]
                             print('mining new_contract', msg_hash)
                             # print('mining new_contract_address', new_contract_address)
 
@@ -319,6 +319,13 @@ def new_chain_block(seq):
                             # print('mining signature', contract_signature.to_hex())
                             new_contract_block = [new_contract_hash, '0'*64, msg_sender, msg_hash, 1, msg_data, new_timestamp, contract_signature.to_hex()]
                             new_contract_address = '1x%s' % new_contract_hash[:40]
+
+                            msgstate = stf.subchain_stf({}, msg_data)
+                            # print('msgstate', msgstate)
+                            msgstate_json = tornado.escape.json_encode(msgstate)
+                            print('msgstate_json', msgstate_json)
+                            print('new_contract_hash', new_contract_hash)
+                            db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
                             db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                             db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
