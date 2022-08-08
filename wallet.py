@@ -53,10 +53,14 @@ def main():
         token = sys.argv[2]
         assert token[0] not in string.digits
         assert token == token.upper()
-        amount = int(sys.argv[3])
+
+        address = sys.argv[3]
+
+    elif sys.argv[1] == 'create_asset_contract':
+        amount = int(sys.argv[2])
         assert amount > 0
         try:
-            decimal = int(sys.argv[4])
+            decimal = int(sys.argv[3])
         except:
             decimal = 0
 
@@ -74,11 +78,11 @@ def main():
 
         data = {
             'type': 'new_asset',
-            'name': token,
             'amount': amount,
             'decimal': decimal,
-            'description': '',
-            'bridges': {},
+            # 'name': token,
+            # 'description': '',
+            # 'bridges': {},
             'creator': sender_address
         }
 
@@ -91,12 +95,11 @@ def main():
             prev_hash = '0'*64
 
         data_json = json.dumps(data)
-        block_hash_obj = hashlib.sha256((prev_hash + sender_address + '0x' + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash_obj = hashlib.sha256((prev_hash + sender_address + '1x' + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
         block_hash = block_hash_obj.hexdigest()
         signature = uuid.uuid4().hex
-        block = [block_hash, prev_hash, sender_address, '0x', height+1, data, new_timestamp, signature]
+        block = [block_hash, prev_hash, sender_address, '1x', height+1, data, new_timestamp, signature]
         rsp = requests.post('http://%s:%s/new_subchain_block' % (host, port), json=block)
-
 
 
     elif sys.argv[1] == 'create_storage_contract':

@@ -181,7 +181,7 @@ def new_chain_block(seq):
             # print(prev_blockstate)
             last_confirmed_msg_hash = prev_blockstate.get('subchains', {}).get(address, '0'*64)
             print('last_confirmed_msg_hash', last_confirmed_msg_hash)
-            contracts_to_create = []
+            # contracts_to_create = []
             # verify messages on subchain
             while True:
                 msg_json = db.get(b'msg%s' % prev_msg_hash.encode('utf8'))
@@ -255,17 +255,17 @@ def new_chain_block(seq):
                 print('new_chain_block msg', msg)
 
                 if msg[MSG_DATA].get('type') == 'new_asset':
-                    token = msg[MSG_DATA]['name']
+                    # token = msg[MSG_DATA]['name']
+                    # tokens_to_block[token] = address
                     address = msg[MSG_DATA]['creator']
-                    tokens_to_block[token] = address
 
                 elif msg[MSG_DATA].get('type') == 'new_alias':
                     alias = msg[MSG_DATA]['name']
                     address = msg[MSG_DATA]['address']
                     aliases_to_block[alias] = address
 
-                # if msg[RECEIVER] == '0x' or len(msg[RECEIVER]) == 66:
-                #     contracts_to_create.append(msg[HASH])
+                if msg[RECEIVER] == '1x' or len(msg[RECEIVER]) == 42:
+                    contracts_to_create.append(msg[HASH])
 
                 prev_msg_hash = msg[PREV_HASH].encode('utf8')
                 # print('new_chain_block msg parent hash', prev_msg_hash)
@@ -304,7 +304,7 @@ def new_chain_block(seq):
                             db.put(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
                             # print(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
 
-                        elif msg[RECEIVER] == '0x':
+                        elif msg[RECEIVER] == '1x':
                             # new_contract_block
                             # new_contract_address = '0x%s' % msg[HASH]
                             msg_hash = msg[HASH]
@@ -318,9 +318,10 @@ def new_chain_block(seq):
                             contract_signature = tree.node_sk.sign_msg(str(new_contract_hash).encode("utf8"))
                             # print('mining signature', contract_signature.to_hex())
                             new_contract_block = [new_contract_hash, '0'*64, msg_sender, msg_hash, 1, msg_data, new_timestamp, contract_signature.to_hex()]
+                            new_contract_address = '1x%s' % new_contract_hash[:40]
 
                             db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                            db.put(b'chain%s' % msg[HASH].encode('utf8'), new_contract_hash.encode('utf8'))
+                            db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
 
                     subchains_to_block[pool_address[4:].decode('utf8')] = msg_hash_to_confirm.decode('utf8')                    
                     break
@@ -396,9 +397,8 @@ def new_subchain_block(seq):
         if not sender_bin.startswith(tree.current_nodeid):
             return
 
-    assert sender.startswith('0x')
-    assert len(sender) == 42
-    assert (receiver.startswith('0x') and len(receiver) == 42) or (receiver.startswith('0x') or len(receiver) == 66) or len(receiver) == 64 or receiver == '0x' #valid address or empty to create contract
+    assert sender.startswith('0x') and len(sender) == 42
+    assert (receiver.startswith('0x') or receiver.startswith('1x')) and (len(receiver) == 42 or len(receiver) == 2) #valid address or empty to create contract
     # validate
     # check current main chain block state, find the subchain blocks until then, check the valdation
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
@@ -434,13 +434,12 @@ def new_subchain_block(seq):
     db.put(b'msgstate_%s' % msg_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
     # verify
-    if data.get('type') == 'new_asset':
-        # get blockstate
-        block_hash = db.get(b'chain')
-        blockstate_json = db.get(b'blockstate_%s' % block_hash)
-        blockstate = tornado.escape.json_decode(blockstate_json)
-        print('blockstate', blockstate)
-        assert data['name'] not in blockstate.get('tokens', {})
+    # if data.get('type') == 'new_asset':
+    #     block_hash = db.get(b'chain')
+    #     blockstate_json = db.get(b'blockstate_%s' % block_hash)
+    #     blockstate = tornado.escape.json_decode(blockstate_json)
+    #     print('blockstate', blockstate)
+    #     assert data['name'] not in blockstate.get('tokens', {})
 
 
     # try:

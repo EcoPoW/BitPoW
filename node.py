@@ -270,7 +270,7 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
 class SubchainExplorerHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
-        assert sender.startswith('0x') and (len(sender) == 42 or len(sender) == 66)
+        assert len(sender) == 42 and (sender.startswith('0x') or sender.startswith('1x'))
         hash = self.get_argument('hash', None)
         self.write('<a href="/dashboard">Dashboard</a> ')
         self.write('<a href="/chain_explorer">Chain Explorer</a> ')
@@ -312,10 +312,10 @@ class UserExplorerHandler(tornado.web.RequestHandler):
                 continue
             if not k.startswith(b'chain'):
                 break
-            if len(k) == 40+5:
-                self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Account 0x'), v.decode()))
-            elif len(k) == 64+5:
-                self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
+            if len(k) == 42+5 and k.startswith(b'chain0x'):
+                self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', ''), k.decode().replace('chain', 'Account '), v.decode()))
+            elif len(k) == 42+5 and k.startswith(b'chain1x'):
+                self.write("<a href='/subchain_explorer?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', ''), k.decode().replace('chain', 'Contract '), v.decode()))
 
 
 class TempchainExplorerHandler(tornado.web.RequestHandler):

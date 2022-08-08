@@ -38,7 +38,7 @@ def subchain_stf(state, data):
     if data.get('type') == 'new_asset':
         # print('data -------', data)
         balances = new_state.get('balances', {})
-        balances[data['name']] = data['amount']
+        balances[data['creator']] = data['amount']
         new_state['balances'] = balances
         # print('state -------', new_state)
 
