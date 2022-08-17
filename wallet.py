@@ -5,15 +5,16 @@ import os
 import time
 import pprint
 import uuid
-# import random
 import string
-# import base64
 import hashlib
 import json
+# import random
+# import base64
 
 import requests
+import web3
+# import eth_keys
 # import ecdsa
-import eth_keys
 
 import stf
 
@@ -68,8 +69,11 @@ def main():
         host = store_obj['host']
         port = store_obj['port']
 
-        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        sender_address = sender_sk.public_key.to_checksum_address()
+        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        # sender_address = sender_sk.public_key.to_checksum_address()
+        account = web3.eth.Account.from_key(open(key, 'r').read())
+        sender_address = account.address
+
         rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
@@ -111,8 +115,10 @@ def main():
         host = store_obj['host']
         port = store_obj['port']
 
-        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        sender = sender_sk.public_key.to_checksum_address()
+        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        # sender = sender_sk.public_key.to_checksum_address()
+        account = web3.eth.Account.from_key(open(key, 'r').read())
+        sender = account.address
         # receiver = sender
         receiver = '0x'
 
@@ -175,8 +181,10 @@ def main():
         # subchain_blocks = set()
         # subchain_proofs = set()
 
-        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        sender = sender_sk.public_key.to_checksum_address()
+        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        # sender = sender_sk.public_key.to_checksum_address()
+        account = web3.eth.Account.from_key(open(key, 'r').read())
+        sender = account.address
         receiver = sender
 
         rsp = requests.get('http://%s:%s/get_highest_block_hash' % (host, port))
