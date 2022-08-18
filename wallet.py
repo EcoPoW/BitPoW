@@ -59,7 +59,7 @@ def main():
 
     elif sys.argv[1] == 'create_asset_contract':
         amount = int(sys.argv[2])
-        assert amount > 0
+        assert amount >= 0
         try:
             decimal = int(sys.argv[3])
         except:
@@ -105,6 +105,7 @@ def main():
         block = [block_hash, prev_hash, sender_address, '1x', height+1, data, new_timestamp, signature]
         rsp = requests.post('http://%s:%s/new_subchain_block' % (host, port), json=block)
 
+        return
 
     elif sys.argv[1] == 'create_storage_contract':
         # is a contract
@@ -176,125 +177,59 @@ def main():
         host = store_obj['host']
         port = store_obj['port']
 
-        # chain_blocks = set()
-        # chain_proofs = set()
-        # subchain_blocks = set()
-        # subchain_proofs = set()
+        contract = sys.argv[2]
 
-        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        # sender = sender_sk.public_key.to_checksum_address()
         account = web3.eth.Account.from_key(open(key, 'r').read())
         sender = account.address
         receiver = sender
 
-        rsp = requests.get('http://%s:%s/get_highest_block_hash' % (host, port))
-        print(rsp.json())
-        highest_block_hash = rsp.json()["hash"]
-        highest_block_height = rsp.json()["height"]
-
-        chain_hash_every_100 = store_obj.get('chain_hash_every_100', {})
-        block_hash = highest_block_hash
-        # scan main chain
-        while True:
-            rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, block_hash))
-            chain_block = rsp.json()["block"]
-            if chain_block is None:
-                break
-            height = str(chain_block[2])
-            if chain_block[2] % 100 == 0:
-                print(height, block_hash)
-                if height in chain_hash_every_100:
-                    break
-                chain_hash_every_100[height] = block_hash
-
-            block_hash = chain_block[1]
-            if chain_block[2] == 1:
-                break
-
-        # pprint.pprint(chain_hash_every_100)
-        store_obj['chain_hash_every_100'] = chain_hash_every_100
-
-        state = {}
-        chain_blockstate_every_100 = store_obj.get('chain_blockstate_every_100', {})
-        i = 0
-        for i in range(100, highest_block_height, 100):
-            print('>', i, chain_hash_every_100[str(i)])
-            if str(i) in chain_blockstate_every_100:
-                state = chain_blockstate_every_100[str(i)]
-                print('load state', state)
-                continue
-
-            block_hash = chain_hash_every_100[str(i)]
-            stack = []
-            for j in range(100):
-                rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, block_hash))
-                chain_block = rsp.json()["block"]
-                if chain_block is None:
-                    break
-
-                stack.append(chain_block)
-                block_hash = chain_block[1]
-            print(len(stack))
-
-            while stack:
-                block = stack.pop()
-                state = stf.chain_stf(state, block[6])
-                # print(block[2])
-                if block[2] % 100 == 0:
-                    print('save state', block[2])
-                    chain_blockstate_every_100[str(block[2])] = state
-
-        store_obj['chain_blockstate_every_100'] = chain_blockstate_every_100
-        with open('./.wallet.json', 'w') as f:
-            f.write(json.dumps(store_obj))
-
-        print('highest_block_height', highest_block_height)
-        stack = []
-        block_hash = highest_block_hash
-        for j in range(i, highest_block_height):
-            print(j, block_hash)
-            rsp = requests.get('http://%s:%s/get_block?hash=%s' % (host, port, block_hash))
-            chain_block = rsp.json()["block"]
-            # print(chain_block)
-            if chain_block is None:
-                break
-
-            stack.append(chain_block)
-            block_hash = chain_block[1]
-            # print(len(stack))
-
-        while stack:
-            block = stack.pop()
-            # print('>>> state', state)
-            print('<<< block', block[6])
-            state = stf.chain_stf(state, block[6])
-            print('== new state', state)
-
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_state?sender=%s' % (host, port, contract))
+        print(rsp.json()['balances'][sender])
         return
-            # break
-
-            # data = chain_block[6]
-            # print(chain_block)
-
-            # turn my proof to money
-            # for proof in data["proofs"]:
-            #     rsp = requests.get('http://%s:%s/get_proof?hash=%s' % (host, port, proof[0]))
-            #     proof = rsp.json()["proof"]
-            #     if proof[5] == sender:
-            #         print('  proof', 2**256/int(proof[0], 16))
-            #         # print(proof[2], proof[0])
-            #         chain_proofs.add(proof[0])
-
-            # check the subchains confirmed by main chain
-            # for sender_account, msg_hash in data.get("subchains", {}).items():
-            #     rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, msg_hash))
-            #     # print('  subchain block', rsp.json()['msg'])
-            #     print('  subchain', sender_account, msg_hash, rsp.json()['msg'][4])
-
-            #     # check each subchain all the way to see if any message/transaction sent to me?
-
 
     elif sys.argv[1] == 'send':
+        key = store_obj['key']
+        host = store_obj['host']
+        port = store_obj['port']
+
+        contract = sys.argv[2]
+        receiver = sys.argv[3]
+        amount = sys.argv[4]
+
+        account = web3.eth.Account.from_key(open(key, 'r').read())
+        sender_address = account.address
+
+        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
+        prev_hash = rsp.json()['hash']
+        # print('prev_hash', prev_hash)
+        rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
+        block = rsp.json()['msg']
+
+        data = {
+            'type': 'send_asset',
+            'amount': amount,
+            # 'decimal': decimal,
+            # 'name': token,
+            # 'description': '',
+            # 'bridges': {},
+            'to': receiver
+        }
+
+        new_timestamp = time.time()
+        if block:
+            height = block[4]
+            prev_hash = block[0]
+        else:
+            height = 0
+            prev_hash = '0'*64
+
+        data_json = json.dumps(data)
+        block_hash_obj = hashlib.sha256((prev_hash + sender_address + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        signature = uuid.uuid4().hex
+        block = [block_hash, prev_hash, sender_address, receiver, height+1, data, new_timestamp, signature]
+        rsp = requests.post('http://%s:%s/new_subchain_block' % (host, port), json=block)
+
         return
 
 
