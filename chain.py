@@ -214,9 +214,9 @@ def new_chain_block(seq):
                     # print('verify done', address, prev_msg_hash, last_confirmed_msg_hash)
                     break
 
-            data_clone = copy.copy(data)
-            # data_clone['balances_to_collect'] = balances_to_collect
-            blockstate = stf.chain_stf(prev_blockstate, data_clone)
+        data_clone = copy.copy(data)
+        # data_clone['balances_to_collect'] = balances_to_collect
+        blockstate = stf.chain_stf(prev_blockstate, data_clone)
 
         db.put(b'blockstate_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(blockstate).encode('utf8'))
         # try:
@@ -290,20 +290,20 @@ def new_chain_block(seq):
                     print('msg', msg_hash)
                     msg_json = db.get(b'msg%s' % msg_hash)
                     print(msg_json)
-                if not msg_json:
-                    continue
-                msg = tornado.escape.json_decode(msg_json)
-                    # print('new_chain_block msg', msg)
+                    if not msg_json:
+                        continue
+                    msg = tornado.escape.json_decode(msg_json)
+                    print('new_chain_block msg', msg)
 
-                if msg[MSG_DATA].get('type') == 'new_asset':
-                    # token = msg[MSG_DATA]['name']
-                    # tokens_to_block[token] = address
-                    address = msg[MSG_DATA]['creator']
+                    if msg[MSG_DATA].get('type') == 'new_asset':
+                        # token = msg[MSG_DATA]['name']
+                        # tokens_to_block[token] = address
+                        address = msg[MSG_DATA]['creator']
 
-                elif msg[MSG_DATA].get('type') == 'new_alias':
-                    alias = msg[MSG_DATA]['name']
-                    address = msg[MSG_DATA]['address']
-                    aliases_to_block[alias] = address
+                    elif msg[MSG_DATA].get('type') == 'new_alias':
+                        alias = msg[MSG_DATA]['name']
+                        address = msg[MSG_DATA]['address']
+                        aliases_to_block[alias] = address
 
                     if msg[RECEIVER] == '1x':
                         contracts_to_interact.append(msg[HASH])
@@ -320,31 +320,31 @@ def new_chain_block(seq):
             # print(msg)
 
             if msg[RECEIVER] == '1x':
-                            # new_contract_block
-                            # new_contract_address = '0x%s' % msg[HASH]
-                            msg_hash = msg[HASH]
-                            msg_sender = msg[SENDER]
+                # new_contract_block
+                # new_contract_address = '0x%s' % msg[HASH]
+                msg_hash = msg[HASH]
+                msg_sender = msg[SENDER]
                 msg_height = msg[MSG_HEIGHT]
-                            msg_data = msg[MSG_DATA]
+                msg_data = msg[MSG_DATA]
                 # print('mining new_contract', msg_hash)
-                            # print('mining new_contract_address', new_contract_address)
+                # print('mining new_contract_address', new_contract_address)
 
                 # new_timestamp = time.time()
                 new_contract_hash = hashlib.sha256(('0'*64 + msg_sender + '' + str(1) + tornado.escape.json_encode(msg_data) + msg_hash + str(msg_height)).encode('utf8')).hexdigest()
                 # contract_signature = tree.node_sk.sign_msg(str(new_contract_hash).encode("utf8"))
-                            # print('mining signature', contract_signature.to_hex())
+                # print('mining signature', contract_signature.to_hex())
                 new_contract_block = [new_contract_hash, '0'*64, msg_sender, '', 1, msg_data, msg_hash, msg_height]
-                            new_contract_address = '1x%s' % new_contract_hash[:40]
+                new_contract_address = '1x%s' % new_contract_hash[:40]
 
-                            msgstate = stf.subchain_stf({}, msg_data)
-                            # print('msgstate', msgstate)
-                            msgstate_json = tornado.escape.json_encode(msgstate)
+                msgstate = stf.subchain_stf({}, msg_data)
+                # print('msgstate', msgstate)
+                msgstate_json = tornado.escape.json_encode(msgstate)
                 # print('msgstate_json', msgstate_json)
                 # print('new_contract_hash', new_contract_hash)
-                            db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
+                db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
-                            db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                            db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
+                db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
+                db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
 
                 subchains_to_block[new_contract_address] = new_contract_hash
 
@@ -354,6 +354,7 @@ def new_chain_block(seq):
                 msg_sender = msg[SENDER]
                 msg_receiver = msg[RECEIVER]
                 msg_height = msg[MSG_HEIGHT]
+                msg_data = msg[MSG_DATA]
                 # user_msg_hash = msg[REF_HASH]
                 # user_msg_height = msg[REF_HEIGHT]
 
@@ -362,21 +363,22 @@ def new_chain_block(seq):
                 # print(contract_parent_hash)
                 contract_block_json = db.get(b'msg%s' % contract_parent_hash)
                 contract_block = tornado.escape.json_decode(contract_block_json)
-                contract_height = contract_block[MSG_HEIGHT]+1
+                contract_height = contract_block[MSG_HEIGHT] + 1
                 # contract_parent_hash = contract_block[PREV_HASH]
-                contract_data = contract_block[MSG_DATA]
+                # contract_data = contract_block[MSG_DATA]
 
                 # new_timestamp = time.time()
-                new_contract_hash = hashlib.sha256((contract_parent_hash.decode('utf8') + msg_sender + '' + str(contract_height) + tornado.escape.json_encode(contract_data) + msg_hash + str(msg_height)).encode('utf8')).hexdigest()
+                new_contract_hash = hashlib.sha256((contract_parent_hash.decode('utf8') + msg_sender + '' + str(contract_height) + tornado.escape.json_encode(msg_data) + msg_hash + str(msg_height)).encode('utf8')).hexdigest()
                 # contract_signature = tree.node_sk.sign_msg(str(new_contract_hash).encode("utf8"))
                 # print('mining signature', contract_signature.to_hex())
-                new_contract_block = [new_contract_hash, contract_parent_hash.decode('utf8'), msg_sender, '', contract_height, contract_data, msg_hash, msg_height]
+                new_contract_block = [new_contract_hash, contract_parent_hash.decode('utf8'), msg_sender, '', contract_height, msg_data, msg_hash, msg_height]
 
                 db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                 # print(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                 db.put(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
                 # print(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
 
+                subchains_to_block[msg_receiver] = new_contract_hash
 
         # check the main chain history to avoid same contract address
         # since the subchain is sharding, which may not existing in KV db
