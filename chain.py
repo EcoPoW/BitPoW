@@ -172,7 +172,7 @@ def new_chain_block(seq):
                 # blockstate = prev_blockstate
                 # blockstate.setdefault('nodes', {}).update(data.get('nodes', {}))
                 # blockstate.setdefault('subchains', {}).update(data.get('subchains', {}))
-                blockstate = stf.chain_stf(prev_blockstate, data)
+                blockstate = stf.chain_stf(prev_blockstate, seq[1:])
 
         # verify subchains
         subchains = data.get('subchains', {})
@@ -214,9 +214,8 @@ def new_chain_block(seq):
                     # print('verify done', address, prev_msg_hash, last_confirmed_msg_hash)
                     break
 
-        data_clone = copy.copy(data)
         # data_clone['balances_to_collect'] = balances_to_collect
-        blockstate = stf.chain_stf(prev_blockstate, data_clone)
+        blockstate = stf.chain_stf(prev_blockstate, seq[1:])
 
         db.put(b'blockstate_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(blockstate).encode('utf8'))
         # try:
@@ -336,7 +335,7 @@ def new_chain_block(seq):
                 new_contract_block = [new_contract_hash, '0'*64, msg_sender, '', 1, msg_data, msg_hash, msg_height]
                 new_contract_address = '1x%s' % new_contract_hash[:40]
 
-                msgstate = stf.subchain_stf({}, msg_data)
+                msgstate = stf.subchain_stf({}, msg)
                 # print('msgstate', msgstate)
                 msgstate_json = tornado.escape.json_encode(msgstate)
                 # print('msgstate_json', msgstate_json)
@@ -372,6 +371,15 @@ def new_chain_block(seq):
                 # contract_signature = tree.node_sk.sign_msg(str(new_contract_hash).encode("utf8"))
                 # print('mining signature', contract_signature.to_hex())
                 new_contract_block = [new_contract_hash, contract_parent_hash.decode('utf8'), msg_sender, '', contract_height, msg_data, msg_hash, msg_height]
+
+                prev_msgstate_json = db.get(b'msgstate_%s' % contract_parent_hash)
+                prev_msgstate = tornado.escape.json_decode(prev_msgstate_json)
+                msgstate = stf.subchain_stf(prev_msgstate, msg)
+                # print('msgstate', msgstate)
+                msgstate_json = tornado.escape.json_encode(msgstate)
+                # print('msgstate_json', msgstate_json)
+                # print('new_contract_hash', new_contract_hash)
+                db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
                 db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                 # print(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
@@ -477,7 +485,7 @@ def new_subchain_block(seq):
 
     # print('prev_msgstate', prev_msgstate)
     # print('data', data)
-    msgstate = stf.subchain_stf(prev_msgstate, data)
+    msgstate = stf.subchain_stf(prev_msgstate, seq[1:])
     # print('msgstate', msgstate)
     msgstate_json = tornado.escape.json_encode(msgstate)
     # print('msgstate_json', msgstate_json)
@@ -737,8 +745,8 @@ def fetch_chain(nodeid):
                 prev_blockstate_json = db.get(b'blockstate_%s' % prev_hash.encode('utf8'))
                 if prev_blockstate_json:
                     prev_blockstate = tornado.escape.json_decode(prev_blockstate_json)
-            data = block[DATA]
-            blockstate = stf.chain_stf(prev_blockstate, data)
+            # data = block[DATA]
+            blockstate = stf.chain_stf(prev_blockstate, block)
             db.put(b'blockstate_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(blockstate).encode('utf8'))
 
             # print(block_hash, block[HEIGHT])

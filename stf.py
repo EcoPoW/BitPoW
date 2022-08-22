@@ -1,6 +1,7 @@
 import hashlib
 import copy
 
+import chain
 import setting
 import rpc
 
@@ -24,25 +25,28 @@ def tempchain_chat_stf(state, data):
 
     return new_state
 
-def subchain_stf(state, data):
+def subchain_stf(state, msg):
+    data = msg[chain.MSG_DATA]
+
     new_state = copy.deepcopy(state)
-    if 'eth_raw_tx' in data:
-        raw_tx = data['eth_raw_tx']
-        tx, tx_from, tx_to, _tx_hash = rpc.tx_info(raw_tx)
-        balance = new_state.get('balances', {}).get('SHA', 10**15)
-        print('balance', balance, tx.value)
-        balance -= int(tx.value/10**18)
-        new_state.setdefault('balances', {})
-        new_state['balances']['SHA'] = balance
+    # if 'eth_raw_tx' in data:
+    #     raw_tx = data['eth_raw_tx']
+    #     tx, tx_from, tx_to, _tx_hash = rpc.tx_info(raw_tx)
+    #     balance = new_state.get('balances', {}).get('SHA', 10**15)
+    #     print('balance', balance, tx.value)
+    #     balance -= int(tx.value/10**18)
+    #     new_state.setdefault('balances', {})
+    #     new_state['balances']['SHA'] = balance
 
     if data.get('type') == 'new_asset':
-        # print('data -------', data)
         balances = new_state.get('balances', {})
         balances[data['creator']] = data['amount']
         new_state['balances'] = balances
-        # print('state -------', new_state)
 
-    if data.get('type') == 'folder_storage':
+    elif data.get('type') == 'send_asset':
+        balances = new_state.get('balances', {})
+
+    elif data.get('type') == 'folder_storage':
         folder = data.get('name')
         assert folder
         new_state.setdefault('folder_storage', {})
@@ -72,7 +76,8 @@ def subchain_stf(state, data):
 
     return new_state
 
-def chain_stf(state, data):
+def chain_stf(state, block):
+    data = copy.copy(block[chain.DATA])
     new_state = {}
 
     if 'nodes' in data:
