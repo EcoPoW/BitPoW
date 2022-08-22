@@ -252,11 +252,11 @@ def main():
             block_hash = block_stack.pop()
             print(block_hash)
             rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
-            subchain_block = rsp.json()['msg']
-            msg = subchain_block[5]
-            print('    msg', subchain_block[5])
+            msg = rsp.json()['msg']
+            # msg = subchain_block[5]
+            print('    msg', msg[5])
             print('    old', blockstate_dict)
-            blockstate_dict = subchain_stf(blockstate_dict, msg)
+            blockstate_dict = stf.subchain_stf(blockstate_dict, msg)
             print('    new', blockstate_dict)
             print('')
 
@@ -291,8 +291,10 @@ def main():
 
         new_timestamp = time.time()
         receiver = sender
-        block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
+        block_digest = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_digest.hexdigest()
         signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        # sign_msg = account.signHash(block_digest.digest())
         # print('signature', signature.to_hex())
         try:
             new_blockstate_dict = stf.subchain_stf(blockstate_dict, data)

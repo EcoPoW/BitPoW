@@ -5,7 +5,8 @@ import chain
 import setting
 import rpc
 
-def tempchain_chat_stf(state, data):
+def tempchain_chat_stf(state, msg):
+    data = msg[chain.MSG_DATA]
     new_state = copy.deepcopy(state)
     if 'channel_id' not in new_state and 'channel_id' in data:
         new_state['channel_id'] = data['channel_id']
@@ -27,6 +28,7 @@ def tempchain_chat_stf(state, data):
 
 def subchain_stf(state, msg):
     data = msg[chain.MSG_DATA]
+    sender = msg[chain.SENDER]
 
     new_state = copy.deepcopy(state)
     # if 'eth_raw_tx' in data:
@@ -45,6 +47,11 @@ def subchain_stf(state, msg):
 
     elif data.get('type') == 'send_asset':
         balances = new_state.get('balances', {})
+        to = data.get('to')
+        balances[sender] -= int(data['amount'])
+        balances.setdefault(to, 0)
+        balances[to] += int(data['amount'])
+        new_state['balances'] = balances
 
     elif data.get('type') == 'folder_storage':
         folder = data.get('name')

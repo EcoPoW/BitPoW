@@ -12,7 +12,7 @@ import string
 import uuid
 
 import requests
-import eth_keys
+import web3
 import nacl.public
 import ecdsa
 
@@ -56,12 +56,11 @@ def get_tempchain_state(host, port, channel_id):
         block_hash = block_stack.pop()
         # print(block_hash)
         rsp = requests.get('http://%s:%s/get_tempchain_block?hash=%s' % (host, port, block_hash))
-        subchain_block = rsp.json()['msg']
-        prev_hash = subchain_block[0]
-        prev_height = subchain_block[3]
-        msg = subchain_block[4]
-        print('    block', subchain_block[0])
-        print('    msg', subchain_block[4])
+        msg = rsp.json()['msg']
+        prev_hash = msg[0]
+        prev_height = msg[3]
+        print('    block', msg[0])
+        print('    msg', msg[4])
         print('    old', tempstate)
         tempstate = stf.tempchain_chat_stf(tempstate, msg)
         print('    new', tempstate)
@@ -84,8 +83,10 @@ def main():
     host = store_obj['host']
     port = store_obj['port']
     key = store_obj['key']
-    sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-    sender = sender_sk.public_key.to_checksum_address()
+    # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+    # sender = sender_sk.public_key.to_checksum_address()
+    account = web3.eth.Account.from_key(open(key, 'r').read())
+    sender = account.address
     print('address', sender)
 
     if len(sys.argv) < 2:
@@ -109,8 +110,8 @@ def main():
         return
 
     elif sys.argv[1] == 'enable':
-        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        sender = sender_sk.public_key.to_checksum_address()
+        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        # sender = sender_sk.public_key.to_checksum_address()
 
         blockstate_hash = store_obj.get('blockstate_hash', '0'*64)
         blockstate_dict = store_obj.get('blockstate_dict', {})
@@ -143,12 +144,12 @@ def main():
             block_hash = block_stack.pop()
             print(block_hash)
             rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
-            subchain_block = rsp.json()['msg']
-            msg = subchain_block[5]
-            print('    block', subchain_block[4])
-            print('    msg', subchain_block[5])
+            msg = rsp.json()['msg']
+            # msg = subchain_block[5]
+            print('    block', msg[4])
+            print('    msg', msg[5])
             print('    old', blockstate_dict)
-            blockstate_dict = stf.tempchain_chat_stf(blockstate_dict, msg)
+            blockstate_dict = stf.subchain_stf(blockstate_dict, msg)
             print('    new', blockstate_dict)
             print('')
 
@@ -172,11 +173,13 @@ def main():
 
         new_timestamp = time.time()
         receiver = '0x'
-        block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-        signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        block_digest = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_digest.hexdigest()
+        # signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        sign_msg = account.signHash(block_digest.digest())
         # print('signature', signature.to_hex())
 
-        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
+        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, sign_msg.signature.hex()]
         print(new_subchain_block)
         rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
 
@@ -185,8 +188,8 @@ def main():
             f.write(json.dumps(store_obj))
 
     elif sys.argv[1] == 'disable':
-        sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-        sender = sender_sk.public_key.to_checksum_address()
+        # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+        # sender = sender_sk.public_key.to_checksum_address()
 
         blockstate_hash = store_obj.get('blockstate_hash', '0'*64)
         blockstate_dict = store_obj.get('blockstate_dict', {})
@@ -219,12 +222,12 @@ def main():
             block_hash = block_stack.pop()
             print(block_hash)
             rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, block_hash))
-            subchain_block = rsp.json()['msg']
-            msg = subchain_block[5]
-            print('    block', subchain_block[4])
-            print('    msg', subchain_block[5])
+            msg = rsp.json()['msg']
+            # msg = subchain_block[5]
+            print('    block', msg[4])
+            print('    msg', msg[5])
             print('    old', blockstate_dict)
-            blockstate_dict = stf.tempchain_chat_stf(blockstate_dict, msg)
+            blockstate_dict = stf.subchain_stf(blockstate_dict, msg)
             print('    new', blockstate_dict)
             print('')
 
@@ -244,11 +247,13 @@ def main():
 
         new_timestamp = time.time()
         receiver = '0x'
-        block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-        signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        block_digest = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_digest.hexdigest()
+        # signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        sign_msg = account.signHash(block_digest.digest())
         # print('signature', signature.to_hex())
 
-        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
+        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, sign_msg.signature.hex()]
         print(new_subchain_block)
         rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
         print(rsp.text)

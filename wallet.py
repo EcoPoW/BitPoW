@@ -159,10 +159,13 @@ def main():
         data_json = json.dumps(data)
 
         new_timestamp = time.time()
-        block_hash = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8')).hexdigest()
-        signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        block_digest = hashlib.sha256((highest_prev_hash + sender + receiver + str(height+1) + data_json + str(new_timestamp)).encode('utf8'))
+        block_hash = block_digest.hexdigest()
+        # signature = sender_sk.sign_msg(str(block_hash).encode("utf8"))
+        sign_msg = account.signHash(block_digest.digest())
         print('signature', signature.to_hex())
-        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, signature.to_hex()]
+
+        new_subchain_block = [block_hash, highest_prev_hash, sender, receiver, height+1, data, new_timestamp, sign_msg.signature.hex()]
         rsp = requests.post('http://%s:%s/new_subchain_block?sender=%s' % (host, port, sender), json = new_subchain_block)
         print("new subchain block", new_subchain_block)
 
@@ -184,6 +187,7 @@ def main():
         receiver = sender
 
         rsp = requests.get('http://%s:%s/get_highest_subchain_block_state?sender=%s' % (host, port, contract))
+        print(rsp.text)
         print(rsp.json()['balances'][sender])
         return
 
