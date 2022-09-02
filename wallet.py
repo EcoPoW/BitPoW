@@ -49,7 +49,11 @@ def main():
             f.write(json.dumps(store_obj))
         return
 
-    elif sys.argv[1] == 'create_asset':
+    key = store_obj['key']
+    host = store_obj['host']
+    port = store_obj['port']
+
+    if sys.argv[1] == 'create_asset':
         # token must be UPPER CASE
         token = sys.argv[2]
         assert token[0] not in string.digits
@@ -65,13 +69,9 @@ def main():
         except:
             decimal = 0
 
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         # sender_address = sender_sk.public_key.to_checksum_address()
-        account = web3.eth.Account.from_key(open(key, 'r').read())
+        account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender_address = account.address
 
         rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
@@ -112,13 +112,9 @@ def main():
         # set the balance and rate
         # set the balance
 
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         # sender = sender_sk.public_key.to_checksum_address()
-        account = web3.eth.Account.from_key(open(key, 'r').read())
+        account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender = account.address
         # receiver = sender
         receiver = '0x'
@@ -176,13 +172,9 @@ def main():
         # check main chain, get main chain full state
         # check the subchain of user, get the subchain full state
 
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         contract = sys.argv[2]
 
-        account = web3.eth.Account.from_key(open(key, 'r').read())
+        account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender = account.address
         receiver = sender
 
@@ -192,15 +184,11 @@ def main():
         return
 
     elif sys.argv[1] == 'send':
-        key = store_obj['key']
-        host = store_obj['host']
-        port = store_obj['port']
-
         contract = sys.argv[2]
         receiver = sys.argv[3]
         amount = sys.argv[4]
 
-        account = web3.eth.Account.from_key(open(key, 'r').read())
+        account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender_address = account.address
 
         rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))

@@ -6,7 +6,9 @@ import setting
 import rpc
 
 def tempchain_chat_stf(state, msg):
-    data = msg[chain.MSG_DATA]
+    print('state', state)
+    data = msg[4]
+    print('data', data)
     new_state = copy.deepcopy(state)
     if 'channel_id' not in new_state and 'channel_id' in data:
         new_state['channel_id'] = data['channel_id']

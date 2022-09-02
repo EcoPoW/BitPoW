@@ -70,25 +70,6 @@ def get_tempchain_state(host, port, channel_id):
 
 
 def main():
-    store_obj = {}
-    try:
-        with open('./.messager.json', 'r') as f:
-            store_obj = json.loads(f.read())
-            pprint.pprint(store_obj)
-
-    except:
-        print('error')
-        # return
-
-    host = store_obj['host']
-    port = store_obj['port']
-    key = store_obj['key']
-    # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
-    # sender = sender_sk.public_key.to_checksum_address()
-    account = web3.eth.Account.from_key(open(key, 'r').read())
-    sender = account.address
-    print('address', sender)
-
     if len(sys.argv) < 2:
         print('''help:
   messager.py key
@@ -103,13 +84,32 @@ def main():
 ''')
         return
 
+    store_obj = {}
+    try:
+        with open('./.messager.json', 'r') as f:
+            store_obj = json.loads(f.read())
+            pprint.pprint(store_obj)
+
+    except:
+        print('error')
+        # return
+
     if sys.argv[1] in ['key', 'host', 'port']:
         store_obj[sys.argv[1]] = sys.argv[2]
         with open('./.messager.json', 'w') as f:
             f.write(json.dumps(store_obj))
         return
 
-    elif sys.argv[1] == 'enable':
+    host = store_obj['host']
+    port = store_obj['port']
+    key = store_obj['key']
+    # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
+    # sender = sender_sk.public_key.to_checksum_address()
+    account = web3.eth.Account.from_key(open(key, 'r').read().strip())
+    sender = account.address
+    print('address', sender)
+
+    if sys.argv[1] == 'enable':
         # sender_sk = eth_keys.keys.PrivateKey(open(key, 'rb').read())
         # sender = sender_sk.public_key.to_checksum_address()
 
@@ -292,9 +292,9 @@ def main():
         knockdoor_data_json_bytes = knockdoor_data_json.encode('utf8')
         knockdoor_data_encrypted = encrypt_nacl(target_chat_master_pk._public_key, knockdoor_data_json_bytes)
         # knockdoor_data_encrypted broadcast
-        print(base64.b16encode(knockdoor_data_encrypted), len(knockdoor_data_encrypted))
+        print('QRcode encrypted', base64.b16encode(knockdoor_data_encrypted), len(knockdoor_data_encrypted))
         # or encode in QR code without encrypting
-        print(knockdoor_data_json, len(knockdoor_data_json))
+        print('QRcode plaintext', knockdoor_data_json, len(knockdoor_data_json))
 
         # decrypted_data = decrypt_nacl(chat_master_sk._private_key, encrypted_data)
         # print(decrypted_data)
@@ -312,7 +312,7 @@ def main():
             'temp_contacts': [base64.b16encode(chat_temp_pk.point.to_bytes()).decode('utf8')]
         }
         tempchain_init_data_json = json.dumps(tempchain_init_data)
-        print(tempchain_init_data)
+        print('tempchain_init_data', tempchain_init_data)
 
         # print(chat_sk.secret_multiplier)
         chat_sig_sk = ecdsa.keys.SigningKey.from_secret_exponent(chat_sk.secret_multiplier, ecdsa.SECP256k1)
