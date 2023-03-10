@@ -179,18 +179,18 @@ def mining():
     # new_identity = "%s:%s" % (nodeno, pk)
     new_identity = pk.to_checksum_address()
     new_timestamp = time.time()
-    if nonce % 1000 == 0:
-        print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_to_block))
+    # if nonce % 1000 == 0:
+    #     print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_to_block))
     for i in range(100):
         block_hash_obj = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8'))
         block_hash = block_hash_obj.hexdigest()
         block_hash_bytes = block_hash_obj.digest()
         if int(block_hash, 16) < block_difficulty:
-            if chain.recent_longest:
-                print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
+            # if chain.recent_longest:
+            #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
             sig = tree.node_sk.sign_msg_hash(block_hash_bytes)
-            print(sig)
+            # print(sig)
             txid = uuid.uuid4().hex
             message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, sig.to_hex(), txid]
             messages_out.append(message)
@@ -216,13 +216,13 @@ def validate():
     highest_block_height, highest_block_hash, _ = chain.get_highest_block()
 
     db = database.get_conn()
-    print('validate nodes_to_fetch', chain.nodes_to_fetch)
+    # print('validate nodes_to_fetch', chain.nodes_to_fetch)
     fetched_nodes = set()
     for nodeid in chain.nodes_to_fetch:
         fetched_nodes.add(nodeid)
         new_chain_hash, new_chain_height = chain.fetch_chain(nodeid)
-        print('validate', highest_block_hash, highest_block_height)
-        print('validate', new_chain_hash, new_chain_height)
+        # print('validate', highest_block_hash, highest_block_height)
+        # print('validate', new_chain_hash, new_chain_height)
         if new_chain_height > highest_block_height:
             highest_block_hash = new_chain_hash
             highest_block_height = new_chain_height
@@ -245,7 +245,7 @@ def worker_thread():
         if chain.worker_thread_mining:
             mining()
             if setting.EASY_MINING:
-                print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
+                # print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
                 time.sleep(setting.BLOCK_INTERVAL_SECONDS)
             else:
                 time.sleep(2)

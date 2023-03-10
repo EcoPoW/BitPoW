@@ -39,6 +39,7 @@ parent_host = None
 parent_port = None
 dashboard_host = None
 dashboard_port = None
+bootstrap_url = None
 
 current_branch = None
 available_branches = set()
@@ -557,7 +558,10 @@ class NodeConnector(object):
 
         elif seq[0] == "NODE_NEIGHBOURHOODS":
             nodeid = seq[1]
-            if current_nodeid is not None and node_distance(nodeid, current_nodeid) > setting.NEIGHBOURHOODS_HOPS:
+            print('nodeid', nodeid)
+            if nodeid is None or current_nodeid is None:
+                return
+            if node_distance(nodeid, current_nodeid) > setting.NEIGHBOURHOODS_HOPS:
                 return
             node_neighborhoods[nodeid] = tuple(seq[2])
             # print(current_port, "NODE_NEIGHBOURHOODS", current_nodeid, nodeid, node_neighborhoods)
@@ -688,8 +692,11 @@ def connect():
 
     else:
         if parent_host and parent_port:
-            # NodeConnector(parent_host, parent_port, "")
-            bootstrap([parent_host, parent_port])
+            NodeConnector(parent_host, parent_port, "")
+
+        elif bootstrap_url:
+            # bootstrap([parent_host, parent_port])
+            pass
 
         else:
             available_branches.add(tuple([current_host, current_port, "0"]))
@@ -704,6 +711,7 @@ def main():
     global parent_port
     global dashboard_host
     global dashboard_port
+    global bootstrap_url
     global node_sk
 
     parser = argparse.ArgumentParser(description="node.py --name=<node_name> [--host=127.0.0.1] [--port=8002]")
@@ -714,6 +722,7 @@ def main():
     parser.add_argument('--parent_port')
     parser.add_argument('--dashboard_host')
     parser.add_argument('--dashboard_port')
+    parser.add_argument('--bootstrap_url')
 
     args = parser.parse_args()
     if not args.name:
@@ -752,6 +761,10 @@ def main():
     if args.dashboard_port:
         dashboard_port = args.dashboard_port
         json_data['dashboard_port'] = dashboard_port
+    if args.bootstrap_url:
+        bootstrap_url = args.bootstrap_url
+        # json_data['bootstrap_url'] = bootstrap_url
+
     with open('miners/%s.json' % current_name, 'w') as f:
         f.write(tornado.escape.json_encode(json_data))
 
