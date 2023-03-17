@@ -42,7 +42,7 @@ dashboard_port = None
 bootstrap_url = None
 
 current_branch = None
-available_branches = set()
+nodes_available = set()
 
 node_neighborhoods = dict()
 node_parents = dict()
@@ -269,7 +269,7 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             self.remove_node = False
             self.close()
 
-            message = ["DISCARDED_BRANCHES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
+            message = ["DISCARDED_NODES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
             forward(message)
             return
 
@@ -277,10 +277,10 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         if self.branch not in NodeHandler.child_nodes:
             NodeHandler.child_nodes[self.branch] = self
 
-        if tuple([current_host, current_port, self.branch]) in available_branches:
-            available_branches.remove(tuple([current_host, current_port, self.branch]))
+        if tuple([current_host, current_port, self.branch]) in nodes_available:
+            nodes_available.remove(tuple([current_host, current_port, self.branch]))
 
-        message = ["DISCARDED_BRANCHES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
+        message = ["DISCARDED_NODES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
         forward(message)
 
         timestamp = time.time()
@@ -304,17 +304,17 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             del NodeHandler.child_nodes[self.branch]
         self.remove_node = True
 
-        available_branches.add(tuple([current_host, current_port, self.branch]))
+        nodes_available.add(tuple([current_host, current_port, self.branch]))
 
-        message = ["AVAILABLE_BRANCHES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
+        message = ["AVAILABLE_NODES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
         forward(message)
 
-        if tuple([self.from_host, self.from_port, self.branch+"0"]) in available_branches:
-            available_branches.remove(tuple([self.from_host, self.from_port, self.branch+"0"]))
-        if tuple([self.from_host, self.from_port, self.branch+"1"]) in available_branches:
-            available_branches.remove(tuple([self.from_host, self.from_port, self.branch+"1"]))
+        if tuple([self.from_host, self.from_port, self.branch+"0"]) in nodes_available:
+            nodes_available.remove(tuple([self.from_host, self.from_port, self.branch+"0"]))
+        if tuple([self.from_host, self.from_port, self.branch+"1"]) in nodes_available:
+            nodes_available.remove(tuple([self.from_host, self.from_port, self.branch+"1"]))
 
-        message = ["DISCARDED_BRANCHES", [[self.from_host, self.from_port, self.branch+"0"], [self.from_host, self.from_port, self.branch+"1"]], uuid.uuid4().hex]
+        message = ["DISCARDED_NODES", [[self.from_host, self.from_port, self.branch+"0"], [self.from_host, self.from_port, self.branch+"1"]], uuid.uuid4().hex]
         forward(message)
 
         if self.branch in nodes_pool:
@@ -332,16 +332,16 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         seq = tornado.escape.json_decode(message)
         # print(current_port, "on message from child", seq)
-        if seq[0] == "DISCARDED_BRANCHES":
+        if seq[0] == "DISCARDED_NODES":
             for i in seq[1]:
                 branch_host, branch_port, branch = i
-                if tuple([branch_host, branch_port, branch]) in available_branches:
-                    available_branches.remove(tuple([branch_host, branch_port, branch]))
+                if tuple([branch_host, branch_port, branch]) in nodes_available:
+                    nodes_available.remove(tuple([branch_host, branch_port, branch]))
 
-        elif seq[0] == "AVAILABLE_BRANCHES":
+        elif seq[0] == "AVAILABLE_NODES":
             for i in seq[1]:
                 branch_host, branch_port, branch = i
-                available_branches.add(tuple([branch_host, branch_port, branch]))
+                nodes_available.add(tuple([branch_host, branch_port, branch]))
 
         elif seq[0] == 'NODE_ID':
             nodeid = seq[1]
@@ -452,10 +452,10 @@ class NodeConnector(object):
             if not NodeConnector.node_parent:
                 NodeConnector.node_parent = self
 
-            available_branches.add(tuple([current_host, current_port, self.branch+"0"]))
-            available_branches.add(tuple([current_host, current_port, self.branch+"1"]))
+            nodes_available.add(tuple([current_host, current_port, self.branch+"0"]))
+            nodes_available.add(tuple([current_host, current_port, self.branch+"1"]))
 
-            message = ["AVAILABLE_BRANCHES", [[current_host, current_port, self.branch+"0"], [current_host, current_port, self.branch+"1"]], uuid.uuid4().hex]
+            message = ["AVAILABLE_NODES", [[current_host, current_port, self.branch+"0"], [current_host, current_port, self.branch+"1"]], uuid.uuid4().hex]
             self.conn.write_message(tornado.escape.json_encode(message))
 
             if current_nodeid is not None:
@@ -481,11 +481,11 @@ class NodeConnector(object):
         if message is None:
             print("NodeConnector reconnect ...")
             # retry before choose another parent
-            # if current_branch in available_branches:
-            #     available_branches.remove(current_branch)
-            # available_branches = set([tuple(i) for i in branches])
-            # branches = list(available_branches)
-            # current_branch = tuple(branches[0])
+            # if current_branch in nodes_available:
+            #     nodes_available.remove(current_branch)
+            # nodes_available = set([tuple(i) for i in nodes])
+            # nodes = list(nodes_available)
+            # current_branch = tuple(nodes[0])
             # branch_host, branch_port, branch = current_branch
             # sig = node_sk.sign(b"%s%s%s%s" % (branch.encode("utf8"), current_host.encode("utf8"), current_port.encode("utf8"), self.pk))
             # print(sig)
@@ -496,25 +496,26 @@ class NodeConnector(object):
 
         seq = tornado.escape.json_decode(message)
         # print(current_port, "on message from parent", seq)
-        if seq[0] == "DISCARDED_BRANCHES":
+        if seq[0] == "DISCARDED_NODES":
             for i in seq[1]:
                 branch_host, branch_port, branch = i
-                if tuple([branch_host, branch_port, branch]) in available_branches:
-                    available_branches.remove(tuple([branch_host, branch_port, branch]))
+                if tuple([branch_host, branch_port, branch]) in nodes_available:
+                    nodes_available.remove(tuple([branch_host, branch_port, branch]))
 
             # for node in NodeHandler.child_nodes.values():
             #     node.write_message(message)
 
-        elif seq[0] == "AVAILABLE_BRANCHES":
+        elif seq[0] == "AVAILABLE_NODES":
             for i in seq[1]:
                 branch_host, branch_port, branch = i
-                available_branches.add(tuple([branch_host, branch_port, branch]))
+                nodes_available.add(tuple([branch_host, branch_port, branch]))
 
             # for node in NodeHandler.child_nodes.values():
             #     node.write_message(message)
 
-            message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
-            forward(message)
+            # message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
+            # print(current_port, message)
+            # forward(message)
 
         elif seq[0] == 'NODE_ID':
             nodeid = seq[1]
@@ -606,26 +607,26 @@ class NodeConnector(object):
 
 @tornado.gen.coroutine
 def bootstrap(addr):
-    global available_branches
+    global nodes_available
 
-    print(current_port, 'fetch available branches', addr)
+    print(current_port, 'fetch available nodes', addr)
     http_client = tornado.httpclient.AsyncHTTPClient()
     try:
-        response = yield http_client.fetch('http://%s:%s/available_branches' % tuple(addr))
+        response = yield http_client.fetch('http://%s:%s/nodes_available' % tuple(addr))
     except Exception as e:
         print('bootstrap Error: %s' % e)
         tornado.ioloop.IOLoop.instance().call_later(1.0, functools.partial(bootstrap, addr))
         return
 
     result = tornado.escape.json_decode(response.body)
-    branches = result['available_branches']
-    branches.sort(key=lambda l:len(l[2]))
-    print(current_port, '  fetch result', [tuple(i) for i in branches])
+    nodes = result['nodes_available']
+    nodes.sort(key=lambda l:len(l[2]))
+    print(current_port, '  fetch result', [tuple(i) for i in nodes])
 
-    if branches:
-        available_branches = set([tuple(i) for i in branches])
-        host, port, branch = branches[0]
-        current_branch = tuple(branches[0])
+    if nodes:
+        nodes_available = set([tuple(i) for i in nodes])
+        host, port, branch = nodes[0]
+        current_branch = tuple(nodes[0])
         NodeConnector(host, port, branch)
     else:
         tornado.ioloop.IOLoop.instance().call_later(1.0, functools.partial(bootstrap, addr))
@@ -645,7 +646,7 @@ def control_on_connect(future):
 @tornado.gen.coroutine
 def control_on_message(msg):
     global current_nodeid
-    global available_branches
+    global nodes_available
 
     if msg is None:
         tornado.ioloop.IOLoop.instance().call_later(1.0, connect)
@@ -660,8 +661,8 @@ def control_on_message(msg):
     if seq[0] == "BOOTSTRAP_ADDRESS":
         if not seq[1]:
             # root node
-            available_branches.add(tuple([current_host, current_port, "0"]))
-            available_branches.add(tuple([current_host, current_port, "1"]))
+            nodes_available.add(tuple([current_host, current_port, "0"]))
+            nodes_available.add(tuple([current_host, current_port, "1"]))
             current_nodeid = ""
 
         else:
@@ -670,7 +671,7 @@ def control_on_message(msg):
 @tornado.gen.coroutine
 def connect():
     global current_nodeid
-    global available_branches
+    global nodes_available
 
     if dashboard_host and dashboard_port:
         print(current_port, "connect dashboard", dashboard_host, "port", dashboard_port)
@@ -686,8 +687,8 @@ def connect():
             NodeConnector(parent_host, port, bin(no)[3:])
 
         else:
-            available_branches.add(tuple([current_host, current_port, "0"]))
-            available_branches.add(tuple([current_host, current_port, "1"]))
+            nodes_available.add(tuple([current_host, current_port, "0"]))
+            nodes_available.add(tuple([current_host, current_port, "1"]))
             current_nodeid = ""
 
     else:
@@ -699,8 +700,8 @@ def connect():
             pass
 
         else:
-            available_branches.add(tuple([current_host, current_port, "0"]))
-            available_branches.add(tuple([current_host, current_port, "1"]))
+            nodes_available.add(tuple([current_host, current_port, "0"]))
+            nodes_available.add(tuple([current_host, current_port, "1"]))
             current_nodeid = ""
 
 def main():

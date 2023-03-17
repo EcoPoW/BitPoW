@@ -28,7 +28,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [(r"/node", tree.NodeHandler),
                     (r"/miner", tree.MinerHandler),
-                    (r"/available_branches", AvailableBranchesHandler),
+                    (r"/nodes_available", AvailableNodesHandler),
                     (r"/get_node", GetNodeHandler),
 
                     (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
@@ -80,12 +80,12 @@ class MainHandler(tornado.web.RequestHandler):
         self.redirect('/dashboard')
 
 
-class AvailableBranchesHandler(tornado.web.RequestHandler):
+class AvailableNodesHandler(tornado.web.RequestHandler):
     def get(self):
-        branches = list(tree.available_branches)
+        nodes = list(tree.nodes_available)
 
         # parent = tree.NodeConnector.node_parent:
-        self.finish({"available_branches": branches,
+        self.finish({"nodes_available": nodes,
                      #"parent": parent,
                      "nodeid": tree.current_nodeid})
 
@@ -170,8 +170,8 @@ class NewTempchainBlockHandler(tornado.web.RequestHandler):
 
 class DashboardHandler(tornado.web.RequestHandler):
     def get(self):
-        branches = list(tree.available_branches)
-        branches.sort(key=lambda l:len(l[2]))
+        nodes_available = list(tree.nodes_available)
+        nodes_available.sort(key=lambda l:len(l[2]))
 
         parents = []
         self.write('<a href="/chain_view">Chain view</a> ')
@@ -189,7 +189,7 @@ class DashboardHandler(tornado.web.RequestHandler):
         self.write('<br>node_parents:<br>')
         for nodeid in tree.node_parents:
             host, port = tree.node_parents[nodeid]
-            self.write('%s %s:%s<br>' %(nodeid, host, port))
+            self.write('%s %s:%s <a href="http://%s:%s/dashboard">dashboard</a><br>' %(nodeid, host, port, host, port))
 
         self.write('<br>node_neighborhoods:<br>')
         for nodeid in tree.node_neighborhoods:
@@ -215,8 +215,8 @@ class DashboardHandler(tornado.web.RequestHandler):
         #     pk = chain.frozen_nodes_in_chain[nodeid]
         #     self.write('%s: %s<br>' %(nodeid, pk))
 
-        self.write('<br>available_branches:<br>')
-        for branch in branches:
+        self.write('<br>nodes_available:<br>')
+        for branch in nodes_available:
             self.write("%s:%s %s <br>" % branch)
 
         self.write('<br>subchain block to mine:<br>')

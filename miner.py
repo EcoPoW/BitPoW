@@ -216,7 +216,7 @@ def validate():
     highest_block_height, highest_block_hash, _ = chain.get_highest_block()
 
     db = database.get_conn()
-    # print('validate nodes_to_fetch', chain.nodes_to_fetch)
+    print('validate nodes_to_fetch', chain.nodes_to_fetch)
     fetched_nodes = set()
     for nodeid in chain.nodes_to_fetch:
         fetched_nodes.add(nodeid)
