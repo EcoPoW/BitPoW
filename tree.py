@@ -251,7 +251,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         global node_parents
 
-        # self.branch = self.get_argument("branch")
         self.from_host = self.get_argument("host")
         self.from_port = self.get_argument("port")
         self.pk = self.get_argument("pk")
@@ -275,7 +274,10 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             self.remove_node = False
             self.close()
 
-            message = ["NODE_LEFT", current_host, current_port, self.branch, uuid.uuid4().hex]
+            if tuple([self.from_host, self.from_port, self.branch]) in nodes_available:
+                nodes_available.remove(tuple([self.from_host, self.from_port, self.branch]))
+
+            message = ["NODE_LEFT", self.from_host, self.from_port, self.branch, uuid.uuid4().hex]
             forward(message)
             return
 
@@ -283,21 +285,16 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         if self.branch not in NodeHandler.child_nodes:
             NodeHandler.child_nodes[self.branch] = self
 
-        print('====', current_host, current_port, self.branch)
-        if tuple([current_host, current_port, self.branch]) in nodes_available:
-            nodes_available.remove(tuple([current_host, current_port, self.branch]))
-
-        message = ["NODE_LEFT", current_host, current_port, self.branch, uuid.uuid4().hex]
-        forward(message)
-
         timestamp = time.time()
         message = ['NODE_JOIN', self.branch, self.pk, self.from_host, self.from_port,
                     current_nodeid, node_sk.public_key.to_hex(), current_host, current_port, timestamp]
         sign_msg(message)
-        # self.write_message(tornado.escape.json_encode(message))
         forward(message)
-        # miner.nodes_to_fetch.append(self.branch)
-        # miner.worker_thread_mining = False
+        # self.write_message(tornado.escape.json_encode(message))
+
+        print('====', self.from_host, self.from_port, self.branch)
+        if tuple([self.from_host, self.from_port, self.branch]) not in nodes_available:
+            nodes_available.add(tuple([self.from_host, self.from_port, self.branch]))
 
         node_parents[current_nodeid] = [current_host, current_port]
         message = ["NODE_PARENTS", node_parents, uuid.uuid4().hex]
@@ -312,13 +309,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             del NodeHandler.child_nodes[self.branch]
         self.remove_node = True
 
-        nodes_available.add(tuple([current_host, current_port, self.branch]))
-
-        # message = ["AVAILABLE_NODES", [[current_host, current_port, self.branch]], uuid.uuid4().hex]
-        # forward(message)
-
-        # if tuple([self.from_host, self.from_port, self.branch+"0"]) in nodes_available:
-        #     nodes_available.remove(tuple([self.from_host, self.from_port, self.branch+"0"]))
         if tuple([self.from_host, self.from_port, self.branch]) in nodes_available:
             nodes_available.remove(tuple([self.from_host, self.from_port, self.branch]))
 
@@ -327,10 +317,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         if self.branch in nodes_pool:
             del nodes_pool[self.branch]
-        # message = ['NODE_JOIN', self.branch, None, None, None, 
-        #         current_nodeid, node_sk.public_key.to_hex(), current_host, current_port, time.time()]
-        # sign_msg(message)
-        # forward(message)
 
     @tornado.gen.coroutine
     def on_message(self, message):
@@ -340,35 +326,31 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         seq = tornado.escape.json_decode(message)
         # # print(current_port, "on message from child", seq)
-        # if seq[0] == 'NODE_JOIN':
-        #     nodeid = seq[1]
-        #     pk = seq[2]
-        #     ip = seq[3]
-        #     port = seq[4]
-        #     parent_nodeid = seq[5]
-        #     parent_pk = seq[6]
-        #     parent_ip = seq[7]
-        #     parent_port = seq[8]
-        #     timestamp = seq[9]
-        #     singature = seq[10]
+        if seq[0] == 'NODE_JOIN':
+            nodeid = seq[1]
+            pk = seq[2]
+            ip = seq[3]
+            port = seq[4]
+            parent_nodeid = seq[5]
+            parent_pk = seq[6]
+            parent_ip = seq[7]
+            parent_port = seq[8]
+            timestamp = seq[9]
+            singature = seq[10]
 
-        #     if parent_nodeid == "":
-        #         nodes_pool[parent_nodeid] = [parent_pk, parent_ip, parent_port, timestamp]
-        #     if ip and port:
-        #         nodes_pool[nodeid] = [pk, ip, port, timestamp]
-        #     else:
-        #         del nodes_pool[nodeid]
-        #     print(current_port, 'NODE_JOIN', nodeid, pk, parent_nodeid, parent_pk, seq[-1])
+            if parent_nodeid == "":
+                nodes_pool[parent_nodeid] = [parent_pk, parent_ip, parent_port, timestamp]
+            if ip and port:
+                nodes_pool[nodeid] = [pk, ip, port, timestamp]
+            else:
+                del nodes_pool[nodeid]
+            nodes_available.add(tuple([ip, port, nodeid]))
+            print(current_port, 'NODE_JOIN', nodeid, pk, parent_nodeid, parent_pk, seq[-1])
 
-        if seq[0] == "NODE_LEFT":
+        elif seq[0] == "NODE_LEFT":
             _, branch_host, branch_port, branch, _ = seq
             if tuple([branch_host, branch_port, branch]) in nodes_available:
                 nodes_available.remove(tuple([branch_host, branch_port, branch]))
-
-        # elif seq[0] == "AVAILABLE_NODES":
-        #     for i in seq[1]:
-        #         branch_host, branch_port, branch = i
-        #         nodes_available.add(tuple([branch_host, branch_port, branch]))
 
         elif seq[0] == "NODE_NEIGHBOURHOODS":
             nodeid = seq[1]
@@ -391,28 +373,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
 
         elif seq[0] == 'NEW_TEMPCHAIN_BLOCK':
             chain.new_tempchain_block(seq)
-
-        # elif seq[0] == "NEW_TX":
-        #     txid = seq[1]["transaction"]["txid"]
-        #     # if (current_host, current_port) in leader.current_leaders and txid not in processed_message_ids:
-        #     if txid not in processed_message_ids:
-        #         processed_message_ids.add(txid)
-        #         leader.message_queue.append(seq)
-        #         # print(current_port, "tx msg", seq)
-
-        # elif seq[0] == "NEW_MSG_BLOCK":
-        #     print(current_port, "NEW_MSG_BLOCK")
-        #     leader.new_msg_block(seq)
-        #     msg.WaitMsgHandler.new_block(seq)
-
-        # elif seq[0] == "NEW_MSG":
-        #     msgid = seq[1]["message"]["msgid"]
-        #     if msgid not in processed_message_ids:
-        #         processed_message_ids.add(msgid)
-        #         leader.message_queue.append(seq)
-
-        # elif seq[0] == "UPDATE_HOME":
-        #     fs.transactions.append(seq)
 
         forward(seq)
 
@@ -477,24 +437,10 @@ class NodeConnector(object):
 
         if message is None:
             print("NodeConnector reconnect ...")
-            # retry before choose another parent
-            # if current_branch in nodes_available:
-            #     nodes_available.remove(current_branch)
-            # nodes_available = set([tuple(i) for i in nodes])
-            # nodes = list(nodes_available)
-            # current_branch = tuple(nodes[0])
-            # branch_host, branch_port, branch = current_branch
-            # sig = node_sk.sign(b"%s%s%s%s" % (branch.encode("utf8"), current_host.encode("utf8"), current_port.encode("utf8"), self.pk))
-            # print(sig)
-            # self.ws_uri = "ws://%s:%s/node?branch=%s&host=%s&port=%s&pk=%s&sig=%s" % (branch_host, branch_port, branch, current_host, current_port, base64.b32encode(self.pk).decode("utf8"), base64.b32encode(sig).decode("utf8"))
-
             tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
             return
 
         seq = tornado.escape.json_decode(message)
-        # print(current_port, "on message from parent", seq)
-
-
         if seq[0] == 'NODE_JOIN':
             nodeid = seq[1]
             pk = seq[2]
@@ -514,14 +460,8 @@ class NodeConnector(object):
                 chain.nodes_to_fetch.add(parent_nodeid)
             nodes_pool[nodeid] = [pk, ip, port, timestamp]
             print(current_port, 'NODE_JOIN', nodeid, pk, 'PARENT_ID', parent_nodeid, parent_pk, seq[-1])
-            # if self.branch == nodeid:
             current_nodeid = nodeid
-
-            # nodes_available.add(tuple([current_host, current_port, current_nodeid+"0"]))
-            nodes_available.add(tuple([current_host, current_port, current_nodeid]))
-
-            # message = ["AVAILABLE_NODES", [[current_host, current_port, current_nodeid+"0"], [current_host, current_port, current_nodeid+"1"]], uuid.uuid4().hex]
-            # self.conn.write_message(tornado.escape.json_encode(message))
+            nodes_available.add(tuple([ip, port, nodeid]))
 
             if current_nodeid is not None:
                 message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
@@ -543,21 +483,6 @@ class NodeConnector(object):
             _, branch_host, branch_port, branch, _ = seq
             if tuple([branch_host, branch_port, branch]) in nodes_available:
                 nodes_available.remove(tuple([branch_host, branch_port, branch]))
-
-            # for node in NodeHandler.child_nodes.values():
-            #     node.write_message(message)
-
-        # elif seq[0] == "AVAILABLE_NODES":
-        #     for i in seq[1]:
-        #         branch_host, branch_port, branch = i
-        #         nodes_available.add(tuple([branch_host, branch_port, branch]))
-
-            # for node in NodeHandler.child_nodes.values():
-            #     node.write_message(message)
-
-            # message = ["NODE_NEIGHBOURHOODS", current_nodeid, [current_host, current_port], uuid.uuid4().hex]
-            # print(current_port, message)
-            # forward(message)
 
         elif seq[0] == "NODE_PARENTS":
             node_parents.update(seq[1])
@@ -592,27 +517,6 @@ class NodeConnector(object):
         elif seq[0] == 'NEW_TEMPCHAIN_BLOCK':
             chain.new_tempchain_block(seq)
 
-        # elif seq[0] == "NEW_TX":
-        #     txid = seq[1]["transaction"]["txid"]
-        #     # if (current_host, current_port) in leader.current_leaders and txid not in processed_message_ids:
-        #     if txid not in processed_message_ids:
-        #         processed_message_ids.add(txid)
-        #         leader.message_queue.append(seq)
-        #         # print(current_port, "tx msg", seq)
-
-        # elif seq[0] == "NEW_MSG_BLOCK":
-        #     print(current_port, "NEW_MSG_BLOCK")
-        #     leader.new_msg_block(seq)
-        #     msg.WaitMsgHandler.new_block(seq)
-
-        # elif seq[0] == "NEW_MSG":
-        #     msgid = seq[1]["message"]["msgid"]
-        #     # if (current_host, current_port) in leader.current_leaders and msgid not in processed_message_ids:
-        #     if msgid not in processed_message_ids:
-        #         processed_message_ids.add(msgid)
-        #         leader.message_queue.append(seq)
-
-        # else:
         forward(seq)
 
 # @tornado.gen.coroutine
