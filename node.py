@@ -56,19 +56,23 @@ class Application(tornado.web.Application):
                     (r"/tempchain_list", TempchainListHandler),
                     (r"/tempchain_view", TempchainViewHandler),
 
+                    (r"/faucet", TempchainViewHandler),
+                    (r"/send", TempchainViewHandler),
+
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
-                    (r"/upload_chunk", UploadChunkHandler),
+                    # (r"/upload_chunk", UploadChunkHandler),
                     (r"/tracemalloc", TraceHandler),
                     (r"/eth_rpc", rpc.EthRpcHandler),
-                    (r"/chat_contact_new", chat.ChatContactNewHandler),
-                    (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
-                    (r"/chat_group_new", DashboardHandler),
-                    (r"/chat_group_join", DashboardHandler),
-                    (r"/chat_group_leave", DashboardHandler),
-                    (r"/chat_group_kick", DashboardHandler),
-                    (r"/chat_msg_new", DashboardHandler),
-                    (r"/", MainHandler),
+                    (r"/", rpc.ProxyEthRpcHandler),
+                    # (r"/chat_contact_new", chat.ChatContactNewHandler),
+                    # (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
+                    # (r"/chat_group_new", DashboardHandler),
+                    # (r"/chat_group_join", DashboardHandler),
+                    # (r"/chat_group_leave", DashboardHandler),
+                    # (r"/chat_group_kick", DashboardHandler),
+                    # (r"/chat_msg_new", DashboardHandler),
+                    # (r"/", MainHandler),
                 ]
         settings = {"debug":True}
 

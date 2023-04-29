@@ -14,6 +14,14 @@ import chain
 import database
 import tree
 
+import contract_erc20
+
+import requests
+
+contract_map = {
+    '0x0000000000000000000000000000000000000001': contract_erc20
+}
+
 def tx_info(raw_tx):
     raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
@@ -35,9 +43,22 @@ def tx_info(raw_tx):
     # print('v', tx.v)
     return tx, tx_from, tx_to, tx_hash
 
+
+class ProxyEthRpcHandler(tornado.web.RequestHandler):
+    def options(self):
+        pass
+
+    def post(self):
+        print('----post----')
+        print(self.request.body)
+        rsp = requests.post('http://127.0.0.1:8545', data=self.request.body)
+        print(rsp.text)
+        self.write(rsp.text)
+
+
 class EthRpcHandler(tornado.web.RequestHandler):
     def options(self):
-        # print('-----options-------')
+        print('-----options-------')
         # print(self.request.arguments)
         # print(self.request.body)
 
@@ -61,6 +82,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
         # date: Thu, 24 Mar 2022 08:58:57 GMT
         # self.write('\n')
 
+    # def get(self):
+    #     print('------get------')
+
     def post(self):
         print('------post------')
         # print(self.request.arguments)
@@ -78,7 +102,34 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
         elif req.get('method') == 'eth_getBlockByNumber':
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
-            resp = {'jsonrpc':'2.0', 'result': highest_block_hash.decode('utf8'), 'id':rpc_id}
+            # resp = {'jsonrpc':'2.0', 'result': '0x'+highest_block_hash.decode('utf8'), 'id':rpc_id}
+            resp = {"jsonrpc":"2.0", "id": rpc_id,
+                "result":{
+                    # "number":"0x1",
+                    "number": hex(highest_block_height),
+                    # "hash":"0xffb0c9a9f7a192c9aaf1c1f05e32ce889ffea4006d3e016b0681b8e5b6a94ed2",
+                    "hash": '0x'+highest_block_hash.decode('utf8'),
+                    # "parentHash":"0x137f2bacb32744f3f8637496ec2812df9cade335762792999c1799df0157db76",
+                    "nonce":"0x0000000000000042",
+                    "mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+                    # "sha3Uncles":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                    # "logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                    "transactionsRoot":"0x7c50a9531c6d4af23d04fd77a1d4bac9d9e1ac6c37444909a5f645ff343ffaf7",
+                    "stateRoot":"0xe3fe0cf56db054e86175680de691dc8da487412edce44148d209b24586e29249",
+                    "receiptsRoot":"0x12485246f5b5efab68f826355509c375b39d179c3837e5fdd7dd7336439b5623",
+                    "miner":"0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e",
+                    "difficulty":"0x20000",
+                    "totalDifficulty":"0x20001",
+                    "extraData":"0x",
+                    "size":"0xe5f",
+                    "gasLimit":"0x1c9c380",
+                    "gasUsed":"0x8ac5b",
+                    "timestamp":"0x644b949c",
+                    # "transactions":["0xed65f0ac3506915ba5cc0a5da762b651816928fcc272e6f828e5f1f823f4713d"],
+                    "transactions":[],
+                    "uncles":[]
+            }}
+
 
         elif req.get('method') == 'eth_getBalance':
             address = web3.Web3.toChecksumAddress(req['params'][0])
@@ -88,11 +139,11 @@ class EthRpcHandler(tornado.web.RequestHandler):
             db = database.get_conn()
             blockstate_json = db.get(b'blockstate_%s' % highest_block_hash)
             blockstate = tornado.escape.json_decode(blockstate_json)
-            print('blockstate', blockstate)
+            # print('blockstate', blockstate)
             # print('address', address)
 
             msg_hash = blockstate.get('subchains', {}).get(address)
-            print('msg_hash', msg_hash, address)
+            # print('msg_hash', msg_hash, address)
             if msg_hash:
                 msgstate_json = db.get(b'msgstate_%s' % msg_hash.encode('utf8'))
                 msgstate = tornado.escape.json_decode(msgstate_json)
@@ -100,7 +151,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 balance = msgstate['balances']['SHA']
             else:
                 msg_hash = b'0'*64
-                balance = 0
+                balance = 1
 
             msg_hashes = blockstate.get('balances_to_collect', {}).get(address, [])
             for msg_hash in msg_hashes:
@@ -142,7 +193,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x0208', 'id': rpc_id}
 
         elif req.get('method') == 'eth_gasPrice':
-            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x1dcd65000', 'id': rpc_id}
 
         elif req.get('method') == 'eth_estimateGas':
             resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id': rpc_id}
@@ -195,13 +246,42 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
         elif req.get('method') == 'eth_call':
-            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
+            # b'{"id":58,"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x01ffc9a780ac58cd00000000000000000000000000000000000000000000000000000000"},"0x6288"]}'
+            # {'jsonrpc': '2.0', 'result': '0x0', 'id': 58}
+
+            # b'{"id":"ee04ad8b-aea3-43ad-b382-948f93257db7","jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x70a08231000000000000000000000000719c8d75faf8f1b117ea56205414892caab4a1b7"},"0x62c1"]}'
+            params = req.get('params', [])
+            if len(params) > 0:
+                if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() == '0x0000000000000000000000000000000000000001'.lower():
+                    # transfer(address,uint256): 0xa9059cbb
+                    # balanceOf(address): 0x70a08231
+                    # decimals(): 0x313ce567
+                    # allowance(address,address): 0xdd62ed3e
+                    # symbol(): 0x95d89b41
+                    # totalSupply(): 0x18160ddd
+                    # name(): 0x06fdde03
+                    # approve(address,uint256): 0x095ea7b3
+                    # transferFrom(address,address,uint256): 0x23b872dd
+                    if params[0]['data'].startswith('0x313ce567'): #decimals
+                        resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}
+
+                    elif params[0]['data'].startswith('0x70a08231'): #balanceOf
+                        resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000001000', 'id': rpc_id}
+
+                    elif params[0]['data'].startswith('0x95d89b41'): #symbol
+                        resp = {'jsonrpc':'2.0', 'result': '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000', 'id': rpc_id}
+
+                    elif params[0]['data'].startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
+                        resp = {"jsonrpc":"2.0","id":rpc_id,"error":{"code":-32603,"message":"Error: Transaction reverted without a reason string","data":{"message":"Error: Transaction reverted without a reason string","data":"0x"}}}
+                        resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
+                    else:
+                        resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
 
         elif req.get('method') == 'web3_clientVersion':
             resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
 
         elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result': hex(520),'id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '520','id': rpc_id}
 
         print(resp)
         self.write(tornado.escape.json_encode(resp))

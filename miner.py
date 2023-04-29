@@ -8,7 +8,7 @@ import time
 import hashlib
 import random
 import uuid
-# import copy
+import copy
 # import base64
 # import threading
 # import secrets
@@ -218,7 +218,8 @@ def validate():
     db = database.get_conn()
     print('validate nodes_to_fetch', chain.nodes_to_fetch)
     fetched_nodes = set()
-    for nodeid in chain.nodes_to_fetch:
+    nodes_to_fetch = copy.copy(chain.nodes_to_fetch)
+    for nodeid in nodes_to_fetch:
         fetched_nodes.add(nodeid)
         new_chain_hash, new_chain_height = chain.fetch_chain(nodeid)
         # print('validate', highest_block_hash, highest_block_height)
