@@ -4,11 +4,13 @@ import hashlib
 import time
 
 import tornado
+import requests
 
 import web3
 import eth_account
 import eth_typing
 import eth_utils
+import rlp
 
 import chain
 import database
@@ -16,7 +18,6 @@ import tree
 
 import contract_erc20
 
-import requests
 
 contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
@@ -216,10 +217,22 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_sendRawTransaction':
-            raw_tx = req['params'][0]
-            # print('raw_tx', raw_tx)
-            tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx)
-            print('nonce', tx.nonce)
+            # 0x23a58abebeD7f43b61a285a3b33A03441bb4ED92
+            # coin
+            # b'{"id":2584340568916,"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86e028501dcd650008252089436d8dffc83830f06d156b85b98bbe7e9d8a2290188016345785d8a000080820433a0c1b0621c7f1f8624d4b33341f6a350dc5e70b05f44b9d05ca819e0a1fdaddbf3a02b2eb0ad2be590e75f375dc960ba45af16d49f825f6e7a38a77ef22b7bba0574"]}'
+            # [b'\x02', b'\x01\xdc\xd6P\x00', b'R\x08', b'6\xd8\xdf\xfc\x83\x83\x0f\x06\xd1V\xb8[\x98\xbb\xe7\xe9\xd8\xa2)\x01', b'\x01cEx]\x8a\x00\x00', b'', b'\x043', b'\xc1\xb0b\x1c\x7f\x1f\x86$\xd4\xb33A\xf6\xa3P\xdc^p\xb0_D\xb9\xd0\\\xa8\x19\xe0\xa1\xfd\xad\xdb\xf3', b'+.\xb0\xad+\xe5\x90\xe7_7]\xc9`\xbaE\xaf\x16\xd4\x9f\x82_nz8\xa7~\xf2+{\xba\x05t']
+
+            # token
+            # b'{"id":2584340568677,"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf8ab018501dcd65000827b0c94000000000000000000000000000000000000000180b844a9059cbb00000000000000000000000036d8dffc83830f06d156b85b98bbe7e9d8a2290100000000000000000000000000000000000000000000000000000000000001f4820434a0f449ee1e8dd693a6ea31adfc2ad1eaa7dcd2083eb57f804096427a498d71b707a07be7206bde23bb562e6a26ec3edc1f08fc9560834ad378924df257f9f9c11d2b"]}'
+            # [b'\x01', b'\x01\xdc\xd6P\x00', b'{\x0c', b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01', b'', b'\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x006\xd8\xdf\xfc\x83\x83\x0f\x06\xd1V\xb8[\x98\xbb\xe7\xe9\xd8\xa2)\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xf4', b'\x044', b'\xf4I\xee\x1e\x8d\xd6\x93\xa6\xea1\xad\xfc*\xd1\xea\xa7\xdc\xd2\x08>\xb5\x7f\x80@\x96BzI\x8dq\xb7\x07', b'{\xe7 k\xde#\xbbV.j&\xec>\xdc\x1f\x08\xfc\x95`\x83J\xd3x\x92M\xf2W\xf9\xf9\xc1\x1d+']
+
+            # reference UNSIGNED_TRANSACTION_FIELDS for those data
+            raw_tx_hex = req['params'][0]
+            # print('raw_tx_hex', raw_tx_hex)
+            # raw_tx_bytes = web3.Web3.toBytes(hexstr=raw_tx_hex)
+            # tx = rlp.decode(raw_tx_bytes)
+            tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
+            print('nonce', tx_from, tx_to, tx.nonce)
             db = database.get_conn()
             prev_hash = db.get(b'chain%s' % tx_from.encode('utf8'))
             if prev_hash:
@@ -233,7 +246,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 assert 1 == tx.nonce
 
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
-            data = {'eth_raw_tx': raw_tx}
+            data = {'eth_raw_tx': raw_tx_hex}
             data_json = json.dumps(data)
             new_timestamp = time.time()
             block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
@@ -252,7 +265,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # b'{"id":"ee04ad8b-aea3-43ad-b382-948f93257db7","jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x70a08231000000000000000000000000719c8d75faf8f1b117ea56205414892caab4a1b7"},"0x62c1"]}'
             params = req.get('params', [])
             if len(params) > 0:
-                if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() == '0x0000000000000000000000000000000000000001'.lower():
+                if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
                     # transfer(address,uint256): 0xa9059cbb
                     # balanceOf(address): 0x70a08231
                     # decimals(): 0x313ce567
@@ -262,6 +275,14 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     # name(): 0x06fdde03
                     # approve(address,uint256): 0x095ea7b3
                     # transferFrom(address,address,uint256): 0x23b872dd
+
+                    contract = contract_map[params[0]['to'].lower()]
+                    eth_call_data = params[0]['data']
+                    for i in contract.interface_map:
+                        if eth_call_data.startswith(i):
+                            print(contract.interface_map[i])
+                            break
+
                     if params[0]['data'].startswith('0x313ce567'): #decimals
                         resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}
 
@@ -276,6 +297,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
                     else:
                         resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
+                else:
+                    resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
 
         elif req.get('method') == 'web3_clientVersion':
             resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
