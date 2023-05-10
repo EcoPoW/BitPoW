@@ -8,9 +8,9 @@ import requests
 
 import web3
 import eth_account
-import eth_typing
-import eth_utils
-import rlp
+# import eth_typing
+# import eth_utils
+# import rlp
 
 import chain
 import database
@@ -23,26 +23,26 @@ contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
 }
 
-def tx_info(raw_tx):
-    raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
-    tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
-    tx_hash = web3.Web3.toHex(eth_utils.keccak(raw_bytes))
-    tx_from = eth_account.Account.recover_transaction(raw_tx)
-    tx_to = web3.Web3.toChecksumAddress(tx.to) if tx.to else None
-    chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
-    # print('from', tx_from)
-    # print('to', tx_to)
-    # tx_data = web3.Web3.toHex(tx.data)
-    # print('data', tx_data)
-    # print('chain_id', chain_id)
-    # print('nonce', tx.nonce)
-    # print('value', tx.value)
-    # print('gas', tx.gas)
-    # print('gasPrice', tx.gasPrice)
-    # print('r', tx.r)
-    # print('s', tx.s)
-    # print('v', tx.v)
-    return tx, tx_from, tx_to, tx_hash
+# def tx_info(raw_tx):
+#     raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
+#     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
+#     tx_hash = web3.Web3.toHex(eth_utils.keccak(raw_bytes))
+#     tx_from = eth_account.Account.recover_transaction(raw_tx)
+#     tx_to = web3.Web3.toChecksumAddress(tx.to) if tx.to else None
+#     chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
+#     # print('from', tx_from)
+#     # print('to', tx_to)
+#     # tx_data = web3.Web3.toHex(tx.data)
+#     # print('data', tx_data)
+#     # print('chain_id', chain_id)
+#     # print('nonce', tx.nonce)
+#     # print('value', tx.value)
+#     # print('gas', tx.gas)
+#     # print('gasPrice', tx.gasPrice)
+#     # print('r', tx.r)
+#     # print('s', tx.s)
+#     # print('v', tx.v)
+#     return tx, tx_from, tx_to, tx_hash
 
 
 class ProxyEthRpcHandler(tornado.web.RequestHandler):
@@ -83,8 +83,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
         # date: Thu, 24 Mar 2022 08:58:57 GMT
         # self.write('\n')
 
-    # def get(self):
-    #     print('------get------')
+    def get(self):
+        print('------get------')
+        self.redirect('/dashboard')
 
     def post(self):
         print('------post------')
@@ -171,7 +172,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_getTransactionReceipt':
             msg_hash = req['params'][0]
             db = database.get_conn()
-            msg_json = db.get(b'msg%s' % msg_hash.encode('utf8'))
+            msg_json = db.get(b'msg%s' % msg_hash.encode('utf8')[2:])
             print(msg_json)
             msg = tornado.escape.json_decode(msg_json)
 
@@ -194,7 +195,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x0208', 'id': rpc_id}
 
         elif req.get('method') == 'eth_gasPrice':
-            resp = {'jsonrpc':'2.0', 'result': '0x1dcd65000', 'id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_estimateGas':
             resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id': rpc_id}
@@ -229,10 +230,14 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # reference UNSIGNED_TRANSACTION_FIELDS for those data
             raw_tx_hex = req['params'][0]
             # print('raw_tx_hex', raw_tx_hex)
-            # raw_tx_bytes = web3.Web3.toBytes(hexstr=raw_tx_hex)
+            raw_tx_bytes = web3.Web3.toBytes(hexstr=raw_tx_hex)
+            tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
+            tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
+            tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
             # tx = rlp.decode(raw_tx_bytes)
-            tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
-            print('nonce', tx_from, tx_to, tx.nonce)
+            # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
+            print('nonce', tx.nonce)
+            print('txhash', tx_hash, tx_from, tx.to)
             db = database.get_conn()
             prev_hash = db.get(b'chain%s' % tx_from.encode('utf8'))
             if prev_hash:
@@ -249,12 +254,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             data = {'eth_raw_tx': raw_tx_hex}
             data_json = json.dumps(data)
             new_timestamp = time.time()
-            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
+            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx.to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
             signature = 'eth'
 
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
-            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
+            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx.to, tx.nonce, data, new_timestamp, signature])
+            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx.to, tx.nonce, data, new_timestamp, signature])
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
