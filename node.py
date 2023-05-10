@@ -55,6 +55,7 @@ class Application(tornado.web.Application):
                     (r"/subchain_view", SubchainViewHandler),
                     # (r"/tempchain_list", TempchainListHandler),
                     # (r"/tempchain_view", TempchainViewHandler),
+                    (r"/scan/tx/(.*)", ScanTxHandler),
 
                     (r"/faucet", TempchainViewHandler),
                     (r"/send", TempchainViewHandler),
@@ -84,6 +85,9 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.redirect('/dashboard')
 
+class ScanTxHandler(tornado.web.RequestHandler):
+    def get(self, tx):
+        self.finish('%s' % tx)
 
 class AvailableNodesHandler(tornado.web.RequestHandler):
     def get(self):

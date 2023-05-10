@@ -234,10 +234,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
+            tx_to = web3.Web3.toChecksumAddress(tx.to)
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
+
             print('nonce', tx.nonce)
-            print('txhash', tx_hash, tx_from, tx.to)
+            print('txhash', tx_hash, tx_from, tx_to)
             db = database.get_conn()
             prev_hash = db.get(b'chain%s' % tx_from.encode('utf8'))
             if prev_hash:
@@ -254,12 +256,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             data = {'eth_raw_tx': raw_tx_hex}
             data_json = json.dumps(data)
             new_timestamp = time.time()
-            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx.to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
+            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
             signature = 'eth'
 
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx.to, tx.nonce, data, new_timestamp, signature])
-            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx.to, tx.nonce, data, new_timestamp, signature])
+            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
+            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
