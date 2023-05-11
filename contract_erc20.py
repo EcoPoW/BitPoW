@@ -1,5 +1,10 @@
 
+import hashlib
+
+import tornado.escape
 import web3
+
+import database
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -99,3 +104,13 @@ interface_map = {
 # name()：0x06fdde03
 # approve(address,uint256)：0x095ea7b3
 # transferFrom(address,address,uint256)： 0x23b872dd
+
+db = database.get_conn()
+blockhash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
+print(blockhash)
+if not blockhash:
+    contract_state = {}
+    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(contract_state).encode('utf8')).hexdigest()
+
+    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(contract_state).encode('utf8'))
+    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))

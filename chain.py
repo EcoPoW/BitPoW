@@ -200,7 +200,7 @@ def new_chain_block(seq):
 
                 address = msg[SENDER]
                 sender_hash = msg[REF_HASH]
-                pool_value = db.get(('pool%s_%s' % (address, sender_hash)).encode('utf8'))
+                pool_value = db.get(('pool_%s_%s' % (address, sender_hash)).encode('utf8'))
                 print('pool', address, sender_hash)
                 if pool_value:
                     print('delete pool', address, sender_hash)
@@ -506,7 +506,7 @@ def new_subchain_block(seq):
     db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
     # get tx pool, if already exists, override only when the height is higher than current
     # when new block generated, the confirmed subchain block will be removed
-    db.put(('pool%s_%s' % (sender, msg_hash)).encode('utf8'), ('%s_%s' % (height, prev_hash)).encode('utf8'))
+    db.put(('pool_%s_%s' % (sender, msg_hash)).encode('utf8'), ('%s_%s' % (height, prev_hash)).encode('utf8'))
     # except Exception as e:
     #     print("new_subchain_block Error: %s" % e)
 
