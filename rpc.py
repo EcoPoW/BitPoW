@@ -285,25 +285,29 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
                     contract = contract_map[params[0]['to'].lower()]
                     eth_call_data = params[0]['data']
+                    result = '0x'
                     for i in contract.interface_map:
                         if eth_call_data.startswith(i):
-                            print(contract.interface_map[i])
+                            print(contract.interface_map[i], eth_call_data)
+                            func_params_data = eth_call_data.replace(i, '')
+                            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+                            print(contract.interface_map[i], func_params)
+                            result = contract.interface_map[i](*func_params)
                             break
 
-                    if params[0]['data'].startswith('0x313ce567'): #decimals
-                        resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}
+                    # if params[0]['data'].startswith('0x313ce567'): #decimals
+                    #     resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}
 
-                    elif params[0]['data'].startswith('0x70a08231'): #balanceOf
-                        resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000001000', 'id': rpc_id}
+                    # elif params[0]['data'].startswith('0x70a08231'): #balanceOf
+                    #     resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000001000', 'id': rpc_id}
 
-                    elif params[0]['data'].startswith('0x95d89b41'): #symbol
-                        resp = {'jsonrpc':'2.0', 'result': '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000', 'id': rpc_id}
+                    # elif params[0]['data'].startswith('0x95d89b41'): #symbol
+                    #     resp = {'jsonrpc':'2.0', 'result': '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000', 'id': rpc_id}
 
-                    elif params[0]['data'].startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
+                    resp = {'jsonrpc':'2.0', 'result': result, 'id': rpc_id}
+                    if params[0]['data'].startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":{"code":-32603,"message":"Error: Transaction reverted without a reason string","data":{"message":"Error: Transaction reverted without a reason string","data":"0x"}}}
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
-                    else:
-                        resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
                 else:
                     resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
 

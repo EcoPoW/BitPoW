@@ -14,12 +14,13 @@
 # event Approval(address indexed _owner, address indexed _spender, uint256 _value)
 
 
-name = None
-symbol = None
-decimals = None
-totalSupply = 0
 
-balance = {}
+balance = {
+    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 100000
+}
+# hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+# Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
 
 def init(_name, _symbol, _decimals):
     global name
@@ -45,7 +46,7 @@ def transferFrom():
 
 
 def balanceOf(user):
-    pass
+    return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
 
 def approve():
@@ -56,18 +57,31 @@ def allowance():
     pass
 
 
+def name():
+    return None
+
+def symbol():
+    return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000'
+
+def decimals():
+    return '0x0000000000000000000000000000000000000000000000000000000000000000'
+
+def totalSupply():
+    return 0
+
+
 import eth_utils
 
 interface_map = {
-    '0x'+eth_utils.keccak(b'transfer(address,uint256)').hex()[:10]: transfer,
-    '0x'+eth_utils.keccak(b'balanceOf(address)').hex()[:10]: balanceOf,
-    '0x'+eth_utils.keccak(b'decimals()').hex()[:10]: decimals,
-    '0x'+eth_utils.keccak(b'allowance(address,address)').hex()[:10]: allowance,
-    '0x'+eth_utils.keccak(b'symbol()').hex()[:10]: symbol,
-    '0x'+eth_utils.keccak(b'totalSupply()').hex()[:10]: totalSupply,
-    '0x'+eth_utils.keccak(b'name()').hex()[:10]: name,
-    '0x'+eth_utils.keccak(b'approve(address,uint256)').hex()[:10] : approve,
-    '0x'+eth_utils.keccak(b'transferFrom(address,address,uint256)').hex()[:10] : transferFrom,
+    '0x'+eth_utils.keccak(b'transfer(address,uint256)').hex()[:8]: transfer,
+    '0x'+eth_utils.keccak(b'balanceOf(address)').hex()[:8]: balanceOf,
+    '0x'+eth_utils.keccak(b'decimals()').hex()[:8]: decimals,
+    '0x'+eth_utils.keccak(b'allowance(address,address)').hex()[:8]: allowance,
+    '0x'+eth_utils.keccak(b'symbol()').hex()[:8]: symbol,
+    '0x'+eth_utils.keccak(b'totalSupply()').hex()[:8]: totalSupply,
+    '0x'+eth_utils.keccak(b'name()').hex()[:8]: name,
+    '0x'+eth_utils.keccak(b'approve(address,uint256)').hex()[:8] : approve,
+    '0x'+eth_utils.keccak(b'transferFrom(address,address,uint256)').hex()[:8] : transferFrom,
 }
 
 # transfer(address,uint256)： 0xa9059cbb
