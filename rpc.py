@@ -158,7 +158,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             msg_hashes = blockstate.get('balances_to_collect', {}).get(address, [])
             for msg_hash in msg_hashes:
                 print('msg_hash', msg_hash)
-                msg_json = db.get(b'msg%s' % msg_hash.encode('utf8'))
+                msg_json = db.get(b'msg_%s' % msg_hash.encode('utf8'))
                 msg = tornado.escape.json_decode(msg_json)
                 print('msg', msg)
                 if 'eth_raw_tx' in msg[chain.MSG_DATA]:
@@ -172,7 +172,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_getTransactionReceipt':
             msg_hash = req['params'][0]
             db = database.get_conn()
-            msg_json = db.get(b'msg%s' % msg_hash.encode('utf8')[2:])
+            msg_json = db.get(b'msg_%s' % msg_hash.encode('utf8')[2:])
             print(msg_json)
             msg = tornado.escape.json_decode(msg_json)
 
@@ -203,10 +203,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_getTransactionCount':
             address = web3.Web3.toChecksumAddress(req['params'][0])
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % address.encode('utf8'))
+            prev_hash = db.get(b'chain_%s' % address.encode('utf8'))
             count = 0
             if prev_hash:
-                msg_json = db.get(b'msg%s' % prev_hash)
+                msg_json = db.get(b'msg_%s' % prev_hash)
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
                 # print(msg)
@@ -234,6 +234,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
+            print('tx.to', tx.to)
             tx_to = web3.Web3.toChecksumAddress(tx.to)
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
@@ -241,9 +242,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('nonce', tx.nonce)
             print('txhash', tx_hash, tx_from, tx_to)
             db = database.get_conn()
-            prev_hash = db.get(b'chain%s' % tx_from.encode('utf8'))
+            prev_hash = db.get(b'chain_%s' % tx_from.encode('utf8'))
             if prev_hash:
-                msg_json = db.get(b'msg%s' % prev_hash)
+                msg_json = db.get(b'msg_%s' % prev_hash)
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
                 # print(msg)

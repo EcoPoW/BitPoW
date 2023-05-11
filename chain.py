@@ -143,7 +143,7 @@ def new_chain_block(seq):
     db = database.get_conn()
     highest_block_hash = db.get(b'chain')
     if highest_block_hash:
-        highest_block_json = db.get(b'block%s' % highest_block_hash)
+        highest_block_json = db.get(b'block_%s' % highest_block_hash)
         if highest_block_json:
             highest_block = tornado.escape.json_decode(highest_block_json)
             highest_block_height = highest_block[HEIGHT]
@@ -187,7 +187,7 @@ def new_chain_block(seq):
             # print('last_confirmed_msg_hash', last_confirmed_msg_hash)
             # verify messages on subchain
             while True:
-                msg_json = db.get(b'msg%s' % prev_msg_hash.encode('utf8'))
+                msg_json = db.get(b'msg_%s' % prev_msg_hash.encode('utf8'))
                 if not msg_json:
                     continue
                 msg = tornado.escape.json_decode(msg_json)
@@ -219,7 +219,7 @@ def new_chain_block(seq):
 
         db.put(b'blockstate_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(blockstate).encode('utf8'))
         # try:
-        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
+        db.put(b'block_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(seq[1:]).encode('utf8'))
         if highest_block_height == height - 1:
             db.put(b'chain', block_hash.encode('utf8'))
             recent_longest.insert(0, seq[1:])
@@ -239,7 +239,7 @@ def new_chain_block(seq):
         prev_subchains_highest = {}
         for contract_address, contract_hash in prev_blockstate.get('subchains', {}).items():
             # print(contract_address, contract_hash)
-            msg_json = db.get(b'msg%s' % contract_hash.encode('utf8'))
+            msg_json = db.get(b'msg_%s' % contract_hash.encode('utf8'))
             if not msg_json:
                 continue
             msg = tornado.escape.json_decode(msg_json)
@@ -287,7 +287,7 @@ def new_chain_block(seq):
                 print(msg_height, prev_msg_hash, last_confirmed_msg_hash)
                 if prev_msg_hash == last_confirmed_msg_hash:
                     print('msg', msg_hash)
-                    msg_json = db.get(b'msg%s' % msg_hash)
+                    msg_json = db.get(b'msg_%s' % msg_hash)
                     print(msg_json)
                     if not msg_json:
                         continue
@@ -314,7 +314,7 @@ def new_chain_block(seq):
 
         for i in contracts_to_interact:
             print('contracts_to_interact', i)
-            msg_json = db.get(b'msg%s' % i.encode('utf8'))
+            msg_json = db.get(b'msg_%s' % i.encode('utf8'))
             msg = tornado.escape.json_decode(msg_json)
             # print(msg)
 
@@ -342,8 +342,8 @@ def new_chain_block(seq):
                 # print('new_contract_hash', new_contract_hash)
                 db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
-                db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                db.put(b'chain%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
+                db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
+                db.put(b'chain_%s' % new_contract_address.encode('utf8'), new_contract_hash.encode('utf8'))
 
                 subchains_to_block[new_contract_address] = new_contract_hash
 
@@ -357,10 +357,10 @@ def new_chain_block(seq):
                 # user_msg_hash = msg[REF_HASH]
                 # user_msg_height = msg[REF_HEIGHT]
 
-                contract_parent_hash = db.get(b'chain%s' % msg_receiver.encode('utf8'))
+                contract_parent_hash = db.get(b'chain_%s' % msg_receiver.encode('utf8'))
                 # print(b'chain%s' % msg_receiver.encode('utf8'))
                 # print(contract_parent_hash)
-                contract_block_json = db.get(b'msg%s' % contract_parent_hash)
+                contract_block_json = db.get(b'msg_%s' % contract_parent_hash)
                 contract_block = tornado.escape.json_decode(contract_block_json)
                 contract_height = contract_block[MSG_HEIGHT] + 1
                 # contract_parent_hash = contract_block[PREV_HASH]
@@ -381,9 +381,9 @@ def new_chain_block(seq):
                 # print('new_contract_hash', new_contract_hash)
                 db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), msgstate_json.encode('utf8'))
 
-                db.put(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
+                db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
                 # print(b'msg%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_block).encode('utf8'))
-                db.put(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
+                db.put(b'chain_%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
                 # print(b'chain%s' % msg_receiver.encode('utf8'), new_contract_hash.encode('utf8'))
 
                 subchains_to_block[msg_receiver] = new_contract_hash
@@ -421,7 +421,7 @@ def new_chain_proof(seq):
 
     db = database.get_conn()
     # try:
-    db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(data).encode('utf8'))
+    db.put(b'block_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(data).encode('utf8'))
     # except Exception as e:
     #     print("new_chain_proof Error: %s" % e)
 
@@ -501,9 +501,9 @@ def new_subchain_block(seq):
 
 
     # try:
-    db.put(b'msg%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature]).encode('utf8'))
+    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature]).encode('utf8'))
     assert len(sender) == 42
-    db.put(b'chain%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
+    db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
     # get tx pool, if already exists, override only when the height is higher than current
     # when new block generated, the confirmed subchain block will be removed
     db.put(('pool%s_%s' % (sender, msg_hash)).encode('utf8'), ('%s_%s' % (height, prev_hash)).encode('utf8'))
@@ -520,16 +520,16 @@ def new_tempchain_block(seq):
     channel_id = data['channel_id']
 
     db = database.get_conn()
-    db.put(b'tempmsg%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, height, data, timestamp, signature]).encode('utf8'))
+    db.put(b'tempmsg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, height, data, timestamp, signature]).encode('utf8'))
     # db.put(b'tempmsg_state_%s' % msg_hash.encode('utf8'), b'')
-    db.put(b'tempchain%s' % channel_id.encode('utf8'), msg_hash.encode('utf8'))
+    db.put(b'tempchain_%s' % channel_id.encode('utf8'), msg_hash.encode('utf8'))
 
 def get_recent_longest(highest_block_hash):
     db = database.get_conn()
     block_hash = highest_block_hash
     recent_longest = []
     for i in range(setting.BLOCK_DIFFICULTY_CYCLE):
-        block_json = db.get(b'block%s' % block_hash)
+        block_json = db.get(b'block_%s' % block_hash)
         if block_json:
             block = tornado.escape.json_decode(block_json)
             block_hash = block[PREV_HASH].encode('utf8')
@@ -544,7 +544,7 @@ def get_highest_block():
     highest_block_height = 0
     highest_block_hash = db.get(b"chain")
     if highest_block_hash:
-        block_json = db.get(b'block%s' % highest_block_hash)
+        block_json = db.get(b'block_%s' % highest_block_hash)
         if block_json:
             block = tornado.escape.json_decode(block_json)
             highest_block_height = block[HEIGHT]
@@ -569,7 +569,7 @@ class GetBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
-        block_json = db.get(b'block%s' % block_hash.encode('utf8'))
+        block_json = db.get(b'block_%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"block": tornado.escape.json_decode(block_json)})
         else:
@@ -621,7 +621,7 @@ class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
         assert sender.startswith('0x')
         assert len(sender) == 42
         db = database.get_conn()
-        highest_block_hash = db.get(b'chain%s' % sender.encode('utf8'))
+        highest_block_hash = db.get(b'chain_%s' % sender.encode('utf8'))
         if highest_block_hash:
             self.finish({"hash": highest_block_hash.decode('utf8')})
         else:
@@ -632,7 +632,7 @@ class GetHighestSubchainBlockStateHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
         db = database.get_conn()
-        msg_hash = db.get(b'chain%s' % sender.encode('utf8'))
+        msg_hash = db.get(b'chain_%s' % sender.encode('utf8'))
         msgstate_json = db.get(b'msgstate_%s' % msg_hash)
         # chat_master_pk
         self.finish(msgstate_json)
@@ -645,7 +645,7 @@ class GetHighestTempchainBlockHashHandler(tornado.web.RequestHandler):
         # assert sender.startswith('0x')
         # assert len(sender) == 42
         db = database.get_conn()
-        highest_block_hash = db.get(b'tempchain%s' % chain.encode('utf8'))
+        highest_block_hash = db.get(b'tempchain_%s' % chain.encode('utf8'))
         if highest_block_hash:
             self.finish({"hash": highest_block_hash.decode('utf8')})
         else:
@@ -655,7 +655,7 @@ class GetSubchainBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
-        block_json = db.get(b'msg%s' % block_hash.encode('utf8'))
+        block_json = db.get(b'msg_%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"msg": tornado.escape.json_decode(block_json)})
         else:
@@ -665,7 +665,7 @@ class GetTempchainBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
-        block_json = db.get(b'tempmsg%s' % block_hash.encode('utf8'))
+        block_json = db.get(b'tempmsg_%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"msg": tornado.escape.json_decode(block_json)})
         else:
@@ -706,7 +706,7 @@ def fetch_chain(nodeid):
     block_hash = highest_block_hash
     block_hashes_to_playback = []
     while block_hash != '0'*64:
-        block_json = db.get(b'block%s' % block_hash.encode('utf8'))
+        block_json = db.get(b'block_%s' % block_hash.encode('utf8'))
         blockstate_json = db.get(b'blockstate_%s' % block_hash.encode('utf8'))
         if block_json and blockstate_json:
             # block = tornado.escape.json_decode(block_json)
@@ -726,7 +726,7 @@ def fetch_chain(nodeid):
         print('fetch_chain block', block[HASH], block[HEIGHT])
 
         # try:
-        db.put(b'block%s' % block_hash.encode('utf8'), tornado.escape.json_encode(block).encode('utf8'))
+        db.put(b'block_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(block).encode('utf8'))
         block_hashes_to_playback.append(block_hash)
         # except Exception as e:
         #     print('fetch_chain Error: %s' % e)

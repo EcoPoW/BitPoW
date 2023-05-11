@@ -267,7 +267,7 @@ class ChainExplorerHandler(tornado.web.RequestHandler):
         self.write('<a href="/tempchain_list">Temp list</a></br></br>')
 
         for i in range(10):
-            block_json = db.get(b'block%s' % block_hash)
+            block_json = db.get(b'block_%s' % block_hash)
             if not block_json:
                 return
 
@@ -294,14 +294,14 @@ class SubchainViewHandler(tornado.web.RequestHandler):
 
         db = database.get_conn()
         if hash is None:
-            msg_hash = db.get(b'chain%s' % sender.encode('utf8'))
+            msg_hash = db.get(b'chain_%s' % sender.encode('utf8'))
             if not msg_hash:
                 return
         else:
             msg_hash = hash.encode('utf8')
 
         for i in range(2000):
-            msg_json = db.get(b'msg%s' % msg_hash)
+            msg_json = db.get(b'msg_%s' % msg_hash)
             if not msg_json:
                 return
 
@@ -365,14 +365,14 @@ class TempchainViewHandler(tornado.web.RequestHandler):
 
         db = database.get_conn()
         if hash is None:
-            msg_hash = db.get(b'tempchain%s' % sender.encode('utf8'))
+            msg_hash = db.get(b'tempchain_%s' % sender.encode('utf8'))
             if not msg_hash:
                 return
         else:
             msg_hash = hash.encode('utf8')
 
         for i in range(2000):
-            msg_json = db.get(b'tempmsg%s' % msg_hash)
+            msg_json = db.get(b'tempmsg_%s' % msg_hash)
             if not msg_json:
                 return
 

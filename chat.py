@@ -19,7 +19,7 @@ class ChatContactNewHandler(tornado.web.RequestHandler):
     def get(self):
         address = self.get_argument('address')
         db = database.get_conn()
-        msg_hash = db.get(b'chain%s' % address.encode('utf8'))
+        msg_hash = db.get(b'chain_%s' % address.encode('utf8'))
         msgstate_json = db.get(b'msgstate_%s' % msg_hash)
         # chat_master_pk
         self.finish(msgstate_json)
