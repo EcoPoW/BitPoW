@@ -1,4 +1,5 @@
 
+import web3
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -15,7 +16,7 @@
 
 
 
-balance = {
+_balance = {
     '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 100000
 }
 # hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
@@ -23,14 +24,15 @@ balance = {
 
 
 def init(_name, _symbol, _decimals):
-    global name
-    global symbol
-    global decimals
+    # global name
+    # global symbol
+    # global decimals
 
-    if not (name, symbol, decimals):
-        name = _name
-        symbol = _symbol
-        decimals = _decimals
+    # if not (name, symbol, decimals):
+    #     name = _name
+    #     symbol = _symbol
+    #     decimals = _decimals
+    pass
 
 
 def mint(_amount, _to):
@@ -46,7 +48,11 @@ def transferFrom():
 
 
 def balanceOf(user):
-    return '0x0000000000000000000000000000000000000000000000000000000000001000'
+    user_bytes = web3.Web3.toBytes(hexstr=user)
+    user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
+    amount = _balance.get(user_addr)
+    return web3.Web3.toHex(amount)
+    # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
 
 def approve():

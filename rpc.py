@@ -273,16 +273,6 @@ class EthRpcHandler(tornado.web.RequestHandler):
             params = req.get('params', [])
             if len(params) > 0:
                 if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
-                    # transfer(address,uint256): 0xa9059cbb
-                    # balanceOf(address): 0x70a08231
-                    # decimals(): 0x313ce567
-                    # allowance(address,address): 0xdd62ed3e
-                    # symbol(): 0x95d89b41
-                    # totalSupply(): 0x18160ddd
-                    # name(): 0x06fdde03
-                    # approve(address,uint256): 0x095ea7b3
-                    # transferFrom(address,address,uint256): 0x23b872dd
-
                     contract = contract_map[params[0]['to'].lower()]
                     eth_call_data = params[0]['data']
                     result = '0x'
