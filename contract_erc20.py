@@ -55,7 +55,7 @@ def transferFrom():
 def balanceOf(user):
     user_bytes = web3.Web3.toBytes(hexstr=user)
     user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
-    amount = _balance.get(user_addr)
+    amount = _balance.get(user_addr, 0)
     return web3.Web3.toHex(amount)
     # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
@@ -72,7 +72,9 @@ def name():
     return None
 
 def symbol():
-    return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000'
+    sym = hex(ord('U'))[2:]
+    return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001%s00000000000000000000000000000000000000' % sym
+    # return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000' #POW
 
 def decimals():
     return '0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -109,8 +111,9 @@ db = database.get_conn()
 blockhash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
 print(blockhash)
 if not blockhash:
-    contract_state = {}
-    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(contract_state).encode('utf8')).hexdigest()
+    contract_state = {'balance': _balance}
+    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(['0x0000000000000000000000000000000000000001', '', '', '', contract_state]).encode('utf8')).hexdigest()
 
-    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(contract_state).encode('utf8'))
+    db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(contract_state).encode('utf8'))
+    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', contract_state]).encode('utf8'))
     db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))
