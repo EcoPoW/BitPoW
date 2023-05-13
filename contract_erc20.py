@@ -20,6 +20,7 @@ import database
 # event Approval(address indexed _owner, address indexed _spender, uint256 _value)
 
 
+_sender = None
 
 _balance = {
     '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 100000
@@ -65,8 +66,10 @@ def transfer(_to, _amount):
     amount = web3.Web3.toInt(hexstr=_amount)
 
     new_msg = ['0x0000000000000000000000000000000000000001', prev_contract_hash.decode('utf8'), to_addr, amount, '']
-    print('transfer', to_addr, amount)
+    print('transfer', _sender, to_addr, amount)
     new_contract_state = msgstate
+    new_contract_state['balance'].setdefault(_sender, 0)
+    new_contract_state['balance'][_sender] -= amount
     new_contract_state['balance'].setdefault(to_addr, 0)
     new_contract_state['balance'][to_addr] += amount
     new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
