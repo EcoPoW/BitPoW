@@ -228,19 +228,34 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # [b'\x01', b'\x01\xdc\xd6P\x00', b'{\x0c', b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01', b'', b'\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x006\xd8\xdf\xfc\x83\x83\x0f\x06\xd1V\xb8[\x98\xbb\xe7\xe9\xd8\xa2)\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xf4', b'\x044', b'\xf4I\xee\x1e\x8d\xd6\x93\xa6\xea1\xad\xfc*\xd1\xea\xa7\xdc\xd2\x08>\xb5\x7f\x80@\x96BzI\x8dq\xb7\x07', b'{\xe7 k\xde#\xbbV.j&\xec>\xdc\x1f\x08\xfc\x95`\x83J\xd3x\x92M\xf2W\xf9\xf9\xc1\x1d+']
 
             # reference UNSIGNED_TRANSACTION_FIELDS for those data
-            raw_tx_hex = req['params'][0]
+            params = req.get('params', [])
+            raw_tx_hex = params[0]
             # print('raw_tx_hex', raw_tx_hex)
             raw_tx_bytes = web3.Web3.toBytes(hexstr=raw_tx_hex)
             tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
+            print('nonce', tx.nonce)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
-            print('tx.to', tx.to)
+            print('tx_from', tx_from)
             tx_to = web3.Web3.toChecksumAddress(tx.to)
+            print('tx.to', tx.to)
+            print('tx_to', tx_to)
+            print('txhash', tx_hash)
+            print('tx.data', tx.data)
+            tx_data = web3.Web3.toHex(tx.data)
+            contract = contract_map[tx_to.lower()]
+            result = '0x'
+            for i in contract.interface_map:
+                if tx_data.startswith(i):
+                    print(contract.interface_map[i], tx_data)
+                    func_params_data = tx_data.replace(i, '')
+                    func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+                    print(contract.interface_map[i], func_params)
+                    result = contract.interface_map[i](*func_params)
+                    break
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
 
-            print('nonce', tx.nonce)
-            print('txhash', tx_hash, tx_from, tx_to)
             db = database.get_conn()
             prev_hash = db.get(b'chain_%s' % tx_from.encode('utf8'))
             if prev_hash:

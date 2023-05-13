@@ -28,36 +28,20 @@ _balance = {
 # Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 
-def init(_name, _symbol, _decimals):
-    # global name
-    # global symbol
-    # global decimals
+# def init(_name, _symbol, _decimals):
+#     global name
+#     global symbol
+#     global decimals
 
-    # if not (name, symbol, decimals):
-    #     name = _name
-    #     symbol = _symbol
-    #     decimals = _decimals
-    pass
+#     if not (name, symbol, decimals):
+#         name = _name
+#         symbol = _symbol
+#         decimals = _decimals
+#     pass
 
 
 def mint(_amount, _to):
     pass
-
-
-def transfer(_amount, _to):
-    pass
-
-
-def transferFrom():
-    pass
-
-
-def balanceOf(user):
-    user_bytes = web3.Web3.toBytes(hexstr=user)
-    user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
-    amount = _balance.get(user_addr, 0)
-    return f'0x{amount:0>64x}'
-    # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
 
 def approve():
@@ -66,6 +50,22 @@ def approve():
 
 def allowance():
     pass
+
+
+def transfer(_to, _amount):
+    print('transfer')
+
+
+def transferFrom():
+    print('transferFrom')
+
+
+def balanceOf(user):
+    user_bytes = web3.Web3.toBytes(hexstr=user)
+    user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
+    amount = _balance.get(user_addr, 0)
+    return f'0x{amount:0>64x}'
+    # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
 
 def name():
