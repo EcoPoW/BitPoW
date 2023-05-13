@@ -53,7 +53,26 @@ def allowance():
 
 
 def transfer(_to, _amount):
-    print('transfer')
+    prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
+    print('transfer', prev_contract_hash)
+    msgstate_bytes = db.get(b'msgstate_%s' % prev_contract_hash)
+    msgstate = tornado.escape.json_decode(msgstate_bytes)
+    print('transfer', msgstate)
+    msg = db.get(b'msg_%s' % prev_contract_hash)
+    print('transfer', msg)
+    to_bytes = web3.Web3.toBytes(hexstr=_to)
+    to_addr = web3.Web3.toChecksumAddress(to_bytes[12:])
+    amount = web3.Web3.toInt(hexstr=_amount)
+
+    new_msg = ['0x0000000000000000000000000000000000000001', prev_contract_hash.decode('utf8'), to_addr, amount, '']
+    print('transfer', to_addr, amount)
+    new_contract_state = msgstate
+    new_contract_state['balance'].setdefault(to_addr, 0)
+    new_contract_state['balance'][to_addr] += amount
+    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
+    db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_state).encode('utf8'))
+    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', new_contract_state]).encode('utf8'))
+    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))
 
 
 def transferFrom():
@@ -63,7 +82,14 @@ def transferFrom():
 def balanceOf(user):
     user_bytes = web3.Web3.toBytes(hexstr=user)
     user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
-    amount = _balance.get(user_addr, 0)
+    prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
+    print('balanceOf', prev_contract_hash)
+    msgstate_bytes = db.get(b'msgstate_%s' % prev_contract_hash)
+    msgstate = tornado.escape.json_decode(msgstate_bytes)
+    print('balanceOf', msgstate)
+    # amount = _balance.get(user_addr, 0)
+    amount = msgstate['balance'].get(user_addr, 0)
+
     return f'0x{amount:0>64x}'
     # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
