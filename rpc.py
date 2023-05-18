@@ -95,10 +95,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         self.add_header('access-control-allow-origin', 'moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8')
         req = tornado.escape.json_decode(self.request.body)
         rpc_id = req['id']
-        if req.get('method') == 'eth_chainId':
-            resp = {'jsonrpc':'2.0', 'result': hex(520), 'id':rpc_id}
-
-        elif req.get('method') == 'eth_blockNumber':
+        if req.get('method') == 'eth_blockNumber':
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
             resp = {'jsonrpc':'2.0', 'result': hex(highest_block_height), 'id':rpc_id}
 
@@ -167,7 +164,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     if tx_to == address:
                         balance += int(tx.value/10**18)
 
-            resp = {'jsonrpc':'2.0', 'result': hex(balance*(10**18)), 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': hex(0*balance*(10**18)), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getTransactionReceipt':
             msg_hash = req['params'][0]
@@ -321,8 +318,11 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'web3_clientVersion':
             resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
 
+        elif req.get('method') == 'eth_chainId':
+            resp = {'jsonrpc':'2.0', 'result': hex(3335), 'id':rpc_id}
+
         elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result': '520','id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '3335','id': rpc_id}
 
         print(resp)
         self.write(tornado.escape.json_encode(resp))
