@@ -44,7 +44,7 @@ _balance = {
 def mint(_to, _amount):
     to_bytes = web3.Web3.to_bytes(hexstr=_to)
     to_addr = web3.Web3.to_checksum_address(to_bytes[12:])
-    amount = web3.Web3.toInt(hexstr=_amount)
+    amount = web3.Web3.to_int(hexstr=_amount)
     print('mint', to_addr, amount)
 
     prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
@@ -77,7 +77,7 @@ def allowance():
 def transfer(_to, _amount):
     to_bytes = web3.Web3.to_bytes(hexstr=_to)
     to_addr = web3.Web3.to_checksum_address(to_bytes[12:])
-    amount = web3.Web3.toInt(hexstr=_amount)
+    amount = web3.Web3.to_int(hexstr=_amount)
 
     prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
     print('transfer', prev_contract_hash)
