@@ -26,13 +26,13 @@ contract_map = {
 # def tx_info(raw_tx):
 #     raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
 #     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
-#     tx_hash = web3.Web3.toHex(eth_utils.keccak(raw_bytes))
+#     tx_hash = web3.Web3.to_hex(eth_utils.keccak(raw_bytes))
 #     tx_from = eth_account.Account.recover_transaction(raw_tx)
 #     tx_to = web3.Web3.to_checksum_address(tx.to) if tx.to else None
 #     chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
 #     # print('from', tx_from)
 #     # print('to', tx_to)
-#     # tx_data = web3.Web3.toHex(tx.data)
+#     # tx_data = web3.Web3.to_hex(tx.data)
 #     # print('data', tx_data)
 #     # print('chain_id', chain_id)
 #     # print('nonce', tx.nonce)
@@ -240,7 +240,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('tx_to', tx_to)
             print('txhash', tx_hash)
             print('tx.data', tx.data)
-            tx_data = web3.Web3.toHex(tx.data)
+            tx_data = web3.Web3.to_hex(tx.data)
             contract = contract_map[tx_to.lower()]
             result = '0x'
             for i in contract.interface_map:
