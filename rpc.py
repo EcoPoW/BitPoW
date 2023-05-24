@@ -228,7 +228,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             params = req.get('params', [])
             raw_tx_hex = params[0]
             # print('raw_tx_hex', raw_tx_hex)
-            raw_tx_bytes = web3.Web3.toBytes(hexstr=raw_tx_hex)
+            raw_tx_bytes = web3.Web3.to_bytes(hexstr=raw_tx_hex)
             tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
             print('nonce', tx.nonce)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
