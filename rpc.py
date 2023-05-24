@@ -28,7 +28,7 @@ contract_map = {
 #     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
 #     tx_hash = web3.Web3.toHex(eth_utils.keccak(raw_bytes))
 #     tx_from = eth_account.Account.recover_transaction(raw_tx)
-#     tx_to = web3.Web3.toChecksumAddress(tx.to) if tx.to else None
+#     tx_to = web3.Web3.to_checksum_address(tx.to) if tx.to else None
 #     chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
 #     # print('from', tx_from)
 #     # print('to', tx_to)
@@ -70,7 +70,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         # self.add_header('accept', 'application/json')
         # self.add_header('vary', 'origin')
         self.add_header('access-control-allow-methods', 'OPTIONS, POST')
-        self.add_header('access-control-allow-origin', 'moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8')
+        self.add_header('access-control-allow-origin', '*')
         self.add_header('access-control-allow-headers', 'content-type')
         self.add_header('accept', 'application/json')
         # allow: OPTIONS, POST\r\n
@@ -92,9 +92,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
         # print(self.request.arguments)
         print(self.request.body)
         self.add_header('access-control-allow-methods', 'OPTIONS, POST')
-        self.add_header('access-control-allow-origin', 'moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8')
+        self.add_header('access-control-allow-origin', '*')
         req = tornado.escape.json_decode(self.request.body)
-        rpc_id = req['id']
+        rpc_id = req.get('id', '0')
         if req.get('method') == 'eth_blockNumber':
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
             resp = {'jsonrpc':'2.0', 'result': hex(highest_block_height), 'id':rpc_id}
@@ -131,7 +131,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
 
         elif req.get('method') == 'eth_getBalance':
-            address = web3.Web3.toChecksumAddress(req['params'][0])
+            address = web3.Web3.to_checksum_address(req['params'][0])
             # block_height = req['params'][1]
 
             _highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
@@ -198,7 +198,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id': rpc_id}
 
         elif req.get('method') == 'eth_getTransactionCount':
-            address = web3.Web3.toChecksumAddress(req['params'][0])
+            address = web3.Web3.to_checksum_address(req['params'][0])
             db = database.get_conn()
             prev_hash = db.get(b'chain_%s' % address.encode('utf8'))
             count = 0
@@ -235,7 +235,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
             contract_erc20._sender = tx_from
             print('tx_from', tx_from)
-            tx_to = web3.Web3.toChecksumAddress(tx.to)
+            tx_to = web3.Web3.to_checksum_address(tx.to)
             print('tx.to', tx.to)
             print('tx_to', tx_to)
             print('txhash', tx_hash)

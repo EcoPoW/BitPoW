@@ -23,7 +23,7 @@ import database
 _sender = None
 
 _balance = {
-    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 100000
+    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 10**20
 }
 # hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 # Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -43,7 +43,7 @@ _balance = {
 
 def mint(_to, _amount):
     to_bytes = web3.Web3.toBytes(hexstr=_to)
-    to_addr = web3.Web3.toChecksumAddress(to_bytes[12:])
+    to_addr = web3.Web3.to_checksum_address(to_bytes[12:])
     amount = web3.Web3.toInt(hexstr=_amount)
     print('mint', to_addr, amount)
 
@@ -76,7 +76,7 @@ def allowance():
 
 def transfer(_to, _amount):
     to_bytes = web3.Web3.toBytes(hexstr=_to)
-    to_addr = web3.Web3.toChecksumAddress(to_bytes[12:])
+    to_addr = web3.Web3.to_checksum_address(to_bytes[12:])
     amount = web3.Web3.toInt(hexstr=_amount)
 
     prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
@@ -93,7 +93,7 @@ def transfer(_to, _amount):
     new_contract_state['balance'].setdefault(_sender, 0)
     new_contract_state['balance'][_sender] -= amount
     new_contract_state['balance'].setdefault(to_addr, 0)
-    new_contract_state['balance'][to_addr] += amount
+    new_contract_state['balance'][to_addr] += (amount - 10**16)
     new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
     db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_state).encode('utf8'))
     db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', new_contract_state]).encode('utf8'))
@@ -106,7 +106,7 @@ def transferFrom():
 
 def balanceOf(user):
     user_bytes = web3.Web3.toBytes(hexstr=user)
-    user_addr = web3.Web3.toChecksumAddress(user_bytes[12:])
+    user_addr = web3.Web3.to_checksum_address(user_bytes[12:])
     prev_contract_hash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'))
     print('balanceOf', prev_contract_hash)
     msgstate_bytes = db.get(b'msgstate_%s' % prev_contract_hash)
@@ -129,7 +129,7 @@ def symbol():
     # return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000' #POW
 
 def decimals():
-    return '0x0000000000000000000000000000000000000000000000000000000000000000'
+    return f'0x{18:0>64x}'
 
 def totalSupply():
     return 0
