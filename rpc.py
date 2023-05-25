@@ -4,13 +4,13 @@ import hashlib
 import time
 
 import tornado
-import requests
+# import requests
 
 import web3
 import eth_account
 # import eth_typing
 # import eth_utils
-# import rlp
+import rlp
 
 import chain
 import database
@@ -23,38 +23,35 @@ contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
 }
 
-# def tx_info(raw_tx):
-#     raw_bytes = eth_utils.to_bytes(hexstr=eth_typing.HexStr(raw_tx))
-#     tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_bytes)
-#     tx_hash = web3.Web3.to_hex(eth_utils.keccak(raw_bytes))
-#     tx_from = eth_account.Account.recover_transaction(raw_tx)
-#     tx_to = web3.Web3.to_checksum_address(tx.to) if tx.to else None
-#     chain_id, _ = eth_account._utils.signing.extract_chain_id(tx.v)
-#     # print('from', tx_from)
-#     # print('to', tx_to)
-#     # tx_data = web3.Web3.to_hex(tx.data)
-#     # print('data', tx_data)
-#     # print('chain_id', chain_id)
-#     # print('nonce', tx.nonce)
-#     # print('value', tx.value)
-#     # print('gas', tx.gas)
-#     # print('gasPrice', tx.gasPrice)
-#     # print('r', tx.r)
-#     # print('s', tx.s)
-#     # print('v', tx.v)
-#     return tx, tx_from, tx_to, tx_hash
+V_OFFSET = 27
+def eth_rlp2list(tx_rlp_bytes):
+    tx_rlp_list = rlp.decode(tx_rlp_bytes)
+    # print(rlp.encode(tx_rlp_list))
+    nonce = int.from_bytes(tx_rlp_list[0], 'big')
+    gas_price = int.from_bytes(tx_rlp_list[1], 'big')
+    gas = int.from_bytes(tx_rlp_list[2], 'big')
+    to = int.from_bytes(tx_rlp_list[3], 'big')
+    value = int.from_bytes(tx_rlp_list[4], 'big')
+    data = tx_rlp_list[5].hex()
+    # print(tx_rlp_list[5])
+    v = int.from_bytes(tx_rlp_list[6], 'big')
+    r = int.from_bytes(tx_rlp_list[7], 'big')
+    s = int.from_bytes(tx_rlp_list[8], 'big')
+    chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
+    v_standard = chain_naive_v - V_OFFSET
+    return [nonce, gas_price, gas, to, value, data, chain_id], [v_standard, r, s]
 
 
-class ProxyEthRpcHandler(tornado.web.RequestHandler):
-    def options(self):
-        pass
+# class ProxyEthRpcHandler(tornado.web.RequestHandler):
+#     def options(self):
+#         pass
 
-    def post(self):
-        print('----post----')
-        print(self.request.body)
-        rsp = requests.post('http://127.0.0.1:8545', data=self.request.body)
-        print(rsp.text)
-        self.write(rsp.text)
+#     def post(self):
+#         print('----post----')
+#         print(self.request.body)
+#         rsp = requests.post('http://127.0.0.1:8545', data=self.request.body)
+#         print(rsp.text)
+#         self.write(rsp.text)
 
 
 class EthRpcHandler(tornado.web.RequestHandler):
@@ -267,7 +264,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 assert 1 == tx.nonce
 
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
-            data = {'eth_raw_tx': raw_tx_hex}
+            # data = {'eth_raw_tx': raw_tx_hex}
+            data, vrs = eth_rlp2list(raw_tx_bytes)
             data_json = json.dumps(data)
             new_timestamp = time.time()
             block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
