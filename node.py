@@ -20,7 +20,6 @@ import miner
 import chain
 import database
 import rpc
-import chat
 
 tracemalloc.start()
 
@@ -44,23 +43,13 @@ class Application(tornado.web.Application):
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
                     (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
 
-                    (r"/get_highest_tempchain_block_hash", chain.GetHighestTempchainBlockHashHandler),
-                    (r"/get_tempchain_block", chain.GetTempchainBlockHandler),
-                    (r"/new_tempchain_block", NewTempchainBlockHandler),
-                    (r"/get_tempchain_block_state", chain.GetTempchainBlockStateHandler),
-
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_view", ChainExplorerHandler),
                     (r"/subchain_list", SubchainListHandler),
                     (r"/subchain_view", SubchainViewHandler),
-                    # (r"/tempchain_list", TempchainListHandler),
-                    # (r"/tempchain_view", TempchainViewHandler),
 
                     (r"/scan/address/(.*)", ScanAddressHandler),
                     (r"/scan/tx/(.*)", ScanTxHandler),
-
-                    (r"/faucet", TempchainViewHandler),
-                    (r"/send", TempchainViewHandler),
 
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
@@ -69,13 +58,6 @@ class Application(tornado.web.Application):
                     # (r"/eth_rpc", rpc.EthRpcHandler),
                     # (r"/", rpc.ProxyEthRpcHandler),
                     (r"/", rpc.EthRpcHandler),
-                    # (r"/chat_contact_new", chat.ChatContactNewHandler),
-                    # (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
-                    # (r"/chat_group_new", DashboardHandler),
-                    # (r"/chat_group_join", DashboardHandler),
-                    # (r"/chat_group_leave", DashboardHandler),
-                    # (r"/chat_group_kick", DashboardHandler),
-                    # (r"/chat_msg_new", DashboardHandler),
                     # (r"/", MainHandler),
                 ]
         settings = {"debug":True}
@@ -167,20 +149,6 @@ class NewSubchainBlockBatchHandler(tornado.web.RequestHandler):
             tree.forward(['NEW_SUBCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
         # self.finish({"block": block})
         self.finish({})
-
-class NewTempchainBlockHandler(tornado.web.RequestHandler):
-    # def get(self):
-    #     block =  ["58745b596bcfc8376527fd37cb2ca34224ff4d1d4f1d41053a889742f4bc77a8", "0000000000000000000000000000000000000000000000000000000000000000", "0xb88744C14D2E92cC653493df18bEF2E4b263c1FD", "0x504E18e367F32050951452Affc56082847628d28", 1, {"amount": 6}, 1633745105.8568707, "0x64a7f9a8b19cfd7597ecc6a49ada434b2101a7a8afc0ac78e59a59af3152eedc1a26e9a9b660373b8eae7bc2c646b393f0a51bd904e5a16336ebc3c3d77710c401"]
-    #     chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
-    #     tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
-    #     self.finish({"block": block})
-
-    def post(self):
-        block = tornado.escape.json_decode(self.request.body)
-
-        chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
-        tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
-        self.finish({"block": block})
 
 
 class DashboardHandler(tornado.web.RequestHandler):
@@ -352,38 +320,6 @@ class TempchainListHandler(tornado.web.RequestHandler):
             self.write("<a href='/tempchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('tempchain_', ''), k.decode(), v.decode()))
             # elif len(k) == 64+5:
             #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
-
-
-class TempchainViewHandler(tornado.web.RequestHandler):
-    def get(self):
-        sender = self.get_argument('sender')
-        # assert sender.startswith('0x') and (len(sender) == 42 or len(sender) == 66)
-        hash = self.get_argument('hash', None)
-        self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> ')
-        # self.write('<a href="/tempchain_list">Temp list</a>')
-        self.write('</br></br>')
-
-        db = database.get_conn()
-        if hash is None:
-            msg_hash = db.get(b'tempchain_%s' % sender.encode('utf8'))
-            if not msg_hash:
-                return
-        else:
-            msg_hash = hash.encode('utf8')
-
-        for i in range(2000):
-            msg_json = db.get(b'tempmsg_%s' % msg_hash)
-            if not msg_json:
-                return
-
-            msg = tornado.escape.json_decode(msg_json)
-            self.write("<a href='/get_tempchain_block_state?hash=%s'>%s</a><br>" % (msg[0], msg[3]))
-            self.write("<code>%s</code><br><br>" % msg_json)
-            msg_hash = msg[chain.PREV_HASH].encode('utf8')
-
-        self.write("<a href='/subchain_view?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
 
 
 class UploadChunkHandler(tornado.web.RequestHandler):

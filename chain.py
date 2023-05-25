@@ -595,25 +595,6 @@ class GetSubchainBlockStateHandler(tornado.web.RequestHandler):
         else:
             self.finish({"state": None})
 
-class GetTempchainBlockStateHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'tempmsgstate_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"state": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"state": None})
-
-# class GetProofHandler(tornado.web.RequestHandler):
-#     def get(self):
-#         proof_hash = self.get_argument("hash")
-#         conn = database.get_conn()
-#         c = conn.cursor()
-#         c.execute("SELECT * FROM proof WHERE hash = ?", (proof_hash,))
-#         proof = c.fetchone()
-#         self.finish({"proof": proof[1:]})
-
 class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: fixed key 'chain0x0000' for rocksdb
@@ -637,35 +618,11 @@ class GetHighestSubchainBlockStateHandler(tornado.web.RequestHandler):
         # chat_master_pk
         self.finish(msgstate_json)
 
-
-class GetHighestTempchainBlockHashHandler(tornado.web.RequestHandler):
-    def get(self):
-        # TODO: fixed key 'chain0x0000' for rocksdb
-        chain = self.get_argument('chain')
-        # assert sender.startswith('0x')
-        # assert len(sender) == 42
-        db = database.get_conn()
-        highest_block_hash = db.get(b'tempchain_%s' % chain.encode('utf8'))
-        if highest_block_hash:
-            self.finish({"hash": highest_block_hash.decode('utf8')})
-        else:
-            self.finish({"hash": '0'*64})
-
 class GetSubchainBlockHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument("hash")
         db = database.get_conn()
         block_json = db.get(b'msg_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"msg": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"msg": None})
-
-class GetTempchainBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'tempmsg_%s' % block_hash.encode('utf8'))
         if block_json:
             self.finish({"msg": tornado.escape.json_decode(block_json)})
         else:
