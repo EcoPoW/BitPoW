@@ -76,12 +76,12 @@ def subchain_stf(state, msg):
                 current_folder[path] = info
         # print('blockstate_ dict', blockstate_dict)
 
-    if data.get('type') == 'chat_enable':
-        new_state['chat_master_pk'] = data['chat_master_pk']
+    # if data.get('type') == 'chat_enable':
+    #     new_state['chat_master_pk'] = data['chat_master_pk']
 
-    if data.get('type') == 'chat_disable':
-        if 'chat_master_pk' in new_state:
-            del new_state['chat_master_pk']
+    # if data.get('type') == 'chat_disable':
+    #     if 'chat_master_pk' in new_state:
+    #         del new_state['chat_master_pk']
 
     return new_state
 
