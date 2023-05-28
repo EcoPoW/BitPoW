@@ -30,7 +30,26 @@ import rpc
 
 import eth_keys
 import eth_utils
+import eth_account
+import rlp
 # import ecdsa
+
+
+def hash_of_eth_tx_list(tx_list):
+    nonce = tx_list[0].to_bytes(1, 'big')
+    gas_price = tx_list[1].to_bytes(5, 'big')
+    gas = tx_list[2].to_bytes(2, 'big')
+    to = bytes.fromhex(tx_list[3].replace('0x', ''))
+    value = tx_list[4].to_bytes(0, 'big')
+    data = tx_list[5]
+    chain_id = tx_list[6].to_bytes(2, 'big')
+    # print(tx_list)
+    rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+    # print('raw', rlp_bytes)
+    rlp_hash = eth_utils.keccak(rlp_bytes)
+    # print('hash1', rlp_hash)
+    return rlp_hash
+
 
 HASH = 0
 PREV_HASH = 1
@@ -447,7 +466,15 @@ def new_chain_proof(seq):
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
-    _msg_header, msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
+    _msg_header, msg_hash, prev_hash, tx_type, timestamp, data, signature = seq
+    receiver = data[3]
+    height = data[0]
+    eth_tx_hash = hash_of_eth_tx_list(data)
+    signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+    pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+    sender = pubkey.to_checksum_address()
+    print(sender)
+
     if setting.SHARDING:
         sender_bin = bin(int(sender[2:], 16))[2:].zfill(160)
         # print('current_nodeid', tree.current_nodeid, sender_bin)
@@ -462,11 +489,6 @@ def new_subchain_block(seq):
     # print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
     # subchains_block[sender] = block_hash
 
-    # sig = eth_keys.keys.Signature(eth_utils.hexadecimal.decode_hex(signature))
-    # pk = sig.recover_public_key_from_msg_hash(eth_utils.hexadecimal.decode_hex(block_hash))
-    # print('sig', pk)
-    # print('id', pk.to_checksum_address(), sender)
-
     # http_client = tornado.httpclient.AsyncHTTPClient()
     # url = "http://127.0.0.1:7001/recover_public_key_from_msg_hash?signature=%s&hash=%s" % (signature, block_hash)
     # try:
@@ -479,8 +501,8 @@ def new_subchain_block(seq):
         prev_msgstate = {}
     else:
         prev_msgstate_json = db.get(b'msgstate_%s' % prev_hash.encode('utf8'))
-        # print('prev_msgstate_json', prev_msgstate_json)
-        prev_msgstate = tornado.escape.json_decode(prev_msgstate_json)
+        print('prev_msgstate_json', prev_msgstate_json)
+        # prev_msgstate = tornado.escape.json_decode(prev_msgstate_json)
 
     # print('prev_msgstate', prev_msgstate)
     # print('data', data)
@@ -500,7 +522,7 @@ def new_subchain_block(seq):
 
 
     # try:
-    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, receiver, height, data, timestamp, signature]).encode('utf8'))
+    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, data, signature]).encode('utf8'))
     assert len(sender) == 42
     db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
     # get tx pool, if already exists, override only when the height is higher than current

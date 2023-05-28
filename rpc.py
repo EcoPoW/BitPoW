@@ -30,7 +30,7 @@ def eth_rlp2list(tx_rlp_bytes):
     nonce = int.from_bytes(tx_rlp_list[0], 'big')
     gas_price = int.from_bytes(tx_rlp_list[1], 'big')
     gas = int.from_bytes(tx_rlp_list[2], 'big')
-    to = int.from_bytes(tx_rlp_list[3], 'big')
+    to = web3.Web3.to_checksum_address(tx_rlp_list[3])
     value = int.from_bytes(tx_rlp_list[4], 'big')
     data = tx_rlp_list[5].hex()
     # print(tx_rlp_list[5])
@@ -224,8 +224,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # reference UNSIGNED_TRANSACTION_FIELDS for those data
             params = req.get('params', [])
             raw_tx_hex = params[0]
-            # print('raw_tx_hex', raw_tx_hex)
+            print('raw_tx_hex', raw_tx_hex)
             raw_tx_bytes = web3.Web3.to_bytes(hexstr=raw_tx_hex)
+            print('raw_tx_bytes', raw_tx_bytes)
             tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
             print('nonce', tx.nonce)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
@@ -270,10 +271,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             new_timestamp = time.time()
             block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx.nonce) + data_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
-            signature = 'eth'
+            signature_obj = eth_account.Account._keys.Signature(vrs=vrs)
+            signature = signature_obj.to_hex()
 
-            chain.new_subchain_block(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
-            tree.forward(['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), tx_from, tx_to, tx.nonce, data, new_timestamp, signature])
+            seq = ['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), 'eth', new_timestamp, data, signature]
+            chain.new_subchain_block(seq)
+            tree.forward(seq)
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
@@ -313,8 +316,11 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 else:
                     resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}
 
+        elif req.get('method') == 'eth_feeHistory':
+            resp = {'jsonrpc':'2.0', 'result': 'BitPoW', 'id': rpc_id}
+
         elif req.get('method') == 'web3_clientVersion':
-            resp = {'jsonrpc':'2.0', 'result': 'ByteChain', 'id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': 'BitPoW', 'id': rpc_id}
 
         elif req.get('method') == 'eth_chainId':
             resp = {'jsonrpc':'2.0', 'result': hex(3335), 'id':rpc_id}
