@@ -2,12 +2,12 @@ from __future__ import print_function
 
 # import sys
 # import os
-# import math
 # import argparse
 # import uuid
 # import base64
 # import threading
 # import secrets
+import math
 import time
 import hashlib
 import copy
@@ -36,14 +36,14 @@ import rlp
 
 
 def hash_of_eth_tx_list(tx_list):
-    nonce = tx_list[0].to_bytes(1, 'big')
-    gas_price = tx_list[1].to_bytes(5, 'big')
-    gas = tx_list[2].to_bytes(2, 'big')
+    nonce = tx_list[0].to_bytes(math.ceil(nonce.bit_length()/8), 'big')
+    gas_price = tx_list[1].to_bytes(math.ceil(gas_price.bit_length()/8), 'big')
+    gas = tx_list[2].to_bytes(math.ceil(gas.bit_length()/8), 'big')
     to = bytes.fromhex(tx_list[3].replace('0x', ''))
-    value = tx_list[4].to_bytes(0, 'big')
-    data = tx_list[5]
-    chain_id = tx_list[6].to_bytes(2, 'big')
-    # print(tx_list)
+    value = tx_list[4].to_bytes(math.ceil(value.bit_length()/8), 'big')
+    data = bytes.fromhex(tx_list[5].replace('0x', ''))
+    chain_id = tx_list[6].to_bytes(math.ceil(chain_id.bit_length()/8), 'big')
+    print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
     rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
     # print('raw', rlp_bytes)
     rlp_hash = eth_utils.keccak(rlp_bytes)
