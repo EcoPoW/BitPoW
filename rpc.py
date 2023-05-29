@@ -2,6 +2,7 @@
 import json
 import hashlib
 import time
+import math
 
 import tornado
 # import requests
@@ -9,7 +10,7 @@ import tornado
 import web3
 import eth_account
 # import eth_typing
-# import eth_utils
+import eth_utils
 import rlp
 
 import chain
@@ -40,6 +41,22 @@ def eth_rlp2list(tx_rlp_bytes):
     chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
     v_standard = chain_naive_v - V_OFFSET
     return [nonce, gas_price, gas, to, value, data, chain_id], [v_standard, r, s]
+
+
+def hash_of_eth_tx_list(tx_list):
+    nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
+    gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
+    gas = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
+    to = bytes.fromhex(tx_list[3].replace('0x', ''))
+    value = tx_list[4].to_bytes(math.ceil(tx_list[4].bit_length()/8), 'big')
+    data = bytes.fromhex(tx_list[5].replace('0x', ''))
+    chain_id = tx_list[6].to_bytes(math.ceil(tx_list[6].bit_length()/8), 'big')
+    # print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+    rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+    # print('raw', rlp_bytes)
+    rlp_hash = eth_utils.keccak(rlp_bytes)
+    # print('hash1', rlp_hash)
+    return rlp_hash
 
 
 # class ProxyEthRpcHandler(tornado.web.RequestHandler):
@@ -169,14 +186,21 @@ class EthRpcHandler(tornado.web.RequestHandler):
             msg_json = db.get(b'msg_%s' % msg_hash.encode('utf8')[2:])
             print(msg_json)
             msg = tornado.escape.json_decode(msg_json)
+            data = msg[chain.MSG_DATA]
+            # count = data[0]
+            signature = msg[chain.MSG_SIGNATURE]
+            eth_tx_hash = hash_of_eth_tx_list(data)
+            signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+            pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+            sender = pubkey.to_checksum_address()
 
             result = {
                 'transactionHash': msg_hash,
                 'transactionIndex': 0,
                 'blockHash': msg_hash,
                 'blockNumber': 0,
-                'from': msg[chain.SENDER],
-                'to': msg[chain.RECEIVER],
+                'from': sender,
+                'to': data[3],
                 'cumulativeGasUsed': 0,
                 'gasUsed':0,
                 'contractAddress': '',
@@ -204,7 +228,16 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
                 # print(msg)
-                count = msg[chain.MSG_HEIGHT]
+                # count = msg[chain.MSG_HEIGHT]
+                data = msg[chain.MSG_DATA]
+                count = data[0]
+                signature = msg[chain.MSG_SIGNATURE]
+                eth_tx_hash = hash_of_eth_tx_list(data)
+                signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+                pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+                sender = pubkey.to_checksum_address()
+                print('sender', sender)
+                print('count', count)
 
             resp = {'jsonrpc':'2.0', 'result': hex(count+1), 'id': rpc_id}
 
@@ -258,8 +291,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 msg_json = db.get(b'msg_%s' % prev_hash)
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
-                # print(msg)
-                assert msg[chain.MSG_HEIGHT] + 1 == tx.nonce
+                print(msg)
+                assert msg[chain.MSG_DATA][0] + 1 == tx.nonce
             else:
                 prev_hash = b'0'*64
                 assert 1 == tx.nonce

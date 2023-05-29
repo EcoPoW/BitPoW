@@ -7,7 +7,6 @@ from __future__ import print_function
 # import base64
 # import threading
 # import secrets
-import math
 import time
 import hashlib
 import copy
@@ -31,24 +30,8 @@ import rpc
 import eth_keys
 import eth_utils
 import eth_account
-import rlp
+# import rlp
 # import ecdsa
-
-
-def hash_of_eth_tx_list(tx_list):
-    nonce = tx_list[0].to_bytes(math.ceil(nonce.bit_length()/8), 'big')
-    gas_price = tx_list[1].to_bytes(math.ceil(gas_price.bit_length()/8), 'big')
-    gas = tx_list[2].to_bytes(math.ceil(gas.bit_length()/8), 'big')
-    to = bytes.fromhex(tx_list[3].replace('0x', ''))
-    value = tx_list[4].to_bytes(math.ceil(value.bit_length()/8), 'big')
-    data = bytes.fromhex(tx_list[5].replace('0x', ''))
-    chain_id = tx_list[6].to_bytes(math.ceil(chain_id.bit_length()/8), 'big')
-    print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
-    rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
-    # print('raw', rlp_bytes)
-    rlp_hash = eth_utils.keccak(rlp_bytes)
-    # print('hash1', rlp_hash)
-    return rlp_hash
 
 
 HASH = 0
@@ -62,10 +45,12 @@ TIMESTAMP = 7
 NODE = 8
 MSGID = 9
 
-SENDER = 2
-RECEIVER = 3
-MSG_HEIGHT = 4
-MSG_DATA = 5
+# SENDER = 2
+# RECEIVER = 3
+MSG_TYPE = 2
+MSG_TIMESTAMP = 3
+MSG_DATA = 4
+MSG_SIGNATURE = 5
 REF_HASH = 6
 REF_HEIGHT = 7
 
@@ -323,11 +308,11 @@ def new_chain_block(seq):
                         address = msg[MSG_DATA]['address']
                         aliases_to_block[alias] = address
 
-                    if msg[RECEIVER] == '1x':
-                        contracts_to_interact.append(msg[HASH])
+                    # if msg[RECEIVER] == '1x':
+                    #     contracts_to_interact.append(msg[HASH])
 
-                    if msg[RECEIVER].startswith('1x') and len(msg[RECEIVER]) == 42:
-                        contracts_to_interact.append(msg[HASH])
+                    # if msg[RECEIVER].startswith('1x') and len(msg[RECEIVER]) == 42:
+                    #     contracts_to_interact.append(msg[HASH])
 
                     last_confirmed_msg_hash = msg_hash
 
@@ -469,11 +454,11 @@ def new_subchain_block(seq):
     _msg_header, msg_hash, prev_hash, tx_type, timestamp, data, signature = seq
     receiver = data[3]
     height = data[0]
-    eth_tx_hash = hash_of_eth_tx_list(data)
+    eth_tx_hash = rpc.hash_of_eth_tx_list(data)
     signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
     sender = pubkey.to_checksum_address()
-    print(sender)
+    print('sender', sender)
 
     if setting.SHARDING:
         sender_bin = bin(int(sender[2:], 16))[2:].zfill(160)
