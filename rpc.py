@@ -33,7 +33,7 @@ def eth_rlp2list(tx_rlp_bytes):
     gas = int.from_bytes(tx_rlp_list[2], 'big')
     to = web3.Web3.to_checksum_address(tx_rlp_list[3])
     value = int.from_bytes(tx_rlp_list[4], 'big')
-    data = tx_rlp_list[5].hex()
+    data = '0x%s' % tx_rlp_list[5].hex()
     # print(tx_rlp_list[5])
     v = int.from_bytes(tx_rlp_list[6], 'big')
     r = int.from_bytes(tx_rlp_list[7], 'big')
@@ -291,7 +291,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 msg_json = db.get(b'msg_%s' % prev_hash)
                 # print(msg_json)
                 msg = tornado.escape.json_decode(msg_json)
-                print(msg)
+                # print(msg)
                 assert msg[chain.MSG_DATA][0] + 1 == tx.nonce
             else:
                 prev_hash = b'0'*64

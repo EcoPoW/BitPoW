@@ -298,10 +298,10 @@ class SubchainListHandler(tornado.web.RequestHandler):
             #     continue
             # if not k.startswith(b'chain_'):
             #     break
-            if len(k) == 42+6 and k.startswith(b'chain_0x'):
+            if len(k) == 42+6:
                 self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Account '), v.decode()))
-            elif len(k) == 42+6 and k.startswith(b'chain_1x'):
-                self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
+            # elif len(k) == 42+6 and k.startswith(b'chain_1x'):
+            #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
 
 
 class TempchainListHandler(tornado.web.RequestHandler):

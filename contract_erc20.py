@@ -55,15 +55,16 @@ def mint(_to, _amount):
     msg = db.get(b'msg_%s' % prev_contract_hash)
     print('mint', msg)
 
-    new_msg = ['0x0000000000000000000000000000000000000001', prev_contract_hash.decode('utf8'), to_addr, amount, '']
+    new_msg = [prev_contract_hash.decode('utf8'), '', to_addr, amount]
     print('mint', to_addr, amount)
     new_contract_state = msgstate
     new_contract_state['balance'].setdefault(to_addr, 0)
     new_contract_state['balance'][to_addr] += amount
     new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
-    db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_state).encode('utf8'))
-    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', new_contract_state]).encode('utf8'))
-    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))
+    new_contract_hash_bytes = new_contract_hash.encode('utf8')
+    db.put(b'msgstate_%s' % new_contract_hash_bytes, tornado.escape.json_encode(new_contract_state).encode('utf8'))
+    db.put(b'msg_%s' % new_contract_hash_bytes, tornado.escape.json_encode([new_contract_hash] + new_msg).encode('utf8'))
+    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash_bytes)
 
 
 def approve():
@@ -87,7 +88,7 @@ def transfer(_to, _amount):
     msg = db.get(b'msg_%s' % prev_contract_hash)
     print('transfer', msg)
 
-    new_msg = ['0x0000000000000000000000000000000000000001', prev_contract_hash.decode('utf8'), to_addr, amount, '']
+    new_msg = [prev_contract_hash.decode('utf8'), '', to_addr, amount]
     print('transfer', _sender, to_addr, amount)
     new_contract_state = msgstate
     new_contract_state['balance'].setdefault(_sender, 0)
@@ -95,9 +96,10 @@ def transfer(_to, _amount):
     new_contract_state['balance'].setdefault(to_addr, 0)
     new_contract_state['balance'][to_addr] += (amount - 10**16)
     new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
-    db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(new_contract_state).encode('utf8'))
-    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', new_contract_state]).encode('utf8'))
-    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))
+    new_contract_hash_bytes = new_contract_hash.encode('utf8')
+    db.put(b'msgstate_%s' % new_contract_hash_bytes, tornado.escape.json_encode(new_contract_state).encode('utf8'))
+    db.put(b'msg_%s' % new_contract_hash_bytes, tornado.escape.json_encode([new_contract_hash] + new_msg).encode('utf8'))
+    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash_bytes)
 
 
 def transferFrom():
@@ -165,8 +167,10 @@ blockhash = db.get(b'chain_%s' % '0x0000000000000000000000000000000000000001'.en
 print(blockhash)
 if not blockhash:
     contract_state = {'balance': _balance}
-    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(['0x0000000000000000000000000000000000000001', '', '', '', contract_state]).encode('utf8')).hexdigest()
+    new_msg = ['0'*64, '', '', contract_state]
+    new_contract_hash = hashlib.sha256(tornado.escape.json_encode(new_msg).encode('utf8')).hexdigest()
+    new_contract_hash_bytes = new_contract_hash.encode('utf8')
 
-    db.put(b'msgstate_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode(contract_state).encode('utf8'))
-    db.put(b'msg_%s' % new_contract_hash.encode('utf8'), tornado.escape.json_encode([new_contract_hash, '', '', '', contract_state]).encode('utf8'))
-    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash.encode('utf8'))
+    db.put(b'msgstate_%s' % new_contract_hash_bytes, tornado.escape.json_encode(contract_state).encode('utf8'))
+    db.put(b'msg_%s' % new_contract_hash_bytes, tornado.escape.json_encode([new_contract_hash] + new_msg).encode('utf8'))
+    db.put(b'chain_%s' % '0x0000000000000000000000000000000000000001'.encode('utf8'), new_contract_hash_bytes)
