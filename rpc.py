@@ -3,6 +3,7 @@ import json
 import hashlib
 import time
 import math
+import types
 
 import tornado
 # import requests
@@ -16,6 +17,7 @@ import rlp
 import chain
 import database
 import tree
+import vm
 
 import contract_erc20
 
@@ -23,6 +25,20 @@ import contract_erc20
 contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
 }
+
+interface_map = {}
+for k, v in contract_erc20.__dict__.items():
+    if not k.startswith('_') and type(v) in [types.FunctionType]:
+        # print(k, type(v))
+        # print(v.__code__.co_kwonlyargcount, v.__code__.co_posonlyargcount)
+        # print(v.__code__.co_varnames[:v.__code__.co_argcount])
+        # for i in v.__code__.co_varnames[:v.__code__.co_argcount]:
+        #     print(v.__annotations__[i].__name__)
+        params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
+        func_sig = '%s(%s)' % (k, ','.join(params))
+        print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
+        interface_map['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
+# print(interface_map)
 
 V_OFFSET = 27
 def eth_rlp2list(tx_rlp_bytes):
@@ -264,7 +280,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('nonce', tx.nonce)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
+        
+            vm = vm.VM()
+            # vm.run(['0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', 1000], 'mint')
             contract_erc20._sender = tx_from
+
+            vm.import_module(contract_erc20)
             print('tx_from', tx_from)
             tx_to = web3.Web3.to_checksum_address(tx.to)
             print('tx.to', tx.to)
@@ -274,14 +295,14 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx_data = web3.Web3.to_hex(tx.data)
             contract = contract_map[tx_to.lower()]
             result = '0x'
-            for i in contract.interface_map:
-                if tx_data.startswith(i):
-                    print(contract.interface_map[i], tx_data)
-                    func_params_data = tx_data.replace(i, '')
-                    func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                    print(contract.interface_map[i], func_params)
-                    result = contract.interface_map[i](*func_params)
-                    break
+
+            func_sig = tx_data[:10]
+            print(interface_map[func_sig], tx_data)
+            func_params_data = tx_data[10:]
+            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+            print(interface_map[func_sig], func_params)
+            result = interface_map[func_sig](*func_params)
+
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
 
@@ -322,16 +343,15 @@ class EthRpcHandler(tornado.web.RequestHandler):
             if len(params) > 0:
                 if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
                     contract = contract_map[params[0]['to'].lower()]
-                    eth_call_data = params[0]['data']
+                    tx_data = params[0]['data']
                     result = '0x'
-                    for i in contract.interface_map:
-                        if eth_call_data.startswith(i):
-                            print(contract.interface_map[i], eth_call_data)
-                            func_params_data = eth_call_data.replace(i, '')
-                            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                            print(contract.interface_map[i], func_params)
-                            result = contract.interface_map[i](*func_params)
-                            break
+
+                    func_sig = tx_data[:10]
+                    print(interface_map[func_sig], tx_data)
+                    func_params_data = tx_data[10:]
+                    func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+                    print(interface_map[func_sig], func_params)
+                    result = interface_map[func_sig](*func_params)
 
                     # if params[0]['data'].startswith('0x313ce567'): #decimals
                     #     resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}
@@ -356,10 +376,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': 'BitPoW', 'id': rpc_id}
 
         elif req.get('method') == 'eth_chainId':
-            resp = {'jsonrpc':'2.0', 'result': hex(3335), 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': hex(520), 'id':rpc_id}
 
         elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result': '3335','id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': '520','id': rpc_id}
 
         print(resp)
         self.write(tornado.escape.json_encode(resp))
