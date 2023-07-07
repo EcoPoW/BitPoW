@@ -27,6 +27,7 @@ contract_map = {
 }
 
 interface_map = {}
+type_map = {}
 for k, v in contract_erc20.__dict__.items():
     if not k.startswith('_') and type(v) in [types.FunctionType]:
         # print(k, type(v))
@@ -36,9 +37,14 @@ for k, v in contract_erc20.__dict__.items():
         #     print(v.__annotations__[i].__name__)
         params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
         func_sig = '%s(%s)' % (k, ','.join(params))
-        print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
+        # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
         interface_map['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
-# print(interface_map)
+        type_map[k] = params
+print(interface_map)
+print(type_map)
+
+vm = vm.VM()
+vm.import_module(contract_erc20)
 
 V_OFFSET = 27
 def eth_rlp2list(tx_rlp_bytes):
@@ -280,12 +286,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('nonce', tx.nonce)
             tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=eth_account._utils.legacy_transactions.vrs_from(tx))
-        
-            vm = vm.VM()
-            # vm.run(['0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', 1000], 'mint')
-            contract_erc20._sender = tx_from
 
-            vm.import_module(contract_erc20)
+            # contract_erc20._sender = tx_from
+            vm.global_vars['_sender'] = tx_from
+
             print('tx_from', tx_from)
             tx_to = web3.Web3.to_checksum_address(tx.to)
             print('tx.to', tx.to)
@@ -293,24 +297,34 @@ class EthRpcHandler(tornado.web.RequestHandler):
             print('txhash', tx_hash)
             print('tx.data', tx.data)
             tx_data = web3.Web3.to_hex(tx.data)
-            contract = contract_map[tx_to.lower()]
+            # contract = contract_map[tx_to.lower()]
             result = '0x'
 
             func_sig = tx_data[:10]
             print(interface_map[func_sig], tx_data)
             func_params_data = tx_data[10:]
             func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-            print(interface_map[func_sig], func_params)
-            result = interface_map[func_sig](*func_params)
+            print('name', interface_map[func_sig].__name__, func_params)
+            type_params = []
+            for k, v in zip(type_map[interface_map[func_sig].__name__], func_params):
+                print('type', k, v)
+                if k == 'address':
+                    type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
+                elif k == 'uint256':
+                    type_params.append(web3.Web3.to_int(hexstr=v))
+
+            # result = interface_map[func_sig](*func_params)
+            vm.run(type_params, interface_map[func_sig].__name__)
 
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
 
             db = database.get_conn()
             prev_hash = db.get(b'chain_%s' % tx_from.encode('utf8'))
+            print('prev_hash', prev_hash)
             if prev_hash:
                 msg_json = db.get(b'msg_%s' % prev_hash)
-                # print(msg_json)
+                # print('msg_json', msg_json)
                 msg = tornado.escape.json_decode(msg_json)
                 # print(msg)
                 assert msg[chain.MSG_DATA][0] + 1 == tx.nonce
@@ -342,7 +356,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             params = req.get('params', [])
             if len(params) > 0:
                 if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
-                    contract = contract_map[params[0]['to'].lower()]
+                    # contract = contract_map[params[0]['to'].lower()]
                     tx_data = params[0]['data']
                     result = '0x'
 
@@ -350,8 +364,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     print(interface_map[func_sig], tx_data)
                     func_params_data = tx_data[10:]
                     func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                    print(interface_map[func_sig], func_params)
-                    result = interface_map[func_sig](*func_params)
+                    print('name', interface_map[func_sig].__name__, func_params)
+                    # result = interface_map[func_sig](*func_params)
+                    result = vm.run(func_params, interface_map[func_sig].__name__)
+                    print('result', result)
 
                     # if params[0]['data'].startswith('0x313ce567'): #decimals
                     #     resp = {'jsonrpc':'2.0', 'result': '0x0000000000000000000000000000000000000000000000000000000000000000', 'id': rpc_id}

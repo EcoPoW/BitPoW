@@ -35,7 +35,7 @@ class VM:
         self.global_vars['dict'] = dict
         self.global_vars['list'] = list
         self.global_vars['print'] = print
-        self.global_vars['open'] = open
+        # self.global_vars['open'] = open
         self.global_vars['AssertionError'] = AssertionError
         self.module_object = module_object
 
@@ -74,7 +74,8 @@ class VM:
             try:
                 r = self.step()
                 if r:
-                    print('return value', r)
+                    # print('return value', r)
+                    return r
             except BaseException as e:
                 print('except', e.__class__.__name__, dir(e.__class__))
                 print('blocks', self.blocks)
