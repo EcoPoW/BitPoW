@@ -31,7 +31,7 @@ class DBWrap:
 def get_mpt(root=None):
     # storage = {}
     if not conn:
-        get_conn(tree.current_name)
+        raise
 
     storage = DBWrap(conn)
     m = mpt.MerklePatriciaTrie(storage, root=root)

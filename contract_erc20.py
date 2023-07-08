@@ -2,29 +2,9 @@
 
 import tornado.escape
 
-import database
-
-class address(str):pass
-class uint256(int):pass
-
-class MPT:
-    # def __setitem__(self, key, value):
-    def put(self, key, value):
-        global _mpt
-        _mpt.put(key, value)
-
-
-    # def __getitem__(self, key):
-    def get(self, key, default):
-        global _mpt
-        try:
-            current_json = _mpt.get(b'%s_%s' % (CONTRACT_ADDRESS, key.encode('utf8')))
-            current_value = tornado.escape.json_decode(current_json)
-        except:
-            current_value = default
-
-        return current_value
-
+from state import address, uint256
+from state import _state
+from state import _sender
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -41,7 +21,6 @@ class MPT:
 
 CONTRACT_ADDRESS = b'0x0000000000000000000000000000000000000001'
 
-_sender = None
 
 # def init(_name, _symbol, _decimals):
 #     global name
@@ -56,20 +35,17 @@ _sender = None
 
 
 def mint(_to:address, _value:uint256):
-    current_amount = mpt.get('balance_%s' % _to, 0)
+    current_amount = _state.get('balance_%s' % _to, 0)
     new_amount = current_amount + _value
     print('before mint', current_amount)
     print('mint to', _to, _value)
     print('after mint', new_amount)
-    new_amount_json = tornado.escape.json_encode(new_amount)
-    _mpt.update(b'%s_balance_%s' % (CONTRACT_ADDRESS, _to.encode('utf8')), new_amount_json.encode('utf8'))
+    _state.put('balance_%s' % (_to, ), new_amount)
 
-    current_total_json = _mpt.get(b'%s_total' % CONTRACT_ADDRESS)
-    current_total = tornado.escape.json_decode(current_total_json)
+    current_total = _state.get('total', 0)
     new_total = current_total + _value
     print('after mint total', new_total)
-    new_total_json = tornado.escape.json_encode(new_total)
-    _mpt.update(b'%s_total' % CONTRACT_ADDRESS, new_total_json.encode('utf8'))
+    _state.put('total', new_total)
 
 
 def approve(_spender:address, _value:uint256):
@@ -82,18 +58,16 @@ def allowance(_owner:address, _spender:address):
 
 def transfer(_to:address, _value:uint256):
     print('transfer to', _to, _value)
-    sender_amount = mpt.get('balance_%s' % _sender, 0)
+    sender_amount = _state.get('balance_%s' % _sender, 0)
     sender_new_amount = sender_amount - _value
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    sender_new_amount_json = tornado.escape.json_encode(sender_new_amount)
-    _mpt.update(b'%s_balance_%s' % (CONTRACT_ADDRESS, _sender.encode('utf8')), sender_new_amount_json.encode('utf8'))
+    _state.put('balance_%s' % (_sender, ), sender_new_amount)
 
-    current_amount = mpt.get('balance_%s' % _sender, 0)
+    current_amount = _state.get('balance_%s' % _sender, 0)
     new_amount = current_amount + _value
     print('after transfer receiver', new_amount)
-    new_amount_json = tornado.escape.json_encode(new_amount)
-    _mpt.update(b'%s_balance_%s' % (CONTRACT_ADDRESS, _to.encode('utf8')), new_amount_json.encode('utf8'))
+    _state.put('balance_%s' % (_to, ), new_amount)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256):
@@ -101,7 +75,7 @@ def transferFrom(_from:address, _to:address, _value:uint256):
 
 
 def balanceOf(_owner:address):
-    amount = mpt.get('balance_%s' % _owner, 0)
+    amount = _state.get('balance_%s' % _owner, 0)
     print('balanceOf', _owner, amount)
 
     return f'0x{amount:0>64x}'
@@ -121,18 +95,9 @@ def decimals():
     return f'0x{18:0>64x}'
 
 def totalSupply():
-    amount = mpt.get('total', 0)
+    amount = _state.get('total', 0)
     return f'0x{amount:0>64x}'
 
-
-database.get_conn()
-_mpt = database.get_mpt()
-_mpt.update(b'%s_balance_0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' % CONTRACT_ADDRESS, tornado.escape.json_encode(10**20))
-_mpt.update(b'%s_total' % CONTRACT_ADDRESS, tornado.escape.json_encode(10**20))
-print('root', _mpt.root())
-print('root hash', _mpt.root_hash())
-
-mpt = MPT()
 
 # hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 # Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
