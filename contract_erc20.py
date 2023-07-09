@@ -64,10 +64,10 @@ def transfer(_to:address, _value:uint256):
     print('after transfer sender', sender_new_amount)
     _state.put('balance_%s' % (_sender, ), sender_new_amount)
 
-    current_amount = _state.get('balance_%s' % _sender, 0)
-    new_amount = current_amount + _value
-    print('after transfer receiver', new_amount)
-    _state.put('balance_%s' % (_to, ), new_amount)
+    to_amount = _state.get('balance_%s' % _to, 0)
+    to_new_amount = to_amount + _value
+    print('after transfer receiver', to_new_amount)
+    _state.put('balance_%s' % (_to, ), to_new_amount)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256):
