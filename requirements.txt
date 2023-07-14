@@ -5,5 +5,4 @@ python-rocksdb
 tornado==6.3.2
 web3==6.4.0
 eth-hash[pycryptodome]
-websocket-client
 requests
