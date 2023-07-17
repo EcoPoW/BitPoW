@@ -13,25 +13,25 @@ import copy
 # import threading
 # import secrets
 
-if __name__ == '__main__':
-    import multiprocessing
-    import select
-    import pprint
+# if __name__ == '__main__':
+#     import multiprocessing
+import select
+import pprint
 
-    import websocket
+#     import websocket
 
-else:
-    import tornado.web
-    import tornado.websocket
-    import tornado.ioloop
-    import tornado.httpclient
-    import tornado.gen
-    import tornado.escape
+# else:
+import tornado.web
+import tornado.websocket
+import tornado.ioloop
+import tornado.httpclient
+import tornado.gen
+import tornado.escape
 
-    import setting
-    import tree
-    import chain
-    import database
+import setting
+import tree
+import chain
+import database
 
 import eth_keys
 
@@ -206,7 +206,7 @@ def mining():
 
             txid = uuid.uuid4().hex
             message = ['NEW_CHAIN_PROOF', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, txid]
-            messages_out.append(message)
+            # messages_out.append(message)
 
         nonce += 1
 
