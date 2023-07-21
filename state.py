@@ -7,43 +7,45 @@ import database
 class address(str):pass
 class uint256(int):pass
 
-CONTRACT_ADDRESS = b'0x0000000000000000000000000000000000000001'
+
+CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 contract_address = CONTRACT_ADDRESS
 
 
-db = database.get_conn()
-_mpt = None
-
-def load_state(root):
-    global _mpt
-    _mpt = database.get_mpt(root)
-    print('root', _mpt.root())
-    print('root hash', _mpt.root_hash())
-
-# _mpt.update(b'%s_balance_0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' % contract_address, tornado.escape.json_encode(10**20))
-# _mpt.update(b'%s_total' % contract_address, tornado.escape.json_encode(10**20))
-
+_trie = database.get_conn()
+block_number = 0
 
 class State:
     # def __setitem__(self, key, value):
     def put(self, key, value):
-        global _mpt
+        global _trie
+        global block_number
         value_json = tornado.escape.json_encode(value)
-        _mpt.update(b'%s_%s' % (contract_address, key.encode('utf8')), value_json)
+        print('state_%s_%s_%s' % (contract_address, key, str(10**15 - block_number).zfill(16)), value_json)
+        _trie.put(('state_%s_%s_%s' % (contract_address, key, str(10**15 - block_number).zfill(16))).encode('utf8'), value_json.encode('utf8'))
 
 
     # def __getitem__(self, key):
     def get(self, key, default):
-        global _mpt
-        print('_mpt', _mpt)
+        global _trie
+        # print('_trie', _trie)
+        value = default
+        # block_number = 0
         try:
-            value_json = _mpt.get(b'%s_%s' % (contract_address, key.encode('utf8')))
-            value = tornado.escape.json_decode(value_json)
+            it = _trie.iteritems()
+            it.seek(('state_%s_%s' % (contract_address, key)).encode('utf8'))
+
+            # value_json = _trie.get(b'state_%s_%s' % (contract_address, key.encode('utf8')))
+            for k, value_json in it:
+                if k.startswith(('state_%s_%s' % (contract_address, key)).encode('utf8')):
+                    # block_number = 10**15 - int(k.replace(b'%s_%s_' % (contract_address, key.encode('utf8')), b''))
+                    value = tornado.escape.json_decode(value_json)
+                break
+
         except:
-            value = default
+            pass
 
         return value
 
 _state = State()
-_sender = None

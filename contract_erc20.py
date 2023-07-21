@@ -4,7 +4,7 @@ import tornado.escape
 
 from state import address, uint256
 from state import _state
-from state import _sender
+# from state import _sender
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)

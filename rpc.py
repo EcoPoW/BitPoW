@@ -355,12 +355,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 elif k == 'uint256':
                     type_params.append(web3.Web3.to_int(hexstr=v))
 
-            state.load_state(mpt_root)
-            print(state._mpt.root_hash())
             # result = interface_map[func_sig](*func_params)
             vm.run(type_params, interface_map[func_sig].__name__)
-            print(state._mpt.root_hash())
-            mpt_root = state._mpt.root_hash()
 
             # tx = rlp.decode(raw_tx_bytes)
             # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
@@ -399,8 +395,6 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
             # b'{"id":"ee04ad8b-aea3-43ad-b382-948f93257db7","jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x70a08231000000000000000000000000719c8d75faf8f1b117ea56205414892caab4a1b7"},"0x62c1"]}'
             params = req.get('params', [])
-            state.load_state(mpt_root)
-            print(state._mpt.root_hash())
             if len(params) > 0:
                 if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
                     # contract = contract_map[params[0]['to'].lower()]

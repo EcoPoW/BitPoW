@@ -3,7 +3,7 @@ import functools
 import types
 
 class VM:
-    '''for python 3.8'''
+    '''for python 3.10'''
 
     def __init__(self):
         self.module_object = None
@@ -74,7 +74,7 @@ class VM:
             try:
                 r = self.step()
                 if r:
-                    # print('return value', r)
+                    print('return value', r)
                     return r
             except BaseException as e:
                 print('except', e.__class__.__name__, dir(e.__class__))
@@ -368,14 +368,14 @@ class VM:
             if val:
                 self.pc += 2
             else:
-                self.pc = param
+                self.pc = param * 2
 
         elif self.co_code[self.pc] == 0x73: # POP_JUMP_IF_TRUE
             param = self.co_code[self.pc+1]
             # print('POP_JUMP_IF_TRUE', param)
             val = self.stack.pop()
             if val:
-                self.pc = param
+                self.pc = param * 2
             else:
                 self.pc += 2
 
@@ -523,14 +523,15 @@ class VM:
             param = self.co_code[self.pc+1]
             # print('CALL_METHOD', param)
             # print('CALL_METHOD', self.stack)
-            var = self.stack[-2-param]
+            obj = self.stack[-2-param]
             method = self.stack[-1-param]
             if param:
                 params = self.stack[-param:]
             else:
                 params = []
-            result = functools.partial(var.__getattribute__(method), *params)()
-            # print('result', result)
+            # print('CALL_METHOD', obj.__getattribute__(method))
+            result = functools.partial(obj.__getattribute__(method), *params)()
+            # print('CALL_METHOD result', result)
             self.stack = self.stack[:-2-param]
             self.stack.append(result)
             self.pc += 2
