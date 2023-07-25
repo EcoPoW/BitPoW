@@ -452,13 +452,18 @@ def new_chain_proof(seq):
 def new_subchain_block(seq):
     # global subchains_to_block
     _msg_header, msg_hash, prev_hash, tx_type, timestamp, data, signature = seq
-    receiver = data[3]
+    if len(data) == 8:
+        receiver = data[4]
+    else:
+        receiver = data[3]
     height = data[0]
+    print('new_subchain_block data', data)
+
     eth_tx_hash = rpc.hash_of_eth_tx_list(data)
     signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
     sender = pubkey.to_checksum_address()
-    print('sender', sender)
+    print('new_subchain_block sender', sender)
 
     if setting.SHARDING:
         sender_bin = bin(int(sender[2:], 16))[2:].zfill(160)
@@ -508,7 +513,6 @@ def new_subchain_block(seq):
 
     # try:
     db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, data, signature]).encode('utf8'))
-    assert len(sender) == 42
     db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
     # get tx pool, if already exists, override only when the height is higher than current
     # when new block generated, the confirmed subchain block will be removed

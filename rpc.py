@@ -49,58 +49,76 @@ vm.import_module(contract_erc20)
 
 V_OFFSET = 27
 def eth_rlp2list(tx_rlp_bytes):
-    tx_rlp_list = rlp.decode(tx_rlp_bytes)
-    print(tx_rlp_list)
-    nonce = int.from_bytes(tx_rlp_list[0], 'big')
-    gas_price = int.from_bytes(tx_rlp_list[1], 'big')
-    gas = int.from_bytes(tx_rlp_list[2], 'big')
-    to = web3.Web3.to_checksum_address(tx_rlp_list[3])
-    value = int.from_bytes(tx_rlp_list[4], 'big')
-    data = '0x%s' % tx_rlp_list[5].hex()
-    # print(tx_rlp_list[5])
-    v = int.from_bytes(tx_rlp_list[6], 'big')
-    r = int.from_bytes(tx_rlp_list[7], 'big')
-    s = int.from_bytes(tx_rlp_list[8], 'big')
-    chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
-    v_standard = chain_naive_v - V_OFFSET
-    return [nonce, gas_price, gas, to, value, data, chain_id], [v_standard, r, s]
+    if tx_rlp_bytes.startswith(b'\x02'):
+        tx_rlp_list = rlp.decode(tx_rlp_bytes[1:])
+        print('eth_rlp2list type2', tx_rlp_list)
+        nonce = int.from_bytes(tx_rlp_list[1], 'big')
+        gas_price = int.from_bytes(tx_rlp_list[2], 'big')
+        max_priority = int.from_bytes(tx_rlp_list[3], 'big')
+        max_fee = int.from_bytes(tx_rlp_list[4], 'big')
+        to = web3.Web3.to_checksum_address(tx_rlp_list[5])
+        value = int.from_bytes(tx_rlp_list[6], 'big')
+        data = '0x%s' % tx_rlp_list[7].hex()
+        # print(tx_rlp_list[5])
+        v = int.from_bytes(tx_rlp_list[9], 'big')
+        r = int.from_bytes(tx_rlp_list[10], 'big')
+        s = int.from_bytes(tx_rlp_list[11], 'big')
+        chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
+        if not chain_id:
+            chain_id = 1
+        v_standard = chain_naive_v - V_OFFSET
+        return [nonce, gas_price, max_priority, max_fee, to, value, data, chain_id], [v_standard, r, s]
+
+    else:
+        tx_rlp_list = rlp.decode(tx_rlp_bytes)
+        print('eth_rlp2list', tx_rlp_list)
+        nonce = int.from_bytes(tx_rlp_list[0], 'big')
+        gas_price = int.from_bytes(tx_rlp_list[1], 'big')
+        gas = int.from_bytes(tx_rlp_list[2], 'big')
+        to = web3.Web3.to_checksum_address(tx_rlp_list[3])
+        value = int.from_bytes(tx_rlp_list[4], 'big')
+        data = '0x%s' % tx_rlp_list[5].hex()
+        # print(tx_rlp_list[5])
+        v = int.from_bytes(tx_rlp_list[6], 'big')
+        r = int.from_bytes(tx_rlp_list[7], 'big')
+        s = int.from_bytes(tx_rlp_list[8], 'big')
+        chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
+        v_standard = chain_naive_v - V_OFFSET
+        return [nonce, gas_price, gas, to, value, data, chain_id], [v_standard, r, s]
 
 
 def hash_of_eth_tx_list(tx_list):
-    nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
-    gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
-    gas = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
-    to = bytes.fromhex(tx_list[3].replace('0x', ''))
-    value = tx_list[4].to_bytes(math.ceil(tx_list[4].bit_length()/8), 'big')
-    data = bytes.fromhex(tx_list[5].replace('0x', ''))
-    chain_id = tx_list[6].to_bytes(math.ceil(tx_list[6].bit_length()/8), 'big')
-    # print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
-    rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
-    # print('raw', rlp_bytes)
-    rlp_hash = eth_utils.keccak(rlp_bytes)
-    # print('hash1', rlp_hash)
-    return rlp_hash
+    print('hash_of_eth_tx_list', hash_of_eth_tx_list)
+    if len(tx_list) == 8:
+        nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
+        gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
+        max_priority = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
+        max_fee = tx_list[3].to_bytes(math.ceil(tx_list[3].bit_length()/8), 'big')
+        to = bytes.fromhex(tx_list[4].replace('0x', ''))
+        value = tx_list[5].to_bytes(math.ceil(tx_list[5].bit_length()/8), 'big')
+        data = bytes.fromhex(tx_list[6].replace('0x', ''))
+        chain_id = tx_list[7].to_bytes(math.ceil(tx_list[7].bit_length()/8), 'big')
+        # print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+        rlp_bytes = rlp.encode([b'\x02\x08', nonce, gas_price, max_priority, max_fee, to, value, data, []])
+        # print('raw', rlp_bytes)
+        rlp_hash = eth_utils.keccak(b'\x02'+rlp_bytes)
+        # print('hash1', rlp_hash)
+        return rlp_hash
 
-def eth_rlp2list_type2(tx_rlp_bytes):
-    tx_rlp_list = rlp.decode(tx_rlp_bytes[1:])
-    print(tx_rlp_list)
-    nonce = int.from_bytes(tx_rlp_list[1], 'big')
-    gas_price = int.from_bytes(tx_rlp_list[2], 'big')
-    max_priority = int.from_bytes(tx_rlp_list[3], 'big')
-    max_fee = int.from_bytes(tx_rlp_list[4], 'big')
-    to = web3.Web3.to_checksum_address(tx_rlp_list[5])
-    value = int.from_bytes(tx_rlp_list[6], 'big')
-    data = '0x%s' % tx_rlp_list[7].hex()
-    # print(tx_rlp_list[5])
-    v = int.from_bytes(tx_rlp_list[9], 'big')
-    r = int.from_bytes(tx_rlp_list[10], 'big')
-    s = int.from_bytes(tx_rlp_list[11], 'big')
-    chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
-    if not chain_id:
-        chain_id = 1
-    v_standard = chain_naive_v - V_OFFSET
-    return [nonce, gas_price, max_priority, to, value, data, chain_id], [v_standard, r, s]
-
+    else:
+        nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
+        gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
+        gas = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
+        to = bytes.fromhex(tx_list[3].replace('0x', ''))
+        value = tx_list[4].to_bytes(math.ceil(tx_list[4].bit_length()/8), 'big')
+        data = bytes.fromhex(tx_list[5].replace('0x', ''))
+        chain_id = tx_list[6].to_bytes(math.ceil(tx_list[6].bit_length()/8), 'big')
+        # print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+        rlp_bytes = rlp.encode([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
+        # print('raw', rlp_bytes)
+        rlp_hash = eth_utils.keccak(rlp_bytes)
+        # print('hash1', rlp_hash)
+        return rlp_hash
 
 
 # class ProxyEthRpcHandler(tornado.web.RequestHandler):
@@ -270,8 +288,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
         elif req.get('method') == 'eth_getTransactionCount':
             address = web3.Web3.to_checksum_address(req['params'][0])
+            print('eth_getTransactionCount address', address)
             db = database.get_conn()
             prev_hash = db.get(b'chain_%s' % address.encode('utf8'))
+            print('eth_getTransactionCount prev_hash', prev_hash)
             count = 0
             if prev_hash:
                 msg_json = db.get(b'msg_%s' % prev_hash)
@@ -286,8 +306,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
                 pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
                 sender = pubkey.to_checksum_address()
-                print('sender', sender)
-                print('count', count)
+                print('eth_getTransactionCount sender', sender)
+                print('eth_getTransactionCount count', count)
 
             resp = {'jsonrpc':'2.0', 'result': hex(count+1), 'id': rpc_id}
 
@@ -310,8 +330,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # print('raw_tx_hex', raw_tx_hex)
             raw_tx_bytes = web3.Web3.to_bytes(hexstr=raw_tx_hex)
             print('raw_tx_bytes', raw_tx_bytes)
-            if raw_tx_bytes.startswith(b'\x02'):
-                data, vrs = eth_rlp2list_type2(raw_tx_bytes)
+            data, vrs = eth_rlp2list(raw_tx_bytes)
+            if len(data) == 8:
                 tx = eth_account._utils.typed_transactions.DynamicFeeTransaction.from_bytes(hexbytes.HexBytes(raw_tx_hex))
                 # tx = eth_account._utils.typed_transactions.TypedTransaction(transaction_type=2, transaction=tx)
                 tx_hash = tx.hash()
@@ -320,14 +340,13 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 tx_data = web3.Web3.to_hex(tx.as_dict()['data'])
                 tx_nonce = web3.Web3.to_int(tx.as_dict()['nonce'])
             else:
-                data, vrs = eth_rlp2list(raw_tx_bytes)
                 tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
                 tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
                 vrs = eth_account._utils.legacy_transactions.vrs_from(tx)
                 tx_to = web3.Web3.to_checksum_address(tx.to)
                 tx_data = web3.Web3.to_hex(tx.data)
                 tx_nonce = tx.nonce
-            print('eth_rlp2list', data, vrs)
+            # print('eth_rlp2list', data, vrs)
             # print('nonce', tx.nonce)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
 
