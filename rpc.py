@@ -331,6 +331,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # print('nonce', tx.nonce)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
 
+            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            state.block_number = highest_block_height
             # contract_erc20._sender = tx_from
             vm.global_vars['_sender'] = tx_from
 
