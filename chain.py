@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 # import sys
 # import os
@@ -7,9 +6,9 @@ from __future__ import print_function
 # import base64
 # import threading
 # import secrets
-import time
+# import time
+# import copy
 import hashlib
-import copy
 import urllib.request
 
 import tornado.web
@@ -23,8 +22,8 @@ import setting
 import tree
 import database
 import stf
-# import rpc
 import eth_tx
+# import rpc
 # import node
 # import leader
 

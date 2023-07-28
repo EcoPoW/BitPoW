@@ -1,4 +1,3 @@
-from __future__ import print_function, with_statement
 
 import os
 import sys
@@ -20,7 +19,7 @@ import tornado.gen
 import tornado.escape
 
 import setting
-import miner
+import mine
 import chain
 import database
 import eth_rpc
@@ -141,7 +140,7 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         elif seq[0] == 'GET_HIGHEST_BLOCK':
             highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
             recent_longest = chain.get_recent_longest(highest_block_hash)
-            new_difficulty, _timecost = miner.get_new_difficulty(recent_longest)
+            new_difficulty, _timecost = mine.get_new_difficulty(recent_longest)
             self.write_message(tornado.escape.json_encode(["HIGHEST_BLOCK", highest_block_height, highest_block_hash.decode('utf8'), new_difficulty]))
 
         elif seq[0] == 'GET_BLOCK_STATE':

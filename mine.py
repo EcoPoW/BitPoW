@@ -1,22 +1,21 @@
-from __future__ import print_function
 
 import sys
 import os
 import math
-import json
 import time
 import hashlib
-import random
 import uuid
 import copy
+# import json
+# import random
 # import base64
 # import threading
 # import secrets
 
 # if __name__ == '__main__':
 #     import multiprocessing
-import select
-import pprint
+# import select
+# import pprint
 
 #     import websocket
 
@@ -264,148 +263,148 @@ def worker_thread():
     # print(tree.current_port, "miner")
 
 
-class Dispatcher:
-    def __init__(self, app):
-        self.app = app
-        self.ping_timeout = 10
+# class Dispatcher:
+#     def __init__(self, app):
+#         self.app = app
+#         self.ping_timeout = 10
 
-    def read(self, sock, read_callback, check_callback):
-        global parent_conns
-        global hex_encoding
-        nonce = 0
-        task = 0
-        while self.app.keep_running:
-            r, w, e = select.select(
-                    (self.app.sock.sock, ), (), (), 0.1)
-            if r:
-                if not read_callback():
-                    break
-            check_callback()
+#     def read(self, sock, read_callback, check_callback):
+#         global parent_conns
+#         global hex_encoding
+#         nonce = 0
+#         task = 0
+#         while self.app.keep_running:
+#             r, w, e = select.select(
+#                     (self.app.sock.sock, ), (), (), 0.1)
+#             if r:
+#                 if not read_callback():
+#                     break
+#             check_callback()
 
-            for idx, conn in enumerate(parent_conns):
-                if conn.poll():
-                    msg_json = conn.recv()
-                    print(idx, msg_json)
-                    msg = json.loads(msg_json)
-                    if msg[0] == 'RESULT' and msg[1] == task:
-                        hex_encoding = ''
-                        task += 1
-                        nonce = msg[2] + 1
+#             for idx, conn in enumerate(parent_conns):
+#                 if conn.poll():
+#                     msg_json = conn.recv()
+#                     print(idx, msg_json)
+#                     msg = json.loads(msg_json)
+#                     if msg[0] == 'RESULT' and msg[1] == task:
+#                         hex_encoding = ''
+#                         task += 1
+#                         nonce = msg[2] + 1
 
-            if not hex_encoding:
-                hex_encoding = 'ffffff'
-                for idx, conn in enumerate(parent_conns):
-                    # print(hex_encoding)
-                    conn.send(json.dumps(['ENCODE', task, hex_encoding, nonce+idx, len(parent_conns)]))
-
-
-def mine(conn):
-    '''EPoW mining'''
-    # msg = conn.recv()
-    # conn.close()
-    nonce = 0
-    step = 0
-    hex_to_encode = ''
-    while True:
-        if (nonce % 10000 == 0 or hex_to_encode == '') and conn.poll():
-            msg_json = conn.recv()
-            conn.send(msg_json)
-
-            msg = json.loads(msg_json)
-            if msg[0] == 'ENCODE':
-                task = msg[1]
-                hex_to_encode = msg[2]
-                nonce = msg[3]
-                step = msg[4]
-
-        if hex_to_encode:
-            output = hashlib.sha256(('%s' % nonce).encode()).hexdigest()
-            if output.endswith(hex_to_encode):
-                conn.send(json.dumps(['RESULT', task, nonce]))
-                hex_to_encode = ''
-
-            nonce += step
-            # if nonce % 1000000 == 0:
-            #     conn.send(nonce)
-        else:
-            time.sleep(0.1)
-
-parent_conns = []
-hex_encoding = ''
-def main():
-    global parent_conns
-    # print(sys.argv)
-    if len(sys.argv) < 2:
-        print('help')
-        print('  miner.py key')
-        print('  miner.py host')
-        print('  miner.py port')
-        print('  miner.py mine')
-        return
-
-    miner_obj = {}
-    try:
-        with open('./.miner.json', 'r') as f:
-            miner_obj = json.loads(f.read())
-            pprint.pprint(miner_obj)
-
-    except:
-        print('error')
-
-    if sys.argv[1] in ['key', 'host', 'port']:
-        miner_obj[sys.argv[1]] = sys.argv[2]
-        with open('./.miner.json', 'w') as f:
-            f.write(json.dumps(miner_obj))
-        return
-
-    elif sys.argv[1] == 'mine':
-        process_number = int(sys.argv[2])
-        parent_conns = []
-
-        for i in range(process_number):
-            parent_conn, child_conn = multiprocessing.Pipe()
-            parent_conns.append(parent_conn)
-            p = multiprocessing.Process(target=mine, args=(child_conn,))
-            p.start()
+#             if not hex_encoding:
+#                 hex_encoding = 'ffffff'
+#                 for idx, conn in enumerate(parent_conns):
+#                     # print(hex_encoding)
+#                     conn.send(json.dumps(['ENCODE', task, hex_encoding, nonce+idx, len(parent_conns)]))
 
 
-        host = miner_obj['host']
-        port = miner_obj['port']
-        ws = websocket.WebSocketApp("ws://%s:%s/miner" % (host, port),
-                              on_open=on_open,
-                              on_message=on_message,
-                              on_error=on_error,
-                              on_close=on_close)
-        dispatcher = Dispatcher(ws)
-        ws.run_forever(dispatcher=dispatcher)
+# def mine(conn):
+#     '''EPoW mining'''
+#     # msg = conn.recv()
+#     # conn.close()
+#     nonce = 0
+#     step = 0
+#     hex_to_encode = ''
+#     while True:
+#         if (nonce % 10000 == 0 or hex_to_encode == '') and conn.poll():
+#             msg_json = conn.recv()
+#             conn.send(msg_json)
 
-        # print(parent_conn.recv())
-        # p.join()
+#             msg = json.loads(msg_json)
+#             if msg[0] == 'ENCODE':
+#                 task = msg[1]
+#                 hex_to_encode = msg[2]
+#                 nonce = msg[3]
+#                 step = msg[4]
 
-def on_message(ws, message):
-    # global hex_encoding
-    # global parent_conns
-    print(message)
-    seq = json.loads(message)
-    if seq[0] == 'HIGHEST_BLOCK':
-        highest_block_height = seq[1]
-        highest_block_hash = seq[2]
-        new_difficulty = seq[3]
-        print(math.log(int(new_difficulty), 2))
-        # highest_block = seq[4]
+#         if hex_to_encode:
+#             output = hashlib.sha256(('%s' % nonce).encode()).hexdigest()
+#             if output.endswith(hex_to_encode):
+#                 conn.send(json.dumps(['RESULT', task, nonce]))
+#                 hex_to_encode = ''
 
-def on_error(ws, error):
-    print(error)
+#             nonce += step
+#             # if nonce % 1000000 == 0:
+#             #     conn.send(nonce)
+#         else:
+#             time.sleep(0.1)
 
-def on_close(ws, close_status_code, close_msg):
-    print("close")
+# parent_conns = []
+# hex_encoding = ''
+# def main():
+#     global parent_conns
+#     # print(sys.argv)
+#     if len(sys.argv) < 2:
+#         print('help')
+#         print('  miner.py key')
+#         print('  miner.py host')
+#         print('  miner.py port')
+#         print('  miner.py mine')
+#         return
 
-def on_open(ws):
-    ws.send(json.dumps(['GET_HIGHEST_BLOCK']))
+#     miner_obj = {}
+#     try:
+#         with open('./.miner.json', 'r') as f:
+#             miner_obj = json.loads(f.read())
+#             pprint.pprint(miner_obj)
+
+#     except:
+#         print('error')
+
+#     if sys.argv[1] in ['key', 'host', 'port']:
+#         miner_obj[sys.argv[1]] = sys.argv[2]
+#         with open('./.miner.json', 'w') as f:
+#             f.write(json.dumps(miner_obj))
+#         return
+
+#     elif sys.argv[1] == 'mine':
+#         process_number = int(sys.argv[2])
+#         parent_conns = []
+
+#         for i in range(process_number):
+#             parent_conn, child_conn = multiprocessing.Pipe()
+#             parent_conns.append(parent_conn)
+#             p = multiprocessing.Process(target=mine, args=(child_conn,))
+#             p.start()
 
 
-if __name__ == '__main__':
-    main()
+#         host = miner_obj['host']
+#         port = miner_obj['port']
+#         ws = websocket.WebSocketApp("ws://%s:%s/miner" % (host, port),
+#                               on_open=on_open,
+#                               on_message=on_message,
+#                               on_error=on_error,
+#                               on_close=on_close)
+#         dispatcher = Dispatcher(ws)
+#         ws.run_forever(dispatcher=dispatcher)
+
+#         # print(parent_conn.recv())
+#         # p.join()
+
+# def on_message(ws, message):
+#     # global hex_encoding
+#     # global parent_conns
+#     print(message)
+#     seq = json.loads(message)
+#     if seq[0] == 'HIGHEST_BLOCK':
+#         highest_block_height = seq[1]
+#         highest_block_hash = seq[2]
+#         new_difficulty = seq[3]
+#         print(math.log(int(new_difficulty), 2))
+#         # highest_block = seq[4]
+
+# def on_error(ws, error):
+#     print(error)
+
+# def on_close(ws, close_status_code, close_msg):
+#     print("close")
+
+# def on_open(ws):
+#     ws.send(json.dumps(['GET_HIGHEST_BLOCK']))
+
+
+# if __name__ == '__main__':
+#     main()
     # print("run python node.py pls")
     # tree.current_port = "8001"
 

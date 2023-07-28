@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 import os
 import time
@@ -16,7 +15,7 @@ import tornado.escape
 
 import setting
 import tree
-import miner
+import mine
 import chain
 import database
 import eth_rpc
@@ -335,14 +334,14 @@ def main():
     tree.main()
 
     # miner.main()
-    tornado.ioloop.IOLoop.instance().call_later(1, miner.looping)
+    tornado.ioloop.IOLoop.instance().call_later(1, mine.looping)
 
     # leader.main()
     # tornado.ioloop.IOLoop.instance().call_later(1, leader.mining)
 
     # fs.main()
 
-    worker_threading = threading.Thread(target=miner.worker_thread)
+    worker_threading = threading.Thread(target=mine.worker_thread)
     worker_threading.start()
     chain.worker_thread_pause = False
 

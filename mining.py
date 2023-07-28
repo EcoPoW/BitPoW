@@ -35,8 +35,8 @@ def pow(conn):
                     sleep = True
 
             if sleep:
-                time.sleep(1)
-                print('sleep')
+                time.sleep(5)
+                # print('sleep')
                 continue
 
             # t0 = time.time()
