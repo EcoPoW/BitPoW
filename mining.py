@@ -9,12 +9,14 @@ import json
 
 # import eth_hash.auto
 import web3
+import eth_account
 
 import tornado.ioloop
 import tornado.gen
 import tornado.websocket
 
 import vm
+import eth_tx
 
 def pow(conn):
     start = 0
@@ -101,7 +103,16 @@ class MiningClient:
                         conn.send(['START', 0, commitment])
 
                 elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
-                    pass
+                    data = seq[5]
+                    count = data[0]
+                    signature = seq[6]
+                    eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+                    signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+                    pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+                    sender = pubkey.to_checksum_address()
+                    print('NEW_SUBCHAIN_BLOCK sender', sender)
+                    print('NEW_SUBCHAIN_BLOCK count', count)
+
 
     def keep_alive(self):
         if self.ws is None:

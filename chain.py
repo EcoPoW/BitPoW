@@ -521,19 +521,6 @@ def new_subchain_block(seq):
     # except Exception as e:
     #     print("new_subchain_block Error: %s" % e)
 
-def new_tempchain_block(seq):
-    # global subchains_to_block
-    print('new_tempchain_block', seq)
-    _msg_header, msg_hash, prev_hash, sender, height, data, timestamp, signature = seq
-    # msg_hash sender signature for validate
-    print('new_tempchain_block data', data)
-    print('channel_id', data['channel_id'])
-    channel_id = data['channel_id']
-
-    db = database.get_conn()
-    db.put(b'tempmsg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, sender, height, data, timestamp, signature]).encode('utf8'))
-    # db.put(b'tempmsg_state_%s' % msg_hash.encode('utf8'), b'')
-    db.put(b'tempchain_%s' % channel_id.encode('utf8'), msg_hash.encode('utf8'))
 
 def get_recent_longest(highest_block_hash):
     db = database.get_conn()

@@ -304,24 +304,6 @@ class SubchainListHandler(tornado.web.RequestHandler):
             #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
 
 
-class TempchainListHandler(tornado.web.RequestHandler):
-    def get(self):
-        db = database.get_conn()
-        it = db.iteritems()
-        self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> <br><br>')
-        it.seek(b'tempchain_')
-        for k, v in it:
-            # if k == b'chain':
-            #     # self.write("<a href='/chain_view?hash=%s'>main chain</a><br>"% v.decode())
-            #     continue
-            # if len(k) == 40+5:
-            self.write("<a href='/tempchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('tempchain_', ''), k.decode(), v.decode()))
-            # elif len(k) == 64+5:
-            #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
-
-
 class UploadChunkHandler(tornado.web.RequestHandler):
     def post(self):
         hash = self.get_argument('hash')

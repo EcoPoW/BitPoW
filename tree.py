@@ -371,9 +371,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             chain.new_subchain_block(seq)
             # msg.WaitMsgHandler.new_block(seq)
 
-        elif seq[0] == 'NEW_TEMPCHAIN_BLOCK':
-            chain.new_tempchain_block(seq)
-
         forward(seq)
 
 
@@ -513,9 +510,6 @@ class NodeConnector(object):
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             chain.new_subchain_block(seq)
             # msg.WaitMsgHandler.new_block(seq)
-
-        elif seq[0] == 'NEW_TEMPCHAIN_BLOCK':
-            chain.new_tempchain_block(seq)
 
         forward(seq)
 
