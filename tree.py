@@ -23,7 +23,7 @@ import setting
 import miner
 import chain
 import database
-import rpc
+import eth_rpc
 
 # import ecdsa
 import eth_keys

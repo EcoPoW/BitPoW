@@ -19,7 +19,7 @@ import tree
 import miner
 import chain
 import database
-import rpc
+import eth_rpc
 
 tracemalloc.start()
 
@@ -55,9 +55,9 @@ class Application(tornado.web.Application):
                     # (r"/broadcast", BroadcastHandler),
                     # (r"/upload_chunk", UploadChunkHandler),
                     (r"/tracemalloc", TraceHandler),
-                    # (r"/eth_rpc", rpc.EthRpcHandler),
-                    # (r"/", rpc.ProxyEthRpcHandler),
-                    (r"/", rpc.EthRpcHandler),
+                    # (r"/eth_rpc", eth_rpc.EthRpcHandler),
+                    # (r"/", eth_rpc.ProxyEthRpcHandler),
+                    (r"/", eth_rpc.EthRpcHandler),
                     # (r"/", MainHandler),
                 ]
         settings = {"debug":True}

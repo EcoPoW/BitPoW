@@ -3,30 +3,7 @@ import copy
 
 import chain
 import setting
-import rpc
 
-def tempchain_chat_stf(state, msg):
-    print('state', state)
-    data = msg[4]
-    print('data', data)
-    new_state = copy.deepcopy(state)
-    if 'channel_id' not in new_state and 'channel_id' in data:
-        new_state['channel_id'] = data['channel_id']
-    assert new_state['channel_id'] == data['channel_id']
-
-    if 'contacts' in data and len(data['contacts']) > 0:
-        new_state.setdefault('contacts', []).extend(data['contacts'])
-        if 'temp_contacts' in new_state:
-            del new_state['temp_contacts']
-
-    if 'temp_contacts' in data and len(data['temp_contacts']) > 0:
-        new_state['temp_contacts'] = data['temp_contacts']
-
-    if 'rekeys' in data:
-        new_state.setdefault('rekeys', {})
-        new_state['rekeys'].update(data['rekeys'])
-
-    return new_state
 
 def subchain_stf(state, msg):
     data = msg[chain.MSG_DATA]
