@@ -54,7 +54,7 @@ def pow(conn):
 
 
 current_mining = None
-next_mining = []
+next_mining = {}
 
 
 class MiningClient:
@@ -96,7 +96,7 @@ class MiningClient:
                     # next_mining.append(message['name'])
                     if not current_mining:
                         current_mining = next_mining
-                        next_mining = []
+                        next_mining = {}
                         commitment = hashlib.sha256(json.dumps(current_mining).encode('utf8')).digest()
                         conn.send(['START', 0, commitment])
 

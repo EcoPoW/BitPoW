@@ -23,7 +23,8 @@ import setting
 import tree
 import database
 import stf
-import rpc
+# import rpc
+import eth_tx
 # import node
 # import leader
 
@@ -459,7 +460,7 @@ def new_subchain_block(seq):
     height = data[0]
     print('new_subchain_block data', data)
 
-    eth_tx_hash = rpc.hash_of_eth_tx_list(data)
+    eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
     signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
     sender = pubkey.to_checksum_address()
