@@ -410,43 +410,6 @@ def new_chain_block(seq):
         nodes_to_fetch.add(bin(int(identity[2:], 16))[2:].zfill(160))
         worker_thread_mining = False
 
-# @tornado.gen.coroutine
-def new_chain_proof(seq):
-    global nodes_to_fetch
-    global last_highest_block_height
-    global hash_proofs
-    global last_hash_proofs
-
-    _msg_header, block_hash, prev_hash, height, nonce, difficulty, identity, data, timestamp, txid = seq
-    # validate
-    # check difficulty
-    # print('new_chain_proof', last_highest_block_height, height)
-
-    db = database.get_conn()
-    # try:
-    db.put(b'block_%s' % block_hash.encode('utf8'), tornado.escape.json_encode(data).encode('utf8'))
-    # except Exception as e:
-    #     print("new_chain_proof Error: %s" % e)
-
-    # print(last_highest_block_height, height, identity)
-    # if highest_block_height + 1 < height:
-    #     no, pk = identity.split(":")
-    #     if int(no) not in nodes_to_fetch:
-    #         nodes_to_fetch.add(int(no))
-
-    # if last_highest_block_height != highest_block_height:
-    #     if last_highest_block_height + 1 == highest_block_height:
-    #         last_hash_proofs = hash_proofs
-    #     else:
-    #         last_hash_proofs = set()
-    #     hash_proofs = set()
-    #     # last_highest_block_height = highest_block_height
-
-    # if highest_block_height + 1 == height:
-    #     hash_proofs.add(tuple([block_hash, height]))
-
-    # print('hash_proofs', hash_proofs)
-    # print('last_hash_proofs', last_hash_proofs)
 
 # @tornado.gen.coroutine
 def new_subchain_block(seq):

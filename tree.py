@@ -156,10 +156,6 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
             print("MinerHandler NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
 
-        elif seq[0] == 'NEW_CHAIN_PROOF':
-            print("MinerHandler NEW_CHAIN_PROOF", seq)
-            chain.new_chain_proof(seq)
-
         # elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
         #     print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
         #     chain.new_subchain_block(seq)
@@ -230,10 +226,6 @@ class MinerConnector(object):
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("MinerConnector got NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
-
-        elif seq[0] == "NEW_CHAIN_PROOF":
-            print("MinerConnector got NEW_CHAIN_PROOF", seq)
-            chain.new_chain_proof(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
@@ -361,10 +353,6 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
-
-        # elif seq[0] == "NEW_CHAIN_PROOF":
-        #     print("NEW_CHAIN_PROOF", seq)
-        #     chain.new_chain_proof(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             chain.new_subchain_block(seq)
@@ -501,10 +489,6 @@ class NodeConnector(object):
         elif seq[0] == "NEW_CHAIN_BLOCK":
             print("NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
-
-        # elif seq[0] == "NEW_CHAIN_PROOF":
-        #     print("NEW_CHAIN_PROOF", seq)
-        #     chain.new_chain_proof(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             chain.new_subchain_block(seq)
