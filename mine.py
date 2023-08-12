@@ -31,6 +31,7 @@ import setting
 import tree
 import chain
 import database
+import console
 
 import eth_keys
 
@@ -215,7 +216,7 @@ def validate():
     highest_block_height, highest_block_hash, _ = chain.get_highest_block()
 
     db = database.get_conn()
-    print('validate nodes_to_fetch', chain.nodes_to_fetch)
+    #print('validate nodes_to_fetch', chain.nodes_to_fetch)
     fetched_nodes = set()
     nodes_to_fetch = copy.copy(chain.nodes_to_fetch)
     for nodeid in nodes_to_fetch:
@@ -239,6 +240,7 @@ def validate():
 
 def worker_thread():
     while True:
+        time.sleep(5)
         if chain.worker_thread_pause:
             continue
 
@@ -247,16 +249,14 @@ def worker_thread():
             if setting.EASY_MINING:
                 # print('BLOCK_INTERVAL_SECONDS', setting.BLOCK_INTERVAL_SECONDS)
                 time.sleep(setting.BLOCK_INTERVAL_SECONDS)
-            else:
-                time.sleep(2)
             continue
 
         if tree.current_nodeid is None:
             continue
 
-        print('chain validation')
+        console.log('chain validation')
         validate()
-        print('validation done')
+        #console.log('validation done')
 
     # mining_task = tornado.ioloop.PeriodicCallback(mining, 1000) # , jitter=0.5
     # mining_task.start()

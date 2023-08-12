@@ -23,6 +23,7 @@ import tree
 import database
 import stf
 import eth_tx
+import console
 # import rpc
 # import node
 # import leader
@@ -411,6 +412,18 @@ def new_chain_block(seq):
         worker_thread_mining = False
 
 
+def new_chain_header_block(seq):
+    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
+    tx_block_hash, state_block_hash = header_data
+    db = database.get_conn()
+    return
+
+def new_chain_tx_block(seq):
+    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
+
+def new_chain_state_block(seq):
+    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
+
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
@@ -512,11 +525,32 @@ def get_highest_block():
         highest_block_hash = b'0'*64
     return highest_block_height, highest_block_hash, highest_block
 
-class GetHighestBlockHashHandler(tornado.web.RequestHandler):
+class GetChainLatestHashHandler(tornado.web.RequestHandler):
     def get(self):
         highest_block_height, highest_block_hash, _ = get_highest_block()
 
         self.finish({'hash': highest_block_hash.decode('utf8'), 'height': highest_block_height})
+
+class GetChainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        pass
+
+class GetStateSubchainsHandler(tornado.web.RequestHandler):
+    def get(self):
+        pass
+
+class GetStateContractsHandler(tornado.web.RequestHandler):
+    def get(self):
+        pass
+
+class GetSubchainLatestHandler(tornado.web.RequestHandler):
+    def get(self):
+        pass
+
+class GetSubchainBlocksHandler(tornado.web.RequestHandler):
+    def get(self):
+        pass
+
 
 class GetHighestBlockStateHandler(tornado.web.RequestHandler):
     def get(self):
@@ -607,7 +641,7 @@ def fetch_chain(nodeid):
         prev_nodeid = result['current_nodeid']
 
     try:
-        response = urllib.request.urlopen("http://%s:%s/get_highest_block_hash" % (host, port))
+        response = urllib.request.urlopen("http://%s:%s/get_chain_latest" % (host, port))
     except:
         return b'0'*64, 0
     result = tornado.escape.json_decode(response.read())

@@ -29,18 +29,26 @@ class Application(tornado.web.Application):
                     (r"/nodes_available", AvailableNodesHandler),
                     (r"/get_node", GetNodeHandler),
 
-                    (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
-                    (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
-                    (r"/get_block", chain.GetBlockHandler),
-                    (r"/get_block_state", chain.GetBlockStateHandler),
-                    # (r"/get_proof", chain.GetProofHandler),
+                    (r"/get_chain_latest", chain.GetChainLatestHashHandler),
+                    (r"/get_chain_block", chain.GetChainBlockHandler),
+                    (r"/get_state_subchains", chain.GetStateSubchainsHandler),
+                    (r"/get_state_contracts", chain.GetStateContractsHandler),
+                    (r"/get_subchains_latest", chain.GetSubchainLatestHandler),
+                    (r"/get_subchains_blocks", chain.GetSubchainBlocksHandler),
 
-                    (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
+                    (r"/new_chain_txblock", NewSubchainBlockHandler),
+                    (r"/new_chain_stateblock", NewSubchainBlockHandler),
+                    (r"/new_chain_headerblock", NewSubchainBlockHandler),
+
+                    # (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
+                    (r"/get_block", chain.GetBlockHandler), # to remove
+                    (r"/get_block_state", chain.GetBlockStateHandler), # to remove
+                    (r"/get_subchain_latest", chain.GetHighestSubchainBlockHashHandler),
                     (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
                     (r"/get_subchain_block", chain.GetSubchainBlockHandler),
+                    (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
-                    (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
 
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_view", ChainExplorerHandler),

@@ -23,6 +23,7 @@ import mine
 import chain
 import database
 import eth_rpc
+import console
 
 # import ecdsa
 import eth_keys
@@ -122,32 +123,20 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         if self not in MinerHandler.child_miners:
             MinerHandler.child_miners.add(self)
 
-        print(current_port, "MinerHandler miner connected")
+        console.log(current_port)
 
     def on_close(self):
-        print(current_port, "MinerHandler disconnected")
+        console.log(current_port)
         if self in MinerHandler.child_miners:
             MinerHandler.child_miners.remove(self)
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        print('on_message', message)
+        console.log(message)
         seq = tornado.escape.json_decode(message)
         if seq[0] == 'GET_MINER_NODE':
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
             self.write_message(tornado.escape.json_encode(["MINER_NODE_ID", current_nodeid]))
-
-        elif seq[0] == 'GET_HIGHEST_BLOCK':
-            highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
-            recent_longest = chain.get_recent_longest(highest_block_hash)
-            new_difficulty, _timecost = mine.get_new_difficulty(recent_longest)
-            self.write_message(tornado.escape.json_encode(["HIGHEST_BLOCK", highest_block_height, highest_block_hash.decode('utf8'), new_difficulty]))
-
-        elif seq[0] == 'GET_BLOCK_STATE':
-            block_hash = seq[1]
-            db = database.get_conn()
-            block_json = db.get(b'blockstate_%s' % block_hash.encode('utf8'))
-            self.write_message(tornado.escape.json_encode(["BLOCK_STATE", block_hash, tornado.escape.json_decode(block_json)]))
 
         elif seq[0] == 'NEW_CHAIN_STAKING':
             pass
