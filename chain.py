@@ -427,15 +427,15 @@ def new_chain_state_block(seq):
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
-    _msg_header, msg_hash, prev_hash, tx_type, timestamp, data, signature = seq
-    if len(data) == 8:
-        receiver = data[4]
+    _msg_header, msg_hash, prev_hash, tx_type, timestamp, tx_list, signature = seq
+    if len(tx_list) == 8:
+        receiver = tx_list[4]
     else:
-        receiver = data[3]
-    height = data[0]
-    print('new_subchain_block data', data)
+        receiver = tx_list[3]
+    height = tx_list[0]
+    print('new_subchain_block tx_list', tx_list)
 
-    eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+    eth_tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
     signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
     sender = pubkey.to_checksum_address()
@@ -488,7 +488,7 @@ def new_subchain_block(seq):
 
 
     # try:
-    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, data, signature]).encode('utf8'))
+    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
     db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
     # get tx pool, if already exists, override only when the height is higher than current
     # when new block generated, the confirmed subchain block will be removed
@@ -496,6 +496,7 @@ def new_subchain_block(seq):
     # except Exception as e:
     #     print("new_subchain_block Error: %s" % e)
 
+    db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), msg_hash)).encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
 
 def get_recent_longest(highest_block_hash):
     db = database.get_conn()

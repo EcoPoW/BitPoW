@@ -19,6 +19,8 @@ import tree
 import vm
 import state
 import eth_tx
+import console
+import setting
 
 import contract_erc20
 
@@ -62,37 +64,16 @@ mpt_root = None
 
 class EthRpcHandler(tornado.web.RequestHandler):
     def options(self):
-        print('-----options-------')
-        # print(self.request.arguments)
-        # print(self.request.body)
-
-        # rsp = requests.options('http://127.0.0.1:9933/')
-        # print(rsp)
-        # print(rsp.text)
-        # self.add_header('allow', 'OPTIONS, POST')
-        # self.add_header('accept', 'application/json')
-        # self.add_header('vary', 'origin')
         self.add_header('access-control-allow-methods', 'OPTIONS, POST')
         self.add_header('access-control-allow-origin', '*')
         self.add_header('access-control-allow-headers', 'content-type')
         self.add_header('accept', 'application/json')
-        # allow: OPTIONS, POST\r\n
-        # accept: application/json\r\n
-        # vary: origin\r\n
-        # access-control-allow-methods: OPTIONS, POST\r\n
-        # access-control-allow-origin: moz-extension://52ed146e-8386-4e74-9dae-5fe4e9ae20c8\r\n
-        # access-control-allow-headers: content-type\r\n
-        # content-length: 0\r\n
-        # date: Thu, 24 Mar 2022 08:58:57 GMT
-        # self.write('\n')
 
     def get(self):
-        print('------get------')
         self.redirect('/dashboard')
 
     def post(self):
         global mpt_root
-        print('------post------')
         # print(self.request.arguments)
         print(self.request.body)
         self.add_header('access-control-allow-methods', 'OPTIONS, POST')
@@ -214,26 +195,37 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
         elif req.get('method') == 'eth_getTransactionCount':
             address = web3.Web3.to_checksum_address(req['params'][0])
-            print('eth_getTransactionCount address', address)
+            console.log('eth_getTransactionCount address', address)
             db = database.get_conn()
-            prev_hash = db.get(b'chain_%s' % address.encode('utf8'))
-            print('eth_getTransactionCount prev_hash', prev_hash)
+            #prev_hash = db.get(b'chain_%s' % address.encode('utf8'))
+            #console.log('eth_getTransactionCount prev_hash', prev_hash)
             count = 0
-            if prev_hash:
-                msg_json = db.get(b'msg_%s' % prev_hash)
-                # print(msg_json)
-                msg = tornado.escape.json_decode(msg_json)
-                # print(msg)
-                # count = msg[chain.MSG_HEIGHT]
-                data = msg[chain.MSG_DATA]
-                count = data[0]
-                signature = msg[chain.MSG_SIGNATURE]
-                eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
-                signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
-                pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
-                sender = pubkey.to_checksum_address()
-                print('eth_getTransactionCount sender', sender)
-                print('eth_getTransactionCount count', count)
+
+            it = db.iteritems()
+            it.seek(('subchain_%s_' % address).encode('utf8'))
+            for subchain_key, subchain_value in it:
+                print('count subchainkey', subchain_key, subchain_value)
+                if subchain_key.decode('utf8').startswith('subchain_%s_' % address):
+                    subchain_key_list = subchain_key.decode('utf8').split('_')
+                    reversed_height = int(subchain_key_list[2])
+                    count = setting.REVERSED_NO - reversed_height
+                break
+
+            #if prev_hash:
+            #    msg_json = db.get(b'msg_%s' % prev_hash)
+            #    # print(msg_json)
+            #    msg = tornado.escape.json_decode(msg_json)
+            #    # print(msg)
+            #    # count = msg[chain.MSG_HEIGHT]
+            #    data = msg[chain.MSG_DATA]
+            #    count = data[0]
+            #    signature = msg[chain.MSG_SIGNATURE]
+            #    eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+            #    signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+            #    pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+            #    sender = pubkey.to_checksum_address()
+            #    console.log('eth_getTransactionCount sender', sender)
+            #    console.log('eth_getTransactionCount count', count)
 
             resp = {'jsonrpc':'2.0', 'result': hex(count+1), 'id': rpc_id}
 
@@ -241,23 +233,13 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_sendRawTransaction':
-            # 0x23a58abebeD7f43b61a285a3b33A03441bb4ED92
-            # coin
-            # b'{"id":2584340568916,"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86e028501dcd650008252089436d8dffc83830f06d156b85b98bbe7e9d8a2290188016345785d8a000080820433a0c1b0621c7f1f8624d4b33341f6a350dc5e70b05f44b9d05ca819e0a1fdaddbf3a02b2eb0ad2be590e75f375dc960ba45af16d49f825f6e7a38a77ef22b7bba0574"]}'
-            # [b'\x02', b'\x01\xdc\xd6P\x00', b'R\x08', b'6\xd8\xdf\xfc\x83\x83\x0f\x06\xd1V\xb8[\x98\xbb\xe7\xe9\xd8\xa2)\x01', b'\x01cEx]\x8a\x00\x00', b'', b'\x043', b'\xc1\xb0b\x1c\x7f\x1f\x86$\xd4\xb33A\xf6\xa3P\xdc^p\xb0_D\xb9\xd0\\\xa8\x19\xe0\xa1\xfd\xad\xdb\xf3', b'+.\xb0\xad+\xe5\x90\xe7_7]\xc9`\xbaE\xaf\x16\xd4\x9f\x82_nz8\xa7~\xf2+{\xba\x05t']
-
-            # token
-            # b'{"id":2584340568677,"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf8ab018501dcd65000827b0c94000000000000000000000000000000000000000180b844a9059cbb00000000000000000000000036d8dffc83830f06d156b85b98bbe7e9d8a2290100000000000000000000000000000000000000000000000000000000000001f4820434a0f449ee1e8dd693a6ea31adfc2ad1eaa7dcd2083eb57f804096427a498d71b707a07be7206bde23bb562e6a26ec3edc1f08fc9560834ad378924df257f9f9c11d2b"]}'
-            # [b'\x01', b'\x01\xdc\xd6P\x00', b'{\x0c', b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01', b'', b'\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x006\xd8\xdf\xfc\x83\x83\x0f\x06\xd1V\xb8[\x98\xbb\xe7\xe9\xd8\xa2)\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xf4', b'\x044', b'\xf4I\xee\x1e\x8d\xd6\x93\xa6\xea1\xad\xfc*\xd1\xea\xa7\xdc\xd2\x08>\xb5\x7f\x80@\x96BzI\x8dq\xb7\x07', b'{\xe7 k\xde#\xbbV.j&\xec>\xdc\x1f\x08\xfc\x95`\x83J\xd3x\x92M\xf2W\xf9\xf9\xc1\x1d+']
-
-            # reference UNSIGNED_TRANSACTION_FIELDS for those data
             params = req.get('params', [])
             raw_tx_hex = params[0]
             # print('raw_tx_hex', raw_tx_hex)
             raw_tx_bytes = web3.Web3.to_bytes(hexstr=raw_tx_hex)
             print('raw_tx_bytes', raw_tx_bytes)
-            data, vrs = eth_tx.eth_rlp2list(raw_tx_bytes)
-            if len(data) == 8:
+            tx_list, vrs = eth_tx.eth_rlp2list(raw_tx_bytes)
+            if len(tx_list) == 8:
                 tx = eth_account._utils.typed_transactions.DynamicFeeTransaction.from_bytes(hexbytes.HexBytes(raw_tx_hex))
                 # tx = eth_account._utils.typed_transactions.TypedTransaction(transaction_type=2, transaction=tx)
                 tx_hash = tx.hash()
@@ -272,7 +254,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 tx_to = web3.Web3.to_checksum_address(tx.to)
                 tx_data = web3.Web3.to_hex(tx.data)
                 tx_nonce = tx.nonce
-            # print('eth_rlp2list', data, vrs)
+            # print('eth_rlp2list', tx_list, vrs)
             # print('nonce', tx.nonce)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
 
@@ -305,42 +287,53 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # result = interface_map[func_sig](*func_params)
             vm.run(type_params, interface_map[func_sig].__name__)
 
-            # tx = rlp.decode(raw_tx_bytes)
-            # tx, tx_from, tx_to, _tx_hash = tx_info(raw_tx_hex)
-
+            prev_hash = '0'*64
             db = database.get_conn()
-            prev_hash = db.get(b'chain_%s' % tx_from.encode('utf8'))
+            it = db.iteritems()
+            it.seek(('subchain_%s_' % tx_from).encode('utf8'))
+            for subchain_key, subchain_value in it:
+                print('eth_sendRawTransaction', subchain_key, subchain_value)
+                if not subchain_key.decode('utf8').startswith('subchain_%s_' % tx_from):
+                    prev_hash = '0'*64
+                    assert 1 == tx_nonce
+                    break
+
+                subchain_key_list = subchain_key.decode('utf8').split('_')
+                reversed_height = int(subchain_key_list[2])
+                count = setting.REVERSED_NO - reversed_height
+                assert count + 1 == tx_nonce
+
+                msg = tornado.escape.json_decode(subchain_value)
+                break
+
+            #prev_hash = db.get(b'chain_%s' % tx_from.encode('utf8')) # to remove
             print('prev_hash', prev_hash)
-            if prev_hash:
-                msg_json = db.get(b'msg_%s' % prev_hash)
+            #if prev_hash:
+            #    msg_json = db.get(b'msg_%s' % prev_hash)
                 # print('msg_json', msg_json)
-                msg = tornado.escape.json_decode(msg_json)
+            #    msg = tornado.escape.json_decode(msg_json)
                 # print(msg)
-                assert msg[chain.MSG_DATA][0] + 1 == tx_nonce
-            else:
-                prev_hash = b'0'*64
-                assert 1 == tx_nonce
+            #    assert msg[chain.MSG_DATA][0] + 1 == tx_nonce
+            #else:
+            #    prev_hash = b'0'*64
+            #    assert 1 == tx_nonce
 
             # _msg_header, block_hash, prev_hash, sender, receiver, height, data, timestamp, signature = seq
-            # data, vrs = eth_rlp2list(raw_tx_bytes)
-            data_json = json.dumps(data)
+            # tx_list, vrs = eth_rlp2list(raw_tx_bytes)
+            tx_list_json = json.dumps(tx_list)
             new_timestamp = time.time()
-            block_hash_obj = hashlib.sha256((prev_hash.decode('utf8') + tx_from + tx_to + str(tx_nonce) + data_json + str(new_timestamp)).encode('utf8'))
+            block_hash_obj = hashlib.sha256((prev_hash + tx_from + tx_to + str(tx_nonce) + tx_list_json + str(new_timestamp)).encode('utf8'))
             block_hash = block_hash_obj.hexdigest()
             signature_obj = eth_account.Account._keys.Signature(vrs=vrs)
             signature = signature_obj.to_hex()
 
-            seq = ['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash.decode('utf8'), 'eth', new_timestamp, data, signature]
+            seq = ['NEW_SUBCHAIN_BLOCK', block_hash, prev_hash, 'eth', new_timestamp, tx_list, signature]
             chain.new_subchain_block(seq)
             tree.forward(seq)
 
             resp = {'jsonrpc':'2.0', 'result': '0x%s' % block_hash, 'id': rpc_id}
 
         elif req.get('method') == 'eth_call':
-            # b'{"id":58,"jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x01ffc9a780ac58cd00000000000000000000000000000000000000000000000000000000"},"0x6288"]}'
-            # {'jsonrpc': '2.0', 'result': '0x0', 'id': 58}
-
-            # b'{"id":"ee04ad8b-aea3-43ad-b382-948f93257db7","jsonrpc":"2.0","method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000001","data":"0x70a08231000000000000000000000000719c8d75faf8f1b117ea56205414892caab4a1b7"},"0x62c1"]}'
             params = req.get('params', [])
             if len(params) > 0:
                 if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
