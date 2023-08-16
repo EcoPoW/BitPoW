@@ -512,10 +512,11 @@ def get_recent_longest(highest_block_hash):
             break
     return recent_longest
 
-def get_highest_block():
+def get_highest_block(): # to remove
     db = database.get_conn()
     highest_block = None
     highest_block_height = 0
+
     highest_block_hash = db.get(b"chain")
     if highest_block_hash:
         block_json = db.get(b'block_%s' % highest_block_hash)
@@ -524,13 +525,54 @@ def get_highest_block():
             highest_block_height = block[HEIGHT]
     else:
         highest_block_hash = b'0'*64
+
     return highest_block_height, highest_block_hash, highest_block
+
+def get_latest_block_number():
+    db = database.get_conn()
+    it = db.iteritems()
+    it.seek(('headerblock_').encode('utf8'))
+    no = 0
+    for k, v in it:
+        print('get_latest_block_number', k, v)
+        if k.decode('utf8').startswith('headerblock_'):
+            ks = k.decode('utf8').split('_')
+            reverse_no = int(ks[1])
+            no = setting.REVERSED_NO - reverse_no
+        break
+    return no
+
+def get_block_hashes_by_number(no):
+    db = database.get_conn()
+    it = db.iteritems()
+    hashes = []
+    it.seek(('headerblock_%s' % str(setting.REVERSED_NO-no).zfill(16)).encode('utf8'))
+    for k, v in it:
+        print('get_block_hashes_by_number', k, v)
+        if k.decode('utf8').startswith('headerblock_%s' % str(setting.REVERSED_NO-no).zfill(16)):
+            vs = v.decode('utf8').split('_')
+            blockhash = vs[2]
+            hashes.append(blockhash)
+        else:
+            break
+    return hashes
+
+def get_block_header_by_hash(h):
+    pass
+
+def get_block_txbody_by_hash(h):
+    pass
+
+def get_block_statebody_by_hash(h):
+    pass
 
 class GetChainLatestHashHandler(tornado.web.RequestHandler):
     def get(self):
-        highest_block_height, highest_block_hash, _ = get_highest_block()
+        #_highest_block_height, highest_block_hash, _ = get_highest_block()
+        latest_block_height = get_latest_block_number()
+        latest_block_hashes = get_block_hashes_by_number(latest_block_height)
 
-        self.finish({'hash': highest_block_hash.decode('utf8'), 'height': highest_block_height})
+        self.finish({'blockhashes': latest_block_hashes, 'height': latest_block_height})
 
 class GetChainBlockHandler(tornado.web.RequestHandler):
     def get(self):
