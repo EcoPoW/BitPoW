@@ -33,8 +33,8 @@ class Application(tornado.web.Application):
                     (r"/get_chain_block", chain.GetChainBlockHandler),
                     (r"/get_state_subchains", chain.GetStateSubchainsHandler),
                     (r"/get_state_contracts", chain.GetStateContractsHandler),
-                    (r"/get_subchains_latest", chain.GetSubchainLatestHandler),
-                    (r"/get_subchains_blocks", chain.GetSubchainBlocksHandler),
+                    (r"/get_subchains_latest", chain.GetSubchainsLatestHandler),
+                    (r"/get_subchain_blocks", chain.GetSubchainBlocksHandler),
 
                     (r"/new_chain_txblock", NewSubchainBlockHandler),
                     (r"/new_chain_stateblock", NewSubchainBlockHandler),

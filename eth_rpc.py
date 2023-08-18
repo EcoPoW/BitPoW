@@ -79,7 +79,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         req = tornado.escape.json_decode(self.request.body)
         rpc_id = req.get('id', '0')
         if req.get('method') == 'eth_blockNumber':
-            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            highest_block_height, _highest_block_hash, _highest_block = chain.get_highest_block() # change to get block number
             resp = {'jsonrpc':'2.0', 'result': hex(highest_block_height), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getBlockByNumber':

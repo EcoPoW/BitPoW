@@ -126,6 +126,8 @@ tokens_to_block = {}
 aliases_to_block = {}
 balances_to_collect = {}
 
+subchains_new_block_available = set()
+
 # @tornado.gen.coroutine
 def new_chain_block(seq):
     global nodes_to_fetch
@@ -427,6 +429,7 @@ def new_chain_state_block(seq):
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
+    global subchains_new_block_available
     _msg_header, msg_hash, prev_hash, tx_type, timestamp, tx_list, signature = seq
     if len(tx_list) == 8:
         receiver = tx_list[4]
@@ -448,7 +451,7 @@ def new_subchain_block(seq):
             return
 
     assert sender.startswith('0x') and len(sender) == 42
-    assert (receiver.startswith('0x') or receiver.startswith('1x')) and (len(receiver) == 42 or len(receiver) == 2) #valid address or empty to create contract
+    assert receiver.startswith('0x') and (len(receiver) == 42 or len(receiver) == 2) #valid address or empty to create contract
     # validate
     # check current main chain block state, find the subchain blocks until then, check the valdation
     # need to ensure current subchains_block[sender] is the ancestor of block_hash
@@ -497,6 +500,7 @@ def new_subchain_block(seq):
     #     print("new_subchain_block Error: %s" % e)
 
     db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), msg_hash)).encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
+    subchains_new_block_available.add(sender)
 
 def get_recent_longest(highest_block_hash):
     db = database.get_conn()
@@ -557,14 +561,24 @@ def get_block_hashes_by_number(no):
             break
     return hashes
 
-def get_block_header_by_hash(h):
-    pass
+def get_block_header_by_hash(no, h):
+    db = database.get_conn()
+    header_json = db.get(('headerblock_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
+    header = tornado.escape.json_decode(header_json)
+    return header
 
-def get_block_txbody_by_hash(h):
-    pass
+def get_block_txbody_by_hash(no, h):
+    db = database.get_conn()
+    body_json = db.get(('txblock_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
+    body = tornado.escape.json_decode(body_json)
+    return body
 
-def get_block_statebody_by_hash(h):
-    pass
+def get_block_statebody_by_hash(no, h):
+    db = database.get_conn()
+    body_json = db.get(('stateblock_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
+    body = tornado.escape.json_decode(body_json)
+    return body
+
 
 class GetChainLatestHashHandler(tornado.web.RequestHandler):
     def get(self):
@@ -576,23 +590,38 @@ class GetChainLatestHashHandler(tornado.web.RequestHandler):
 
 class GetChainBlockHandler(tornado.web.RequestHandler):
     def get(self):
-        pass
+        block_height = self.get_argument('height')
+        block_hash = self.get_argument('hash')
+
+        header = get_block_header_by_hash(block_height, block_hash)
+        print(header)
+        txblock = get_block_txbody_by_hash(no, h)
+        stateblock = get_block_statebody_by_hash(no, h)
+        self.finish({'tx':txblock, 'state':stateblock})
 
 class GetStateSubchainsHandler(tornado.web.RequestHandler):
     def get(self):
-        pass
+        block_hash = self.get_argument('hash')
+        addrs = self.get_argument('addrs')
 
 class GetStateContractsHandler(tornado.web.RequestHandler):
     def get(self):
-        pass
+        block_hash = self.get_argument('hash')
 
-class GetSubchainLatestHandler(tornado.web.RequestHandler):
+class GetSubchainsLatestHandler(tornado.web.RequestHandler):
     def get(self):
-        pass
+        global subchains_new_block_available
+        for addr in subchains_new_block_available:
+            print(addr)
+        self.finish({'subchains': list(subchains_new_block_available)})
 
 class GetSubchainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
-        pass
+        addr = self.get_argument('addr')
+        from_no = self.get_argument('from_no')
+        from_hash = self.get_argument('from_hash')
+        to_no = self.get_argument('to_no')
+        to_hash = self.get_argument('to_hash')
 
 
 class GetHighestBlockStateHandler(tornado.web.RequestHandler):
