@@ -53,6 +53,7 @@ def pow(conn):
 
             conn.send(['DONE', start, start+10000000, commitment])
             sleep = True
+
     except:
         pass
 
@@ -113,16 +114,42 @@ class MiningClient:
                     signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
                     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
                     sender = pubkey.to_checksum_address()
-                    console.log('sender', sender)
-                    console.log('count', count)
-                    console.log('data', data)
+                    console.log('sender', sender, 'count', count)
+                    print('data', data)
 
-                    txs = next_mining.get(sender, [])
-                    console.log('txs', txs)
+                    txs = next_mining.setdefault(sender, [])
+                    txs.append(data)
+                    #print('txs', txs)
+                    print('current_mining', current_mining)
                     if not current_mining:
                         current_mining = next_mining
                         next_mining = {}
+                        print('current_mining', current_mining)
 
+                        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                        print('req', req.text)
+                        obj = json.loads(req.text)
+                        if obj['height'] == 0:
+                            blockhash = '0'*64
+                        else:
+                            blockhash = obj['blockhashes'][0]
+
+                        for addr in current_mining:
+                            #print('current_mining', current_mining)
+                            print('current_mining[addr]', current_mining[addr])
+
+                        req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
+                        print('req', req.text)
+
+                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(current_mining.keys()))
+                        print('req', req.text)
+
+                        #commitment = hashlib.sha256(json.dumps(current_mining).encode('utf8')).digest()
+                        #conn.send(['START', 0, commitment])
+
+
+                    else:
+                        pass
 
     def keep_alive(self):
         if self.ws is None:

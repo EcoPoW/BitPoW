@@ -601,21 +601,56 @@ class GetChainBlockHandler(tornado.web.RequestHandler):
 
 class GetStateSubchainsHandler(tornado.web.RequestHandler):
     def get(self):
-        block_hash = self.get_argument('hash')
+        block_height = self.get_argument('height', 0)
+        no = int(block_height)
         addrs = self.get_argument('addrs')
+        db = database.get_conn()
+        it = db.iteritems()
+
+        results = {}
+        for addr in addrs.split(','):
+            print(addr)
+            results[addr] = None
+            it.seek(('globalsubchain_%s_%s' % (addr, str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
+            for k, v in it:
+                if not k.startswith(b'globalsubchain_'):
+                    break
+                print('GetStateSubchainsHandler', k, v)
+                results[addr] = k.decode('utf8')
+        self.finish(results)
 
 class GetStateContractsHandler(tornado.web.RequestHandler):
     def get(self):
         block_hash = self.get_argument('hash')
 
-class GetSubchainsLatestHandler(tornado.web.RequestHandler):
+class GetPoolSubchainsHandler(tornado.web.RequestHandler):
     def get(self):
         global subchains_new_block_available
+        db = database.get_conn()
+        it = db.iteritems()
+        results = {}
+
         for addr in subchains_new_block_available:
             print(addr)
-        self.finish({'subchains': list(subchains_new_block_available)})
+            it.seek(('subchain_%s_' % addr).encode('utf8'))
+            for subchain_key, subchain_value in it:
+                print('GetPoolSubchainsHandler', subchain_key, subchain_value)
+                if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr):
+                    #prev_hash = '0'*64
+                    #assert 1 == tx_nonce
+                    break
 
-class GetSubchainBlocksHandler(tornado.web.RequestHandler):
+                subchain_key_list = subchain_key.decode('utf8').split('_')
+                reversed_height = int(subchain_key_list[2])
+                count = setting.REVERSED_NO - reversed_height
+                #assert count + 1 == tx_nonce
+                results[addr] = [count, subchain_key_list[3]]
+                break
+
+        self.finish(results)
+
+
+class GetPoolBlocksHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
         from_no = self.get_argument('from_no')
