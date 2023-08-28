@@ -650,14 +650,28 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
         self.finish(results)
 
 
+
 class GetPoolBlocksHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
-        from_no = self.get_argument('from_no')
-        from_hash = self.get_argument('from_hash')
+        from_no = self.get_argument('from_no', 0)
+        #from_hash = self.get_argument('from_hash', '0'*64)
         to_no = self.get_argument('to_no')
         to_hash = self.get_argument('to_hash')
 
+        db = database.get_conn()
+        it = db.iteritems()
+        results = {'blocks': []}
+        reversed_height = setting.REVERSED_NO - int(to_no)
+
+        print('GetPoolBlocksHandler', addr, str(reversed_height).zfill(16), to_hash)
+        it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_height).zfill(16), to_hash)).encode('utf8'))
+        for subchain_key, subchain_value in it:
+            print('GetPoolBlocksHandler', subchain_key, subchain_value)
+            tx = tornado.escape.json_decode(subchain_value)
+            results['blocks'].append(tx)
+
+        self.finish(results)
 
 class GetHighestBlockStateHandler(tornado.web.RequestHandler):
     def get(self):

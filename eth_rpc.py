@@ -24,6 +24,11 @@ import setting
 
 import contract_erc20
 
+
+_state = state.State()
+_state.db = database.get_conn()
+contract_erc20._state = _state
+
 contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
 }

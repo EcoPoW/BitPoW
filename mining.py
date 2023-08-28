@@ -4,13 +4,17 @@ import time
 import hashlib
 import multiprocessing
 import json
+import types
+import pprint
 # import threading
 # import curses
 
 # import eth_hash.auto
 import web3
 import eth_account
+import eth_utils
 import requests
+import hexbytes
 
 import tornado.ioloop
 import tornado.gen
@@ -19,6 +23,32 @@ import tornado.websocket
 import vm
 import eth_tx
 import console
+import contract_erc20
+
+contract_map = {
+    '0x0000000000000000000000000000000000000001': contract_erc20
+}
+
+interface_map = {}
+type_map = {}
+for k, v in contract_erc20.__dict__.items():
+    if not k.startswith('_') and type(v) in [types.FunctionType]:
+        # print(k, type(v))
+        # print(v.__code__.co_kwonlyargcount, v.__code__.co_posonlyargcount)
+        # print(v.__code__.co_varnames[:v.__code__.co_argcount])
+        # for i in v.__code__.co_varnames[:v.__code__.co_argcount]:
+        #     print(v.__annotations__[i].__name__)
+        params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
+        func_sig = '%s(%s)' % (k, ','.join(params))
+        # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
+        interface_map['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
+        type_map[k] = params
+print(interface_map)
+print(type_map)
+
+vm = vm.VM()
+vm.import_module(contract_erc20)
+
 
 def pow(conn):
     start = 0
@@ -96,7 +126,7 @@ class MiningClient:
                 self.ws = None
                 break
             else:
-                console.log(msg)
+                #console.log(msg)
                 seq = json.loads(msg)
                 if seq[0] == '_NEW_CHAIN_BLOCK':
                     # next_mining.append(message['name'])
@@ -139,14 +169,55 @@ class MiningClient:
                             print('current_mining[addr]', current_mining[addr])
 
                         req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
-                        print('req', req.text)
+                        print('req', req.json())
+                        pool_subchains = req.json()
+                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(pool_subchains.keys()))
+                        print('req', req.json())
+                        state_subchains = req.json()
 
-                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(current_mining.keys()))
-                        print('req', req.text)
+                        for addr in pool_subchains:
+                            #print('current_mining', current_mining)
+                            print('get_pool_subchains addr', addr, pool_subchains[addr])
+                            to_no, to_hash = pool_subchains[addr]
+                            print('get_state_subchains', state_subchains[addr])
+                            from_no = 0
+                            if state_subchains[addr]:
+                                from_no = state_subchains[addr][0]
+                            req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+                            txblocks = req.json()['blocks']
+                            txblocks.reverse()
+                            for txblock in txblocks:
+                                pprint.pprint(txblock)
+                                tx_list = txblock[4]
+                                tx_to = tx_list[4]
+                                tx_data = tx_list[6]
+                                tx_signature_hex = txblock[5]
+                                tx_signature_obj = eth_account.Account._keys.Signature(signature_bytes=hexbytes.HexBytes(tx_signature_hex))
+                                vrs = tx_signature_obj.vrs
 
-                        #commitment = hashlib.sha256(json.dumps(current_mining).encode('utf8')).digest()
-                        #conn.send(['START', 0, commitment])
+                                tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
+                                #if len(tx_list) == 8:
+                                #    tx = eth_account._utils.typed_transactions.DynamicFeeTransaction.from_bytes(hexbytes.HexBytes(tx_singature_bytes))
+                                #    # tx = eth_account._utils.typed_transactions.TypedTransaction(transaction_type=2, transaction=tx)
+                                #    tx_hash = tx.hash()
+                                #    vrs = tx.vrs()
+                                #    tx_to = web3.Web3.to_checksum_address(tx.as_dict()['to'])
+                                #    tx_data = web3.Web3.to_hex(tx.as_dict()['data'])
+                                #    tx_nonce = web3.Web3.to_int(tx.as_dict()['nonce'])
+                                #else:
+                                #    tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
+                                #    tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
+                                #    vrs = eth_account._utils.legacy_transactions.vrs_from(tx)
+                                #    tx_to = web3.Web3.to_checksum_address(tx.to)
+                                #    tx_data = web3.Web3.to_hex(tx.data)
+                                #    tx_nonce = tx.nonce
+                                # print('eth_rlp2list', tx_list, vrs)
+                                # print('nonce', tx.nonce)
+                                tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
+                                print('tx_from', tx_from)
 
+                                # contract_erc20._sender = tx_from
+                                vm.global_vars['_sender'] = tx_from
 
                     else:
                         pass
