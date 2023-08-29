@@ -25,8 +25,7 @@ import setting
 import contract_erc20
 
 
-_state = state.State()
-_state.db = database.get_conn()
+_state = state.State(database.get_conn())
 contract_erc20._state = _state
 
 contract_map = {

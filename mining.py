@@ -1,5 +1,6 @@
 
 import sys
+import os
 import time
 import hashlib
 import multiprocessing
@@ -19,11 +20,21 @@ import hexbytes
 import tornado.ioloop
 import tornado.gen
 import tornado.websocket
+import rocksdb
 
 import vm
+import state
 import eth_tx
 import console
 import contract_erc20
+
+
+if not os.path.exists('miners'):
+    os.makedirs('miners')
+db = rocksdb.DB('miners/mining.db', rocksdb.Options(create_if_missing=True))
+
+_state = state.State(db)
+contract_erc20._state = _state
 
 contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20
@@ -196,28 +207,29 @@ class MiningClient:
                                 vrs = tx_signature_obj.vrs
 
                                 tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
-                                #if len(tx_list) == 8:
-                                #    tx = eth_account._utils.typed_transactions.DynamicFeeTransaction.from_bytes(hexbytes.HexBytes(tx_singature_bytes))
-                                #    # tx = eth_account._utils.typed_transactions.TypedTransaction(transaction_type=2, transaction=tx)
-                                #    tx_hash = tx.hash()
-                                #    vrs = tx.vrs()
-                                #    tx_to = web3.Web3.to_checksum_address(tx.as_dict()['to'])
-                                #    tx_data = web3.Web3.to_hex(tx.as_dict()['data'])
-                                #    tx_nonce = web3.Web3.to_int(tx.as_dict()['nonce'])
-                                #else:
-                                #    tx = eth_account._utils.legacy_transactions.Transaction.from_bytes(raw_tx_bytes)
-                                #    tx_hash = eth_account._utils.signing.hash_of_signed_transaction(tx)
-                                #    vrs = eth_account._utils.legacy_transactions.vrs_from(tx)
-                                #    tx_to = web3.Web3.to_checksum_address(tx.to)
-                                #    tx_data = web3.Web3.to_hex(tx.data)
-                                #    tx_nonce = tx.nonce
-                                # print('eth_rlp2list', tx_list, vrs)
-                                # print('nonce', tx.nonce)
                                 tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
                                 print('tx_from', tx_from)
 
                                 # contract_erc20._sender = tx_from
                                 vm.global_vars['_sender'] = tx_from
+
+                                #result = '0x'
+
+                                func_sig = tx_data[:10]
+                                # print(interface_map[func_sig], tx_data)
+                                func_params_data = tx_data[10:]
+                                func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+                                print('func', interface_map[func_sig].__name__, func_params)
+                                type_params = []
+                                for k, v in zip(type_map[interface_map[func_sig].__name__], func_params):
+                                    # print('type', k, v)
+                                    if k == 'address':
+                                        type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
+                                    elif k == 'uint256':
+                                        type_params.append(web3.Web3.to_int(hexstr=v))
+
+                                # result = interface_map[func_sig](*func_params)
+                                vm.run(type_params, interface_map[func_sig].__name__)
 
                     else:
                         pass
