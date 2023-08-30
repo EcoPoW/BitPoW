@@ -1,8 +1,6 @@
 
 import tornado.escape
 
-#import database
-
 
 class address(str):pass
 class uint256(int):pass
@@ -17,23 +15,21 @@ class State:
     def __init__(self, db):
         self.db = db
         self.block_number = 0
-        self.block_hash = '0'*64
         self.pending_state = {}
 
     # def __setitem__(self, key, value):
     def put(self, key, value):
         value_json = tornado.escape.json_encode(value)
-        print('globalstate_%s_%s_%s_%s' % (contract_address, key, str(10**15 - self.block_number).zfill(16), self.block_hash), value_json)
+        print('globalstate_%s_%s_%s' % (contract_address, key, str(10**15 - self.block_number).zfill(16)), value_json)
         #self.db.put(('globalstate_%s_%s_%s_%s' % (contract_address, key, str(10**15 - self.block_number).zfill(16), self.block_hash)).encode('utf8'), value_json.encode('utf8'))
-
-        self.pending_state['globalstate_%s_%s_%s' % (contract_address, key, str(10**15 - self.block_number).zfill(16))] = value_json
+        self.pending_state['globalstate_%s_%s_%s' % (contract_address, key, self.block_number)] = value_json
 
     # def __getitem__(self, key):
     def get(self, key, default):
         value = default
-        print(3, self.pending_state)
-        k = 'globalstate_%s_%s_%s' % (contract_address, key, str(10**15 - self.block_number).zfill(16))
-        print(1, k)
+        print(self.pending_state)
+        k = 'globalstate_%s_%s_%s' % (contract_address, key, self.block_number)
+        print(k)
         if k in self.pending_state:
             value_json = self.pending_state[k]
             value = tornado.escape.json_decode(value_json)
@@ -55,5 +51,4 @@ class State:
 
         return value
 
-#_state = State()
 

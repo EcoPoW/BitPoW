@@ -160,6 +160,8 @@ class MiningClient:
 
                     txs = next_mining.setdefault(sender, [])
                     txs.append(data)
+                    tx_body = []
+                    #state_body = {}
                     #print('txs', txs)
                     print('current_mining', current_mining)
                     if not current_mining:
@@ -168,22 +170,23 @@ class MiningClient:
                         print('current_mining', current_mining)
 
                         req = requests.get('http://127.0.0.1:9001/get_chain_latest')
-                        print('req', req.text)
-                        obj = json.loads(req.text)
+                        print('get_chain_latest', req.text)
+                        obj = req.json()
                         if obj['height'] == 0:
                             blockhash = '0'*64
                         else:
                             blockhash = obj['blockhashes'][0]
+                        _state.block_number = obj['height'] + 1
 
                         for addr in current_mining:
                             #print('current_mining', current_mining)
                             print('current_mining[addr]', current_mining[addr])
 
                         req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
-                        print('req', req.json())
+                        print('get_pool_subchains', req.json())
                         pool_subchains = req.json()
                         req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(pool_subchains.keys()))
-                        print('req', req.json())
+                        print('get_state_subchains', req.json())
                         state_subchains = req.json()
 
                         for addr in pool_subchains:
@@ -197,6 +200,8 @@ class MiningClient:
                             req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
                             txblocks = req.json()['blocks']
                             txblocks.reverse()
+                            last_tx_hash = None
+                            last_tx_height= None
                             for txblock in txblocks:
                                 pprint.pprint(txblock)
                                 tx_list = txblock[4]
@@ -208,18 +213,15 @@ class MiningClient:
 
                                 tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
                                 tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
-                                print('tx_from', tx_from)
-
+                                #print('tx_from', tx_from)
                                 # contract_erc20._sender = tx_from
                                 vm.global_vars['_sender'] = tx_from
-
-                                #result = '0x'
 
                                 func_sig = tx_data[:10]
                                 # print(interface_map[func_sig], tx_data)
                                 func_params_data = tx_data[10:]
                                 func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                                print('func', interface_map[func_sig].__name__, func_params)
+                                #print('func', interface_map[func_sig].__name__, func_params)
                                 type_params = []
                                 for k, v in zip(type_map[interface_map[func_sig].__name__], func_params):
                                     # print('type', k, v)
@@ -230,6 +232,17 @@ class MiningClient:
 
                                 # result = interface_map[func_sig](*func_params)
                                 vm.run(type_params, interface_map[func_sig].__name__)
+                                last_tx_height = tx_list[0]
+                                last_tx_hash = tx_hash.hex()
+                            tx_body.append([addr, last_tx_height, last_tx_hash])
+                        print(tx_body)
+                        print(_state.pending_state)
+                        tx_body_json = json.dumps(tx_body)
+                        state_body_json = json.dumps(_state.pending_state, sort_keys=True)
+                        tx_body_hash = hashlib.sha256(tx_body_json.encode('utf8')).hexdigest()
+                        state_body_hash = hashlib.sha256(state_body_json.encode('utf8')).hexdigest()
+                        print(tx_body_hash)
+                        print(state_body_hash)
 
                     else:
                         pass
