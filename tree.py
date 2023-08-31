@@ -212,9 +212,21 @@ class MinerConnector(object):
             else:
                 self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
 
-        elif seq[0] == "NEW_CHAIN_BLOCK":
+        elif seq[0] == "NEW_CHAIN_BLOCK": # remove
             print("MinerConnector got NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_HEADER":
+            print("MinerConnector got NEW_CHAIN_HEADER", seq)
+            chain.new_chain_header(seq)
+
+        elif seq[0] == "NEW_CHAIN_TX_BODY":
+            print("MinerConnector got NEW_CHAIN_TX_BODY", seq)
+            chain.new_chain_tx_body(seq)
+
+        elif seq[0] == "NEW_CHAIN_STATE_BODY":
+            print("MinerConnector got NEW_CHAIN_STATE_BODY", seq)
+            chain.new_chain_state_body(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)

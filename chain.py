@@ -414,17 +414,21 @@ def new_chain_block(seq):
         worker_thread_mining = False
 
 
-def new_chain_header_block(seq):
-    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
-    tx_block_hash, state_block_hash = header_data
+def new_chain_header(seq):
+    print('new_chain_header', seq)
+    _header, block_hash, header_data, block_nonce, signature = seq
+    tx_block_hash = header_data
+    state_block_hash = header_data
     db = database.get_conn()
     return
 
-def new_chain_tx_block(seq):
-    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
+def new_chain_tx_body(seq):
+    print('new_chain_tx_body', seq)
+    _header, block_hash, height, data_json, signature = seq
 
-def new_chain_state_block(seq):
-    _header, block_hash, prev_hash, difficulty, height, address, timestamp, header_data, block_nonce, signature = seq
+def new_chain_state_body(seq):
+    print('new_chain_state_body', seq)
+    _header, block_hash, height, data_json, signature = seq
 
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
