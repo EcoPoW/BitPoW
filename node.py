@@ -36,10 +36,6 @@ class Application(tornado.web.Application):
                     (r"/get_pool_subchains", chain.GetPoolSubchainsHandler),
                     (r"/get_pool_blocks", chain.GetPoolBlocksHandler),
 
-                    (r"/new_chain_txblock", NewSubchainBlockHandler),
-                    (r"/new_chain_stateblock", NewSubchainBlockHandler),
-                    (r"/new_chain_headerblock", NewSubchainBlockHandler),
-
                     # (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
                     (r"/get_block", chain.GetBlockHandler), # to remove
                     (r"/get_block_state", chain.GetBlockStateHandler), # to remove
@@ -340,24 +336,11 @@ class TraceHandler(tornado.web.RequestHandler):
 
 def main():
     tree.main()
-
-    # miner.main()
-    tornado.ioloop.IOLoop.instance().call_later(1, mine.looping)
-
-    # leader.main()
-    # tornado.ioloop.IOLoop.instance().call_later(1, leader.mining)
-
     # fs.main()
-
-    worker_threading = threading.Thread(target=mine.worker_thread)
-    worker_threading.start()
-    chain.worker_thread_pause = False
 
     server = Application()
     server.listen(tree.current_port, '0.0.0.0')
     tornado.ioloop.IOLoop.instance().start()
-
-    worker_threading.join()
 
 if __name__ == '__main__':
     main()

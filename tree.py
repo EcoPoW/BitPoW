@@ -132,7 +132,7 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        console.log(message)
+        print('on_message', message)
         seq = tornado.escape.json_decode(message)
         if seq[0] == 'GET_MINER_NODE':
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
@@ -145,92 +145,23 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
             print("MinerHandler NEW_CHAIN_BLOCK", seq)
             chain.new_chain_block(seq)
 
+        elif seq[0] == "NEW_CHAIN_HEADER":
+            print("MinerHandler got NEW_CHAIN_HEADER", seq)
+            chain.new_chain_header(seq)
+
+        elif seq[0] == "NEW_CHAIN_TXBODY":
+            print("MinerHandler got NEW_CHAIN_TXBODY", seq)
+            chain.new_chain_txbody(seq)
+
+        elif seq[0] == "NEW_CHAIN_STATEBODY":
+            print("MinerHandler got NEW_CHAIN_STATEBODY", seq)
+            chain.new_chain_statebody(seq)
+
         # elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
         #     print("MinerHandler NEW_SUBCHAIN_BLOCK", seq)
         #     chain.new_subchain_block(seq)
 
         forward(seq)
-
-
-class MinerConnector(object):
-    """Websocket Client"""
-    node_miner = None
-
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.ws_uri = 'ws://%s:%s/miner' % (self.host, self.port)
-        self.conn = None
-        # self.connect() 
-        tornado.ioloop.IOLoop.instance().call_later(3.0, self.connect)
-
-    def connect(self):
-        tornado.websocket.websocket_connect(self.ws_uri,
-                                callback = self.on_connect,
-                                on_message_callback = self.on_message,
-                                connect_timeout = 1000.0,
-                                ping_timeout = 600.0
-                            )
-
-    def close(self):
-        self.conn.close()
-        MinerConnector.node_miner = None
-        print('MinerConnector close')
-
-    @tornado.gen.coroutine
-    def on_connect(self, future):
-        try:
-            self.conn = future.result()
-            MinerConnector.node_miner = self.conn
-            print('on_connect', self.conn)
-            self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
-        except:
-            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
-
-    @tornado.gen.coroutine
-    def on_message(self, message):
-        global current_nodeid
-        # global current_branch
-        # global node_parents
-        # global node_neighborhoods
-        # global nodes_pool
-        # global parent_node_id_msg
-
-        if message is None:
-            print("MinerConnector reconnect ...")
-            tornado.ioloop.IOLoop.instance().call_later(1.0, self.connect)
-            return
-
-        seq = tornado.escape.json_decode(message)
-        if seq[0] == "MINER_NODE_ID":
-            print("MinerConnector got MINER_NODE_ID", seq)
-            current_nodeid = seq[1]
-            if current_nodeid is not None and self.conn:
-                chain.nodes_to_fetch.add(current_nodeid)
-                chain.worker_thread_pause = False
-                # chain.worker_thread_mining = True
-            else:
-                self.conn.write_message(tornado.escape.json_encode(["GET_MINER_NODE"]))
-
-        elif seq[0] == "NEW_CHAIN_BLOCK": # remove
-            print("MinerConnector got NEW_CHAIN_BLOCK", seq)
-            chain.new_chain_block(seq)
-
-        elif seq[0] == "NEW_CHAIN_HEADER":
-            print("MinerConnector got NEW_CHAIN_HEADER", seq)
-            chain.new_chain_header(seq)
-
-        elif seq[0] == "NEW_CHAIN_TX_BODY":
-            print("MinerConnector got NEW_CHAIN_TX_BODY", seq)
-            chain.new_chain_tx_body(seq)
-
-        elif seq[0] == "NEW_CHAIN_STATE_BODY":
-            print("MinerConnector got NEW_CHAIN_STATE_BODY", seq)
-            chain.new_chain_state_body(seq)
-
-        elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
-            print("MinerConnector got NEW_SUBCHAIN_BLOCK", seq)
-            chain.new_subchain_block(seq)
 
 
 # connect point from child node

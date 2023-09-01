@@ -57,8 +57,6 @@ REF_HEIGHT = 7
 
 recent_longest = []
 nodes_in_chain = {}
-worker_thread_mining = False
-worker_thread_pause = True
 
 # def longest_chain(from_hash = '0'*64):
 #     db = database.get_conn()
@@ -131,7 +129,6 @@ subchains_new_block_available = set()
 # @tornado.gen.coroutine
 def new_chain_block(seq):
     global nodes_to_fetch
-    global worker_thread_mining
     global recent_longest
     global last_highest_block_height
     global hash_proofs
@@ -411,24 +408,29 @@ def new_chain_block(seq):
         # need to fetch the missing block
         print('need to fetch the missing block', identity, int(identity[2:], 16))
         nodes_to_fetch.add(bin(int(identity[2:], 16))[2:].zfill(160))
-        worker_thread_mining = False
 
 
 def new_chain_header(seq):
     print('new_chain_header', seq)
-    _header, block_hash, header_data, block_nonce, signature = seq
-    tx_block_hash = header_data
-    state_block_hash = header_data
+    _header, block_hash, header_data, block_nonce = seq
+    txbody_hash = header_data['txbody_hash']
+    statebody_hash = header_data['statebody_hash']
     db = database.get_conn()
     return
 
-def new_chain_tx_body(seq):
-    print('new_chain_tx_body', seq)
-    _header, block_hash, height, data_json, signature = seq
+def new_chain_txbody(seq):
+    print('new_chain_txbody', seq)
+    _header, block_hash, height, data_json = seq
+    db = database.get_conn()
+    print(('txbody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
+    db.put(('txbody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
-def new_chain_state_body(seq):
-    print('new_chain_state_body', seq)
-    _header, block_hash, height, data_json, signature = seq
+def new_chain_statebody(seq):
+    print('new_chain_statebody', seq)
+    _header, block_hash, height, data_json = seq
+    db = database.get_conn()
+    print(('statebody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
+    db.put(('statebody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
@@ -573,13 +575,13 @@ def get_block_header_by_hash(no, h):
 
 def get_block_txbody_by_hash(no, h):
     db = database.get_conn()
-    body_json = db.get(('txblock_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
+    body_json = db.get(('txbody_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
     body = tornado.escape.json_decode(body_json)
     return body
 
 def get_block_statebody_by_hash(no, h):
     db = database.get_conn()
-    body_json = db.get(('stateblock_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
+    body_json = db.get(('statebody_%s_%s' % (str(setting.REVERSED_NO-no).zfill(16), h)).encode('utf8'))
     body = tornado.escape.json_decode(body_json)
     return body
 
@@ -599,9 +601,9 @@ class GetChainBlockHandler(tornado.web.RequestHandler):
 
         header = get_block_header_by_hash(block_height, block_hash)
         print(header)
-        txblock = get_block_txbody_by_hash(no, h)
-        stateblock = get_block_statebody_by_hash(no, h)
-        self.finish({'tx':txblock, 'state':stateblock})
+        txbody = get_block_txbody_by_hash(no, h)
+        statebody = get_block_statebody_by_hash(no, h)
+        self.finish({'tx':txbody, 'state':statebody})
 
 class GetStateSubchainsHandler(tornado.web.RequestHandler):
     def get(self):
@@ -613,7 +615,7 @@ class GetStateSubchainsHandler(tornado.web.RequestHandler):
 
         results = {}
         for addr in addrs.split(','):
-            print(addr)
+            print('addr', addr)
             results[addr] = None
             it.seek(('globalsubchain_%s_%s' % (addr, str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
             for k, v in it:
@@ -638,10 +640,7 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
             print(addr)
             it.seek(('subchain_%s_' % addr).encode('utf8'))
             for subchain_key, subchain_value in it:
-                print('GetPoolSubchainsHandler', subchain_key, subchain_value)
                 if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr):
-                    #prev_hash = '0'*64
-                    #assert 1 == tx_nonce
                     break
 
                 subchain_key_list = subchain_key.decode('utf8').split('_')
@@ -651,8 +650,8 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
                 results[addr] = [count, subchain_key_list[3]]
                 break
 
+        print('GetPoolSubchainsHandler results', results)
         self.finish(results)
-
 
 
 class GetPoolBlocksHandler(tornado.web.RequestHandler):
@@ -671,6 +670,8 @@ class GetPoolBlocksHandler(tornado.web.RequestHandler):
         print('GetPoolBlocksHandler', addr, str(reversed_height).zfill(16), to_hash)
         it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_height).zfill(16), to_hash)).encode('utf8'))
         for subchain_key, subchain_value in it:
+            if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr):
+                break
             print('GetPoolBlocksHandler', subchain_key, subchain_value)
             tx = tornado.escape.json_decode(subchain_value)
             results['blocks'].append(tx)

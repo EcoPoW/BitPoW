@@ -162,8 +162,8 @@ class MiningClient:
 
                     txs = self.next_mining.setdefault(sender, [])
                     txs.append(data)
-                    tx_body = []
-                    #state_body = {}
+                    txbody = []
+                    #statebody = {}
                     #print('txs', txs)
                     print('current_mining', self.current_mining)
                     if not self.current_mining:
@@ -189,14 +189,14 @@ class MiningClient:
                         print('get_pool_subchains', req.json())
                         pool_subchains = req.json()
                         req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(pool_subchains.keys()))
-                        print('get_state_subchains', req.json())
+                        print('get_state_subchains', req.text)
                         state_subchains = req.json()
 
                         for addr in pool_subchains:
                             #print('current_mining', self.current_mining)
                             print('get_pool_subchains addr', addr, pool_subchains[addr])
                             to_no, to_hash = pool_subchains[addr]
-                            print('get_state_subchains', state_subchains[addr])
+                            print('get_state_subchains addr', state_subchains[addr])
                             from_no = 0
                             if state_subchains[addr]:
                                 from_no = state_subchains[addr][0]
@@ -237,20 +237,20 @@ class MiningClient:
                                 vm.run(type_params, interface_map[func_sig].__name__)
                                 last_tx_height = tx_list[0]
                                 last_tx_hash = tx_hash.hex()
-                            tx_body.append([addr, last_tx_height, last_tx_hash])
+                            txbody.append([addr, last_tx_height, last_tx_hash])
 
-                        print(tx_body)
+                        print(txbody)
                         print(_state.pending_state)
-                        self.tx_body_json = json.dumps(tx_body)
-                        self.state_body_json = json.dumps(_state.pending_state, sort_keys=True)
-                        tx_body_hash = hashlib.sha256(self.tx_body_json.encode('utf8')).hexdigest()
-                        state_body_hash = hashlib.sha256(self.state_body_json.encode('utf8')).hexdigest()
-                        print(tx_body_hash)
-                        print(state_body_hash)
+                        self.txbody_json = json.dumps(txbody)
+                        self.statebody_json = json.dumps(_state.pending_state, sort_keys=True)
+                        txbody_hash = hashlib.sha256(self.txbody_json.encode('utf8')).hexdigest()
+                        statebody_hash = hashlib.sha256(self.statebody_json.encode('utf8')).hexdigest()
+                        print(txbody_hash)
+                        print(statebody_hash)
 
                         self.header_data = {
-                            'tx_body_hash': tx_body_hash,
-                            'state_body_hash': state_body_hash,
+                            'txbody_hash': txbody_hash,
+                            'statebody_hash': statebody_hash,
                             'height': block_number,
                             'difficulty': 2**254,
                             'parent': block_hash,
@@ -285,9 +285,9 @@ class MiningClient:
                     print(m)
                     block_hash = m[1]
                     nonce = m[2]
-                    message = ['NEW_CHAIN_TX_BODY', block_hash, self.header_data['height'], self.tx_body_json]
+                    message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
                     self.ws.write_message(json.dumps(message))
-                    message = ['NEW_CHAIN_STATE_BODY', block_hash, self.header_data['height'], self.state_body_json]
+                    message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
                     self.ws.write_message(json.dumps(message))
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce]
                     self.ws.write_message(json.dumps(message))
