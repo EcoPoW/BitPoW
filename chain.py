@@ -415,8 +415,12 @@ def new_chain_header(seq):
     _header, block_hash, header_data, block_nonce = seq
     txbody_hash = header_data['txbody_hash']
     statebody_hash = header_data['statebody_hash']
+    height = header_data['height']
+    data = [block_hash, header_data, block_nonce]
+    data_json = tornado.escape.json_encode(data)
     db = database.get_conn()
-    return
+    print(('headerblock_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
+    db.put(('headerblock_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
 def new_chain_txbody(seq):
     print('new_chain_txbody', seq)
@@ -538,6 +542,7 @@ def get_highest_block(): # to remove
 
     return highest_block_height, highest_block_hash, highest_block
 
+
 def get_latest_block_number():
     db = database.get_conn()
     it = db.iteritems()
@@ -560,8 +565,8 @@ def get_block_hashes_by_number(no):
     for k, v in it:
         print('get_block_hashes_by_number', k, v)
         if k.decode('utf8').startswith('headerblock_%s' % str(setting.REVERSED_NO-no).zfill(16)):
-            vs = v.decode('utf8').split('_')
-            blockhash = vs[2]
+            header = tornado.escape.json_decode(v)
+            blockhash = header[0]
             hashes.append(blockhash)
         else:
             break

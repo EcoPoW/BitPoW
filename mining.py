@@ -70,7 +70,7 @@ def pow(conn):
             if conn.poll():
                 m = conn.recv()
                 if m[0] == 'START':
-                    console.log('start')
+                    console.log('start', m)
                     start = m[1]
                     header_root = m[2]
                     #difficulty = m[3]
@@ -88,9 +88,9 @@ def pow(conn):
             for nonce in range(start, start+10000000):
                 if nonce % 100000 == 0:
                     print(nonce)
-                h = hashlib.sha256(str(nonce).encode('utf8')).hexdigest()
+                h = hashlib.sha256(header_root+str(nonce).encode('utf8')).hexdigest()
                 if h.startswith('0'*d):
-                    # print(h, nonce)
+                    print(h, nonce)
                     conn.send(['FOUND', h, nonce])
                     sleep = True
                     break
@@ -100,8 +100,6 @@ def pow(conn):
 
     except:
         pass
-
-
 
 
 class MiningClient:
@@ -277,7 +275,7 @@ class MiningClient:
                     # continue
                     header_root = m[3]
                     end = m[2]
-                    conn.send(['START', end, commitment])
+                    conn.send(['START', end, header_root])
                     console.log(m)
 
                 elif m[0] == 'FOUND':
