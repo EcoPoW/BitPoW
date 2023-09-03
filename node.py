@@ -47,9 +47,10 @@ class Application(tornado.web.Application):
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
 
                     (r"/dashboard", DashboardHandler),
-                    (r"/chain_view", ChainExplorerHandler),
+                    (r"/chain_blocks", ChainBlocksHandler),
+                    (r"/chain_block", ChainBlocksHandler),
                     (r"/subchain_list", SubchainListHandler),
-                    (r"/subchain_view", SubchainViewHandler),
+                    (r"/subchain_blocks", SubchainBlocksHandler),
 
                     (r"/scan/address/(.*)", ScanAddressHandler),
                     (r"/scan/tx/(.*)", ScanTxHandler),
@@ -160,7 +161,7 @@ class DashboardHandler(tornado.web.RequestHandler):
         nodes_available.sort(key=lambda l:len(l[2]))
 
         parents = []
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('<br><br>current_nodeid: %s <br>' % tree.current_nodeid)
@@ -220,47 +221,52 @@ class DashboardHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class ChainExplorerHandler(tornado.web.RequestHandler):
+class ChainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
-        block_hash = self.get_argument('hash', None)
+        block_height = self.get_argument('height', None)
         db = database.get_conn()
-        if not block_hash:
-            block_hash = db.get(b'chain')
-        else:
-            block_hash = block_hash.encode('utf8')
+        # if not block_hash:
+        #     block_hash = db.get(b'chain')
+        # else:
+        #     block_hash = block_hash.encode('utf8')
 
-        if not block_hash:
-            self.write('hash required')
-            return
+        # if not block_hash:
+        #     self.write('hash required')
+        #     return
 
         self.write('<a href="/dashboard">Dashboard</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
 
-        for i in range(10):
-            block_json = db.get(b'block_%s' % block_hash)
-            if not block_json:
-                return
+        it = db.iteritems()
+        it.seek(b'headerblock_')
+        for key, value in it:
+            if not key.decode('utf8').startswith('headerblock_'):
+                break
+            self.write("<a href='/get_block_state?hash='>%s</a><br>%s<br><br>" % (key, value))
 
-            block = tornado.escape.json_decode(block_json)
-            block_hash = block[chain.PREV_HASH].encode('utf8')
+        # for i in range(10):
+        #     block_json = db.get(b'block_%s' % block_hash)
+        #     if not block_json:
+        #         return
 
-            self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
-            self.write("<code>%s</code><br><br>" % block_json)
-            # blockstate_json = db.get(b'blockstate_%s' % block_hash)
-            # self.write("<code>%s</code><br><br><br>" % blockstate_json)
+        #     block = tornado.escape.json_decode(block_json)
+        #     block_hash = block[chain.PREV_HASH].encode('utf8')
 
-        self.write("<a href='/chain_view?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
+        #     self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
+        #     self.write("<code>%s</code><br><br>" % block_json)
+
+        # self.write("<a href='/chain_blocks?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
 
 
-class SubchainViewHandler(tornado.web.RequestHandler):
+class SubchainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
         assert len(sender) == 42 and (sender.startswith('0x') or sender.startswith('1x'))
         hash = self.get_argument('hash', None)
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
@@ -283,7 +289,7 @@ class SubchainViewHandler(tornado.web.RequestHandler):
             self.write("<code>%s</code><br><br>" % msg_json)
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 
-        self.write("<a href='/subchain_view?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
+        self.write("<a href='/subchain_blocks?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
 
 
 class SubchainListHandler(tornado.web.RequestHandler):
@@ -291,20 +297,20 @@ class SubchainListHandler(tornado.web.RequestHandler):
         db = database.get_conn()
         it = db.iteritems()
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
         it.seek(b'chain_')
         for k, v in it:
             # if k == b'chain':
-            #     # self.write("<a href='/chain_view?hash=%s'>main chain</a><br>"% v.decode())
+            #     # self.write("<a href='/chain_blocks?hash=%s'>main chain</a><br>"% v.decode())
             #     continue
             # if not k.startswith(b'chain_'):
             #     break
             if len(k) == 42+6:
-                self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Account '), v.decode()))
+                self.write("<a href='/subchain_blocks?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Account '), v.decode()))
             # elif len(k) == 42+6 and k.startswith(b'chain_1x'):
-            #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
+            #     self.write("<a href='/subchain_blocks?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
 
 
 class UploadChunkHandler(tornado.web.RequestHandler):
