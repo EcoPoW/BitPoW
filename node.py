@@ -48,7 +48,7 @@ class Application(tornado.web.Application):
 
                     (r"/dashboard", DashboardHandler),
                     (r"/chain_blocks", ChainBlocksHandler),
-                    (r"/chain_block", ChainBlocksHandler),
+                    (r"/chain_block", ChainBlockHandler),
                     (r"/subchain_list", SubchainListHandler),
                     (r"/subchain_blocks", SubchainBlocksHandler),
 
@@ -225,14 +225,6 @@ class ChainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
         block_height = self.get_argument('height', None)
         db = database.get_conn()
-        # if not block_hash:
-        #     block_hash = db.get(b'chain')
-        # else:
-        #     block_hash = block_hash.encode('utf8')
-
-        # if not block_hash:
-        #     self.write('hash required')
-        #     return
 
         self.write('<a href="/dashboard">Dashboard</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
@@ -244,20 +236,30 @@ class ChainBlocksHandler(tornado.web.RequestHandler):
         for key, value in it:
             if not key.decode('utf8').startswith('headerblock_'):
                 break
-            self.write("<a href='/get_block_state?hash='>%s</a><br>%s<br><br>" % (key, value))
+            header = tornado.escape.json_decode(value)
+            block_hash = header[0]
+            header_data = header[1]
+            height = header_data['height']
+            self.write("<a href='/chain_block?height=%s&hash=%s'>%s</a><br>" % (height, block_hash, key, ))
+            self.write("%s<br><br>" % (header_data, ))
+            self.write("%s<br><br>" % (value, ))
 
-        # for i in range(10):
-        #     block_json = db.get(b'block_%s' % block_hash)
-        #     if not block_json:
-        #         return
 
-        #     block = tornado.escape.json_decode(block_json)
-        #     block_hash = block[chain.PREV_HASH].encode('utf8')
+class ChainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_height = self.get_argument('height', None)
+        block_hash= self.get_argument('hash', None)
+        db = database.get_conn()
 
-        #     self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
-        #     self.write("<code>%s</code><br><br>" % block_json)
+        self.write('<a href="/dashboard">Dashboard</a> ')
+        self.write('<a href="/subchain_list">Subchain list</a> ')
+        # self.write('<a href="/tempchain_list">Temp list</a>')
+        self.write('</br></br>')
 
-        # self.write("<a href='/chain_blocks?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
+        txbody = db.get(('txbody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
+        self.write("%s<br><br>" % (txbody, ))
+        statebody = db.get(('statebody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
+        self.write("%s<br><br>" % (statebody, ))
 
 
 class SubchainBlocksHandler(tornado.web.RequestHandler):
