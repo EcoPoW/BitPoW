@@ -274,6 +274,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             prev_hash = '0'*64
             db = database.get_conn()
             it = db.iteritems()
+            console.log(('subchain_%s_' % tx_from).encode('utf8'))
             it.seek(('subchain_%s_' % tx_from).encode('utf8'))
             for subchain_key, subchain_value in it:
                 print('eth_sendRawTransaction', subchain_key, subchain_value)
@@ -287,8 +288,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 count = setting.REVERSED_NO - reversed_height
                 assert count + 1 == tx_nonce
 
-                msg = tornado.escape.json_decode(subchain_value)
-                print('eth_sendRawTransaction msg', msg)
+                tx = tornado.escape.json_decode(subchain_value)
+                print('eth_sendRawTransaction tx', tx)
+                prev_hash = tx[0]
                 break
 
             print('eth_sendRawTransaction prev_hash', prev_hash)

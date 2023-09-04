@@ -176,8 +176,8 @@ class MiningClient:
                             block_hash = '0'*64
                         else:
                             block_hash = obj['blockhashes'][0]
-                        block_number = obj['height'] + 1
-                        _state.block_number = block_number
+                        block_number = obj['height']
+                        _state.block_number = block_number + 1
 
                         for addr in self.current_mining:
                             #print('current_mining', current_mining)
@@ -186,7 +186,7 @@ class MiningClient:
                         req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
                         print('get_pool_subchains', req.json())
                         pool_subchains = req.json()
-                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s' % ','.join(pool_subchains.keys()))
+                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
                         print('get_state_subchains', req.text)
                         state_subchains = req.json()
 
@@ -197,7 +197,7 @@ class MiningClient:
                             print('get_state_subchains addr', state_subchains[addr])
                             from_no = 0
                             if state_subchains[addr]:
-                                from_no = state_subchains[addr][0]
+                                from_no = state_subchains[addr]['height']
                             req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
                             txblocks = req.json()['blocks']
                             txblocks.reverse()
@@ -249,7 +249,7 @@ class MiningClient:
                         self.header_data = {
                             'txbody_hash': txbody_hash,
                             'statebody_hash': statebody_hash,
-                            'height': block_number,
+                            'height': block_number + 1,
                             'difficulty': 2**254,
                             'parent': block_hash,
                             'address': '0x'+'0'*40,

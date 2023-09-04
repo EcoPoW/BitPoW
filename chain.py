@@ -436,6 +436,7 @@ def new_chain_txbody(seq):
         console.log(i)
         subchain_addr, subchain_height, subchain_hash = i
         value = tornado.escape.json_encode({'hash': subchain_hash, 'height': subchain_height})
+        console.log(('globalsubchain_%s_%s_%s' % (subchain_addr, reversed_height, block_hash)))
         db.put(('globalsubchain_%s_%s_%s' % (subchain_addr, reversed_height, block_hash)).encode('utf8'), value.encode('utf8'))
 
 def new_chain_statebody(seq):
@@ -449,7 +450,7 @@ def new_chain_statebody(seq):
 def new_subchain_block(seq):
     # global subchains_to_block
     global subchains_new_block_available
-    _msg_header, msg_hash, prev_hash, tx_type, timestamp, tx_list, signature = seq
+    _header, subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature = seq
     if len(tx_list) == 8:
         receiver = tx_list[4]
     else:
@@ -471,54 +472,10 @@ def new_subchain_block(seq):
 
     assert sender.startswith('0x') and len(sender) == 42
     assert receiver.startswith('0x') and (len(receiver) == 42 or len(receiver) == 2) #valid address or empty to create contract
-    # validate
-    # check current main chain block state, find the subchain blocks until then, check the valdation
-    # need to ensure current subchains_block[sender] is the ancestor of block_hash
-    # print('new_subchain_block', block_hash, prev_hash, sender, receiver, height, data, timestamp, signature)
-    # subchains_block[sender] = block_hash
-
-    # http_client = tornado.httpclient.AsyncHTTPClient()
-    # url = "http://127.0.0.1:7001/recover_public_key_from_msg_hash?signature=%s&hash=%s" % (signature, block_hash)
-    # try:
-    #     response = yield http_client.fetch(url, connect_timeout=60, request_timeout=60)#, method="POST", body=tornado.escape.json_encode(data)
-    # except:
-    #     pass
 
     db = database.get_conn()
-    if prev_hash == '0'*64:
-        prev_msgstate = {}
-    else:
-        prev_msgstate_json = db.get(b'msgstate_%s' % prev_hash.encode('utf8'))
-        print('prev_msgstate_json', prev_msgstate_json)
-        # prev_msgstate = tornado.escape.json_decode(prev_msgstate_json)
-
-    # print('prev_msgstate', prev_msgstate)
-    # print('data', data)
-    # msgstate = stf.subchain_stf(prev_msgstate, seq[1:])
-    # print('msgstate', msgstate)
-    # msgstate_json = tornado.escape.json_encode(msgstate)
-    # print('msgstate_json', msgstate_json)
-    # db.put(b'msgstate_%s' % msg_hash.encode('utf8'), msgstate_json.encode('utf8'))
-
-    # verify
-    # if data.get('type') == 'new_asset':
-    #     block_hash = db.get(b'chain')
-    #     blockstate_json = db.get(b'blockstate_%s' % block_hash)
-    #     blockstate = tornado.escape.json_decode(blockstate_json)
-    #     print('blockstate', blockstate)
-    #     assert data['name'] not in blockstate.get('tokens', {})
-
-
-    # try:
-    db.put(b'msg_%s' % msg_hash.encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
-    db.put(b'chain_%s' % sender.encode('utf8'), msg_hash.encode('utf8'))
-    # get tx pool, if already exists, override only when the height is higher than current
-    # when new block generated, the confirmed subchain block will be removed
-    db.put(('pool_%s_%s' % (sender, msg_hash)).encode('utf8'), ('%s_%s' % (height, prev_hash)).encode('utf8'))
-    # except Exception as e:
-    #     print("new_subchain_block Error: %s" % e)
-
-    db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), msg_hash)).encode('utf8'), tornado.escape.json_encode([msg_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
+    console.log(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
+    db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'), tornado.escape.json_encode([subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
     subchains_new_block_available.add(sender)
 
 def get_recent_longest(highest_block_hash):
@@ -621,7 +578,7 @@ class GetChainBlockHandler(tornado.web.RequestHandler):
 
 class GetStateSubchainsHandler(tornado.web.RequestHandler):
     def get(self):
-        block_height = self.get_argument('height', 0)
+        block_height = self.get_argument('height')
         no = int(block_height)
         addrs = self.get_argument('addrs')
         db = database.get_conn()
@@ -633,10 +590,11 @@ class GetStateSubchainsHandler(tornado.web.RequestHandler):
             results[addr] = None
             it.seek(('globalsubchain_%s_%s' % (addr, str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
             for k, v in it:
+                print('GetStateSubchainsHandler', k, v)
                 if not k.startswith(b'globalsubchain_'):
                     break
-                print('GetStateSubchainsHandler', k, v)
-                results[addr] = k.decode('utf8')
+                results[addr] = tornado.escape.json_decode(v)
+                break
         self.finish(results)
 
 class GetStateContractsHandler(tornado.web.RequestHandler):
