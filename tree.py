@@ -132,7 +132,7 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        print('on_message', message)
+        console.log(message)
         seq = tornado.escape.json_decode(message)
         if seq[0] == 'GET_MINER_NODE':
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)

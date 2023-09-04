@@ -411,7 +411,7 @@ def new_chain_block(seq):
 
 
 def new_chain_header(seq):
-    print('new_chain_header', seq)
+    console.log(seq)
     _header, block_hash, header_data, block_nonce = seq
     txbody_hash = header_data['txbody_hash']
     statebody_hash = header_data['statebody_hash']
@@ -423,11 +423,20 @@ def new_chain_header(seq):
     db.put(('headerblock_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
 def new_chain_txbody(seq):
-    print('new_chain_txbody', seq)
+    console.log(seq)
     _header, block_hash, height, data_json = seq
     db = database.get_conn()
-    print(('txbody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
-    db.put(('txbody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
+    reversed_height = str(setting.REVERSED_NO-height).zfill(16)
+    print(('txbody_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
+    db.put(('txbody_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
+
+    console.log('data_json', data_json)
+    data = tornado.escape.json_decode(data_json)
+    for i in data:
+        console.log(i)
+        subchain_addr, subchain_height, subchain_hash = i
+        value = tornado.escape.json_encode({'hash': subchain_hash, 'height': subchain_height})
+        db.put(('globalsubchain_%s_%s_%s' % (subchain_addr, reversed_height, block_hash)).encode('utf8'), value.encode('utf8'))
 
 def new_chain_statebody(seq):
     print('new_chain_statebody', seq)
