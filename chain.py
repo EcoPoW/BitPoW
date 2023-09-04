@@ -670,13 +670,18 @@ class GetPoolBlocksHandler(tornado.web.RequestHandler):
         db = database.get_conn()
         it = db.iteritems()
         results = {'blocks': []}
-        reversed_height = setting.REVERSED_NO - int(to_no)
+        reversed_to_no = setting.REVERSED_NO - int(to_no)
 
-        print('GetPoolBlocksHandler', addr, str(reversed_height).zfill(16), to_hash)
-        it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_height).zfill(16), to_hash)).encode('utf8'))
+        print('GetPoolBlocksHandler', addr, str(reversed_to_no).zfill(16), to_hash)
+        it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_to_no).zfill(16), to_hash)).encode('utf8'))
         for subchain_key, subchain_value in it:
-            if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr):
+            if not subchain_key.decode('utf8').startswith('subchain_%s_' % (addr, )):
                 break
+            ks = subchain_key.decode('utf8').split('_')
+            current_no = setting.REVERSED_NO - int(ks[2])
+            if current_no <= int(from_no):
+                break
+
             print('GetPoolBlocksHandler', subchain_key, subchain_value)
             tx = tornado.escape.json_decode(subchain_value)
             results['blocks'].append(tx)
