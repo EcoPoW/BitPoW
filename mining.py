@@ -71,8 +71,8 @@ def pow(conn):
                 m = conn.recv()
                 if m[0] == 'START':
                     console.log('start', m)
-                    start = m[1]
-                    header_root = m[2]
+                    block_hash = m[1]
+                    start = m[2]
                     #difficulty = m[3]
                     sleep = False
                 elif m[0] == 'STOP':
@@ -88,14 +88,14 @@ def pow(conn):
             for nonce in range(start, start+10000000):
                 if nonce % 100000 == 0:
                     print(nonce)
-                h = hashlib.sha256(header_root+str(nonce).encode('utf8')).hexdigest()
+                h = hashlib.sha256(block_hash + str(nonce).encode('utf8')).hexdigest()
                 if h.startswith('0'*d):
                     print(h, nonce)
-                    conn.send(['FOUND', h, nonce])
+                    conn.send(['FOUND', block_hash, nonce])
                     sleep = True
                     break
             else:
-                conn.send(['DONE', start, start+10000000, header_root])
+                conn.send(['DONE', block_hash, start, start+10000000])
                 sleep = True
 
     except:
@@ -114,7 +114,7 @@ class MiningClient:
 
         self.connect()
         tornado.ioloop.PeriodicCallback(self.keep_alive, 20000).start()
-        tornado.ioloop.PeriodicCallback(self.poll, 500).start()
+        tornado.ioloop.PeriodicCallback(self.poll, 100).start()
         self.ioloop.start()
 
     @tornado.gen.coroutine
@@ -145,7 +145,7 @@ class MiningClient:
                         self.current_mining = self.next_mining
                         self.next_mining = {}
                         commitment = hashlib.sha256(json.dumps(self.current_mining).encode('utf8')).digest()
-                        conn.send(['START', 0, commitment])
+                        conn.send(['START', commitment, 0])
 
                 elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
                     data = seq[5]
@@ -173,9 +173,9 @@ class MiningClient:
                         print('get_chain_latest', req.text)
                         obj = req.json()
                         if obj['height'] == 0:
-                            block_hash = '0'*64
+                            parent_hash = '0'*64
                         else:
-                            block_hash = obj['blockhashes'][0]
+                            parent_hash = obj['blockhashes'][0]
                         block_number = obj['height']
                         _state.block_number = block_number + 1
 
@@ -234,7 +234,7 @@ class MiningClient:
                                 # result = interface_map[func_sig](*func_params)
                                 vm.run(type_params, interface_map[func_sig].__name__)
                                 last_tx_height = tx_list[0]
-                                last_tx_hash = tx_hash.hex()
+                                last_tx_hash = txblock[0]
                             txbody.append([addr, last_tx_height, last_tx_hash])
 
                         print(txbody)
@@ -251,12 +251,13 @@ class MiningClient:
                             'statebody_hash': statebody_hash,
                             'height': block_number + 1,
                             'difficulty': 2**254,
-                            'parent': block_hash,
+                            'parent': parent_hash,
                             'address': '0x'+'0'*40,
                             'timestamp': 0,
                         }
-                        header_root = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8')).digest()
-                        conn.send(['START', 0, header_root])
+                        block_hash = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8')).digest()
+                        console.log(block_hash)
+                        conn.send(['START', block_hash, 0])
 
                     else:
                         pass
@@ -273,15 +274,16 @@ class MiningClient:
                 m = conn.recv()
                 if m[0] == 'DONE':
                     # continue
-                    header_root = m[3]
-                    end = m[2]
-                    conn.send(['START', end, header_root])
                     console.log(m)
+                    block_hash = m[1]
+                    end = m[3]
+                    console.log(block_hash)
+                    conn.send(['START', block_hash, end])
 
                 elif m[0] == 'FOUND':
                     # submit to chain
                     print(m)
-                    block_hash = m[1]
+                    block_hash = m[1].hex()
                     nonce = m[2]
                     message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
                     self.ws.write_message(json.dumps(message))

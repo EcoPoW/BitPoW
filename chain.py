@@ -631,16 +631,20 @@ class GetPoolBlocksHandler(tornado.web.RequestHandler):
         addr = self.get_argument('addr')
         from_no = self.get_argument('from_no', 0)
         #from_hash = self.get_argument('from_hash', '0'*64)
-        to_no = self.get_argument('to_no')
-        to_hash = self.get_argument('to_hash')
+        to_no = self.get_argument('to_no', None)
+        to_hash = self.get_argument('to_hash', None)
 
         db = database.get_conn()
         it = db.iteritems()
         results = {'blocks': []}
-        reversed_to_no = setting.REVERSED_NO - int(to_no)
 
-        print('GetPoolBlocksHandler', addr, str(reversed_to_no).zfill(16), to_hash)
-        it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_to_no).zfill(16), to_hash)).encode('utf8'))
+        if to_no and to_hash:
+            reversed_to_no = setting.REVERSED_NO - int(to_no)
+            console.log('GetPoolBlocksHandler', addr, str(reversed_to_no).zfill(16), to_hash)
+            it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_to_no).zfill(16), to_hash)).encode('utf8'))
+        else:
+            it.seek(('subchain_%s_' % (addr, )).encode('utf8'))
+
         for subchain_key, subchain_value in it:
             if not subchain_key.decode('utf8').startswith('subchain_%s_' % (addr, )):
                 break
