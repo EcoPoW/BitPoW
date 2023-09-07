@@ -54,8 +54,9 @@ for k, v in contract_erc20.__dict__.items():
         # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
         interface_map['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
         type_map[k] = params
-print(interface_map)
-print(type_map)
+
+console.log(interface_map)
+console.log(type_map)
 
 vm = vm.VM()
 vm.import_module(contract_erc20)
@@ -90,7 +91,7 @@ def pow(conn):
                     print(nonce)
                 h = hashlib.sha256(block_hash + str(nonce).encode('utf8')).hexdigest()
                 if h.startswith('0'*d):
-                    print(h, nonce)
+                    console.log(h, nonce)
                     conn.send(['FOUND', block_hash, nonce])
                     sleep = True
                     break
@@ -156,21 +157,21 @@ class MiningClient:
                     pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
                     sender = pubkey.to_checksum_address()
                     console.log('sender', sender, 'count', count)
-                    print('data', data)
+                    console.log('data', data)
 
                     txs = self.next_mining.setdefault(sender, [])
                     txs.append(data)
                     txbody = []
                     #statebody = {}
                     #print('txs', txs)
-                    print('current_mining', self.current_mining)
+                    console.log('current_mining', self.current_mining)
                     if not self.current_mining:
                         self.current_mining = self.next_mining
                         self.next_mining = {}
-                        print('current_mining', self.current_mining)
+                        console.log('current_mining', self.current_mining)
 
                         req = requests.get('http://127.0.0.1:9001/get_chain_latest')
-                        print('get_chain_latest', req.text)
+                        console.log('get_chain_latest', req.text)
                         obj = req.json()
                         if obj['height'] == 0:
                             parent_hash = '0'*64
@@ -181,20 +182,20 @@ class MiningClient:
 
                         for addr in self.current_mining:
                             #print('current_mining', current_mining)
-                            print('current_mining[addr]', self.current_mining[addr])
+                            console.log('current_mining[addr]', addr, self.current_mining[addr])
 
                         req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
-                        print('get_pool_subchains', req.json())
                         pool_subchains = req.json()
+                        #console.log('get_pool_subchains', req.json())
                         req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
-                        print('get_state_subchains', req.text)
+                        console.log('get_state_subchains', req.text)
                         state_subchains = req.json()
 
                         for addr in pool_subchains:
-                            #print('current_mining', self.current_mining)
-                            print('get_pool_subchains addr', addr, pool_subchains[addr])
+                            #console.log('current_mining', self.current_mining)
+                            console.log('get_pool_subchains addr', addr, pool_subchains[addr])
                             to_no, to_hash = pool_subchains[addr]
-                            print('get_state_subchains addr', state_subchains[addr])
+                            console.log('get_state_subchains addr', state_subchains[addr])
                             from_no = 0
                             if state_subchains[addr]:
                                 from_no = state_subchains[addr]['height']
@@ -237,14 +238,14 @@ class MiningClient:
                                 last_tx_hash = txblock[0]
                             txbody.append([addr, last_tx_height, last_tx_hash])
 
-                        print(txbody)
-                        print(_state.pending_state)
+                        console.log(txbody)
+                        console.log(_state.pending_state)
                         self.txbody_json = json.dumps(txbody)
                         self.statebody_json = json.dumps(_state.pending_state, sort_keys=True)
                         txbody_hash = hashlib.sha256(self.txbody_json.encode('utf8')).hexdigest()
                         statebody_hash = hashlib.sha256(self.statebody_json.encode('utf8')).hexdigest()
-                        print(txbody_hash)
-                        print(statebody_hash)
+                        console.log(txbody_hash)
+                        console.log(statebody_hash)
 
                         self.header_data = {
                             'txbody_hash': txbody_hash,
@@ -282,7 +283,7 @@ class MiningClient:
 
                 elif m[0] == 'FOUND':
                     # submit to chain
-                    print(m)
+                    console.log(m)
                     block_hash = m[1].hex()
                     nonce = m[2]
                     message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
