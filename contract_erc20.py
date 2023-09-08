@@ -19,8 +19,6 @@ from state import address, uint256
 # event Transfer(address indexed _from, address indexed _to, uint256 _value)
 # event Approval(address indexed _owner, address indexed _spender, uint256 _value)
 
-CONTRACT_ADDRESS = b'0x0000000000000000000000000000000000000001'
-
 
 # def init(_name, _symbol, _decimals):
 #     global name
@@ -35,17 +33,17 @@ CONTRACT_ADDRESS = b'0x0000000000000000000000000000000000000001'
 
 
 def mint(_to:address, _value:uint256):
-    current_amount = _state.get('balance_%s' % _to, 0)
+    current_amount = _state.get('balance', _to, 0)
     new_amount = current_amount + _value
     print('before mint', current_amount)
     print('mint to', _to, _value)
     print('after mint', new_amount)
-    _state.put('balance_%s' % (_to, ), new_amount)
+    _state.put('balance', _to, new_amount)
 
-    current_total = _state.get('total', 0)
+    current_total = _state.get('total', CONTRACT_ADDRESS, 0)
     new_total = current_total + _value
     print('after mint total', new_total)
-    _state.put('total', new_total)
+    _state.put('total', CONTRACT_ADDRESS, new_total)
 
 
 def approve(_spender:address, _value:uint256):
@@ -58,16 +56,16 @@ def allowance(_owner:address, _spender:address):
 
 def transfer(_to:address, _value:uint256):
     print('transfer to', _to, _value)
-    sender_amount = _state.get('balance_%s' % _sender, 0)
+    sender_amount = _state.get('balance', _sender, 0)
     sender_new_amount = sender_amount - _value
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _state.put('balance_%s' % (_sender, ), sender_new_amount)
+    _state.put('balance', _sender, sender_new_amount)
 
-    to_amount = _state.get('balance_%s' % _to, 0)
+    to_amount = _state.get('balance', _to, 0)
     to_new_amount = to_amount + _value
     print('after transfer receiver', to_new_amount)
-    _state.put('balance_%s' % (_to, ), to_new_amount)
+    _state.put('balance', _to, to_new_amount)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256):
@@ -75,7 +73,7 @@ def transferFrom(_from:address, _to:address, _value:uint256):
 
 
 def balanceOf(_owner:address):
-    amount = _state.get('balance_%s' % _owner, 0)
+    amount = _state.get('balance', _owner, 0)
     print('balanceOf', _owner, amount)
 
     return f'0x{amount:0>64x}'
@@ -95,7 +93,7 @@ def decimals():
     return f'0x{18:0>64x}'
 
 def totalSupply():
-    amount = _state.get('total', 0)
+    amount = _state.get('total', CONTRACT_ADDRESS, 0)
     return f'0x{amount:0>64x}'
 
 

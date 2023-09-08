@@ -218,6 +218,8 @@ class MiningClient:
                                 #print('tx_from', tx_from)
                                 # contract_erc20._sender = tx_from
                                 vm.global_vars['_sender'] = tx_from
+                                CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
+                                vm.global_vars['CONTRACT_ADDRESS'] = CONTRACT_ADDRESS
 
                                 func_sig = tx_data[:10]
                                 # print(interface_map[func_sig], tx_data)
@@ -246,6 +248,7 @@ class MiningClient:
                         statebody_hash = hashlib.sha256(self.statebody_json.encode('utf8')).hexdigest()
                         console.log(txbody_hash)
                         console.log(statebody_hash)
+                        _state.merge('')
 
                         self.header_data = {
                             'txbody_hash': txbody_hash,

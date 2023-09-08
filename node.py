@@ -261,6 +261,7 @@ class ChainBlockHandler(tornado.web.RequestHandler):
         for addr, height, subchain_hash in txs:
             self.write("<a href='/get_pool_blocks?addr=%s&to_no=%s&to_hash=%s'>%s</a> <a href='/get_state_subchains?addrs=%s&height=%s'>%s</a> %s<br>" % (addr, height, subchain_hash, addr, addr, height, subchain_hash, height))
         self.write("<br>")
+        self.write("%s<br><br>" % (txbody, ))
         statebody = db.get(('statebody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
         self.write("%s<br><br>" % (statebody, ))
 
