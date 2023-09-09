@@ -1,7 +1,4 @@
 
-
-import tornado.escape
-
 from state import address, uint256
 # from state import _state
 # from state import _sender
@@ -33,17 +30,17 @@ from state import address, uint256
 
 
 def mint(_to:address, _value:uint256):
-    current_amount = _state.get('balance', _to, 0)
+    current_amount = _state.get('balance', 0, _to)
     new_amount = current_amount + _value
     print('before mint', current_amount)
     print('mint to', _to, _value)
     print('after mint', new_amount)
-    _state.put('balance', _to, new_amount)
+    _state.put('balance', new_amount, _to)
 
-    current_total = _state.get('total', CONTRACT_ADDRESS, 0)
+    current_total = _state.get('total', 0)
     new_total = current_total + _value
     print('after mint total', new_total)
-    _state.put('total', CONTRACT_ADDRESS, new_total)
+    _state.put('total', new_total)
 
 
 def approve(_spender:address, _value:uint256):
@@ -56,16 +53,16 @@ def allowance(_owner:address, _spender:address):
 
 def transfer(_to:address, _value:uint256):
     print('transfer to', _to, _value)
-    sender_amount = _state.get('balance', _sender, 0)
+    sender_amount = _state.get('balance', 0, _sender)
     sender_new_amount = sender_amount - _value
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _state.put('balance', _sender, sender_new_amount)
+    _state.put('balance', sender_new_amount, _sender)
 
-    to_amount = _state.get('balance', _to, 0)
+    to_amount = _state.get('balance', 0, _to)
     to_new_amount = to_amount + _value
     print('after transfer receiver', to_new_amount)
-    _state.put('balance', _to, to_new_amount)
+    _state.put('balance', to_new_amount, _to)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256):
@@ -73,7 +70,7 @@ def transferFrom(_from:address, _to:address, _value:uint256):
 
 
 def balanceOf(_owner:address):
-    amount = _state.get('balance', _owner, 0)
+    amount = _state.get('balance', 0, _owner)
     print('balanceOf', _owner, amount)
 
     return f'0x{amount:0>64x}'
@@ -93,7 +90,7 @@ def decimals():
     return f'0x{18:0>64x}'
 
 def totalSupply():
-    amount = _state.get('total', CONTRACT_ADDRESS, 0)
+    amount = _state.get('total', 0)
     return f'0x{amount:0>64x}'
 
 

@@ -18,13 +18,13 @@ class State:
         self.pending_state = {}
 
     # def __setitem__(self, key, value):
-    def put(self, key, addr, value):
+    def put(self, key, value, addr=contract_address):
         value_json = tornado.escape.json_encode(value)
         console.log('globalstate_%s_%s_%s_%s' % (contract_address, key, addr, str(10**15 - self.block_number).zfill(16)), value_json)
         self.pending_state['globalstate_%s_%s_%s_%s' % (contract_address, key, addr, self.block_number)] = value_json
 
     # def __getitem__(self, key):
-    def get(self, key, addr, default):
+    def get(self, key, default, addr=contract_address):
         value = default
         console.log(self.pending_state)
         k = 'globalstate_%s_%s_%s_%s' % (contract_address, key, addr, self.block_number)
