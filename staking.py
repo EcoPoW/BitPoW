@@ -27,39 +27,46 @@ import state
 import eth_tx
 import console
 import contract_erc20
+import contract_staking
 
 
 if not os.path.exists('miners'):
     os.makedirs('miners')
-db = rocksdb.DB('miners/mining.db', rocksdb.Options(create_if_missing=True))
+db = rocksdb.DB('miners/staking.db', rocksdb.Options(create_if_missing=True))
 
 _state = state.State(db)
-contract_erc20._state = _state
+# contract_erc20._state = _state
 
 contract_map = {
-    '0x0000000000000000000000000000000000000001': contract_erc20
+    '0x0000000000000000000000000000000000000001': contract_erc20,
+    '0x0000000000000000000000000000000000000002': contract_staking,
 }
 
 interface_map = {}
 type_map = {}
-for k, v in contract_erc20.__dict__.items():
-    if not k.startswith('_') and type(v) in [types.FunctionType]:
-        # print(k, type(v))
-        # print(v.__code__.co_kwonlyargcount, v.__code__.co_posonlyargcount)
-        # print(v.__code__.co_varnames[:v.__code__.co_argcount])
-        # for i in v.__code__.co_varnames[:v.__code__.co_argcount]:
-        #     print(v.__annotations__[i].__name__)
-        params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
-        func_sig = '%s(%s)' % (k, ','.join(params))
-        # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
-        interface_map['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
-        type_map[k] = params
+vm_map = {}
+for addr, contract in contract_map.items():
+    interface_map[addr] = {}
+    type_map[addr] = {}
+    for k, v in contract.__dict__.items():
+        if not k.startswith('_') and type(v) in [types.FunctionType]:
+            # print(k, type(v))
+            # print(v.__code__.co_kwonlyargcount, v.__code__.co_posonlyargcount)
+            # print(v.__code__.co_varnames[:v.__code__.co_argcount])
+            # for i in v.__code__.co_varnames[:v.__code__.co_argcount]:
+            #     print(v.__annotations__[i].__name__)
+            params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
+            func_sig = '%s(%s)' % (k, ','.join(params))
+            # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
+            interface_map[addr]['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
+            type_map[addr][k] = params
 
-console.log(interface_map)
-console.log(type_map)
+    v = vm.VM()
+    v.import_module(contract)
+    vm_map[addr] = v
 
-vm = vm.VM()
-vm.import_module(contract_erc20)
+print(interface_map)
+print(type_map)
 
 
 def pow(conn):
@@ -217,9 +224,10 @@ class MiningClient:
                                 tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
                                 #print('tx_from', tx_from)
                                 # contract_erc20._sender = tx_from
-                                vm.global_vars['_sender'] = tx_from
-                                CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
-                                vm.global_vars['CONTRACT_ADDRESS'] = CONTRACT_ADDRESS
+                                console.log(tx_to)
+                                vm_map[tx_to].global_vars['_state'] = _state
+                                vm_map[tx_to].global_vars['_sender'] = tx_from
+                                vm_map[tx_to].global_vars['_self'] = tx_to
 
                                 func_sig = tx_data[:10]
                                 # print(interface_map[func_sig], tx_data)
@@ -227,7 +235,7 @@ class MiningClient:
                                 func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
                                 #print('func', interface_map[func_sig].__name__, func_params)
                                 type_params = []
-                                for k, v in zip(type_map[interface_map[func_sig].__name__], func_params):
+                                for k, v in zip(type_map[tx_to][interface_map[tx_to][func_sig].__name__], func_params):
                                     # print('type', k, v)
                                     if k == 'address':
                                         type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
@@ -235,7 +243,7 @@ class MiningClient:
                                         type_params.append(web3.Web3.to_int(hexstr=v))
 
                                 # result = interface_map[func_sig](*func_params)
-                                vm.run(type_params, interface_map[func_sig].__name__)
+                                vm_map[tx_to].run(type_params, interface_map[tx_to][func_sig].__name__)
                                 last_tx_height = tx_list[0]
                                 last_tx_hash = txblock[0]
                             txbody.append([addr, last_tx_height, last_tx_hash])
