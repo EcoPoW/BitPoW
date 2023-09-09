@@ -320,7 +320,9 @@ class VM:
             obj = self.stack.pop()
             # print('LOAD_ATTR', attr)
             # print('LOAD_ATTR', dir(obj))
-            val = obj.__dict__[attr]
+            # val = obj.__dict__[attr]
+            # val = obj.__getattribute__(attr)
+            val = obj.__getattr__(attr)
             # print('LOAD_ATTR', param, attr, val)
             self.stack.append(val)
             self.pc += 2
@@ -530,7 +532,10 @@ class VM:
             else:
                 params = []
             # print('CALL_METHOD', obj.__getattribute__(method))
-            result = functools.partial(obj.__getattribute__(method), *params)()
+            try:
+                result = functools.partial(obj.__getattribute__(method), *params)()
+            except AttributeError:
+                result = functools.partial(obj.__getattr__(method), *params)()
             # print('CALL_METHOD result', result)
             self.stack = self.stack[:-2-param]
             self.stack.append(result)

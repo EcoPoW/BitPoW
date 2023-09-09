@@ -17,48 +17,15 @@ import chain
 import database
 import tree
 import vm
+
+import contracts
 import state
 import eth_tx
 import console
 import setting
 
-import contract_erc20
-import contract_staking
-
-
 _state = state.State(database.get_conn())
-contract_erc20._state = _state
-
-contract_map = {
-    '0x0000000000000000000000000000000000000001': contract_erc20,
-    '0x0000000000000000000000000000000000000002': contract_staking,
-}
-
-interface_map = {}
-type_map = {}
-vm_map = {}
-for addr, contract in contract_map.items():
-    interface_map[addr] = {}
-    type_map[addr] = {}
-    for k, v in contract.__dict__.items():
-        if not k.startswith('_') and type(v) in [types.FunctionType]:
-            # print(k, type(v))
-            # print(v.__code__.co_kwonlyargcount, v.__code__.co_posonlyargcount)
-            # print(v.__code__.co_varnames[:v.__code__.co_argcount])
-            # for i in v.__code__.co_varnames[:v.__code__.co_argcount]:
-            #     print(v.__annotations__[i].__name__)
-            params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
-            func_sig = '%s(%s)' % (k, ','.join(params))
-            # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
-            interface_map[addr]['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
-            type_map[addr][k] = params
-
-    v = vm.VM()
-    v.import_module(contract)
-    vm_map[addr] = v
-
-print(interface_map)
-print(type_map)
+# contract_erc20._state = _state
 
 
 # class ProxyEthRpcHandler(tornado.web.RequestHandler):
@@ -253,7 +220,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
             state.block_number = highest_block_height
             # contract_erc20._sender = tx_from
-            vm_map[tx_to].global_vars['_sender'] = tx_from
+            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+            contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+            contracts.vm_map[tx_to].global_vars['_state'] = _state
 
             # print('tx_from', tx_from)
             # print('tx.to', tx.to)
@@ -267,9 +236,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # print(interface_map[func_sig], tx_data)
             func_params_data = tx_data[10:]
             func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-            print('func', interface_map[tx_to][func_sig].__name__, func_params)
+            print('func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
             type_params = []
-            for k, v in zip(type_map[tx_to][interface_map[tx_to][func_sig].__name__], func_params):
+            for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
                 # print('type', k, v)
                 if k == 'address':
                     type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
@@ -277,7 +246,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     type_params.append(web3.Web3.to_int(hexstr=v))
 
             # result = interface_map[func_sig](*func_params)
-            vm_map[tx_to].run(type_params, interface_map[tx_to][func_sig].__name__)
+            contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
 
             prev_hash = '0'*64
             db = database.get_conn()
@@ -321,7 +290,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_call':
             params = req.get('params', [])
             if len(params) > 0:
-                if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contract_map:
+                if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contracts.contract_map:
                     # contract = contract_map[params[0]['to'].lower()]
                     tx_to = params[0]['to']
                     tx_data = params[0]['data']
@@ -332,21 +301,21 @@ class EthRpcHandler(tornado.web.RequestHandler):
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
                     else:
                         func_sig = tx_data[:10]
-                        print(interface_map[func_sig], tx_data)
+                        print(contracts.interface_map[tx_to][func_sig], tx_data)
                         func_params_data = tx_data[10:]
                         func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                        print('eth_call func', interface_map[func_sig].__name__, func_params)
+                        print('eth_call func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
                         # result = interface_map[func_sig](*func_params)
 
                         type_params = []
-                        for k, v in zip(type_map[interface_map[func_sig].__name__], func_params):
+                        for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
                             # print('type', k, v)
                             if k == 'address':
                                 type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
                             elif k == 'uint256':
                                 type_params.append(web3.Web3.to_int(hexstr=v))
 
-                        result = vm_map[tx_to].run(type_params, interface_map[func_sig].__name__)
+                        result = contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
                         print('result', result)
 
                         resp = {'jsonrpc':'2.0', 'result': result or '0x', 'id': rpc_id}

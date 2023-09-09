@@ -57,5 +57,8 @@ class State:
             self.db.put(('globalstate_%s_%s_%s_%s_%s' % (contract_address, key, addr, str(10**15 - int(block_number)).zfill(16), block_hash)).encode('utf8'), v.encode('utf8'))
         self.pending_state = {}
 
-    def call(self, contract):
-        console.log(contracts.contract_map[contract])
+    def call(self, addr):
+        # console.log(contracts.contract_map[addr])
+        contract = contracts.Contract(addr)
+        console.log(contract)
+        return contract

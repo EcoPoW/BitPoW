@@ -4,6 +4,7 @@ import types
 import eth_utils
 
 import vm
+import console
 
 import contract_erc20
 import contract_staking
@@ -39,3 +40,19 @@ for addr, contract in contract_map.items():
 
 print(interface_map)
 print(type_map)
+
+
+class Contract:
+    def __init__(self, addr):
+        self.addr = addr
+
+    # def __getattribute__(self, __name):
+    #     console.log(__name)
+    #     console.log(type_map[self.__dict__[addr]][__name])
+    #     return type_map[self.__dict__[addr]][__name]
+
+    def __getattr__(self, __name):
+        console.log(__name)
+        console.log(contract_map[self.addr].__dict__[__name])
+        return contract_map[self.addr].__dict__[__name]
+
