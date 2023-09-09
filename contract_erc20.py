@@ -1,5 +1,5 @@
 
-from state import address, uint256
+from contract_types import address, uint256
 # from state import _state
 # from state import _sender
 

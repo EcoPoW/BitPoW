@@ -1,5 +1,5 @@
 
-from state import address, uint256
+from contract_types import address, uint256
 # from state import _state
 # from state import _sender
 
@@ -33,7 +33,7 @@ from state import address, uint256
 
 
 def stake(_value:uint256):
-    _state.call('0x0000000000000000000000000000000000000001').transferFrom(_sender, _self, _value)
+    _state.call('0x0000000000000000000000000000000000000001')#.transferFrom(_sender, _self, _value)
 
 def unstake(_spender:address, _value:uint256):
     pass

@@ -1,9 +1,8 @@
 
 import tornado.escape
-import console
 
-class address(str):pass
-class uint256(int):pass
+import console
+import contracts
 
 
 CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
@@ -59,4 +58,4 @@ class State:
         self.pending_state = {}
 
     def call(self, contract):
-        pass
+        console.log(contracts.contract_map[contract])
