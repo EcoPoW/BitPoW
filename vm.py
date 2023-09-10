@@ -1,6 +1,7 @@
 
 import functools
 import types
+import console
 
 class VM:
     '''for python 3.10'''
@@ -34,7 +35,7 @@ class VM:
         self.global_vars['set'] = set
         self.global_vars['dict'] = dict
         self.global_vars['list'] = list
-        self.global_vars['print'] = print
+        self.global_vars['print'] = console.prt 
         # self.global_vars['open'] = open
         self.global_vars['AssertionError'] = AssertionError
         self.module_object = module_object
@@ -536,6 +537,7 @@ class VM:
                 result = functools.partial(obj.__getattribute__(method), *params)()
             except AttributeError:
                 result = functools.partial(obj.__getattr__(method), *params)()
+
             # print('CALL_METHOD result', result)
             self.stack = self.stack[:-2-param]
             self.stack.append(result)

@@ -66,7 +66,7 @@ def transfer(_to:address, _value:uint256):
 
 
 def transferFrom(_from:address, _to:address, _value:uint256):
-    print('transferFrom')
+    print('erc20 transferFrom')
 
 
 def balanceOf(_owner:address):

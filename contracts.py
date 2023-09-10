@@ -52,7 +52,6 @@ class Contract:
     #     return type_map[self.__dict__[addr]][__name]
 
     def __getattr__(self, __name):
-        console.log(__name)
-        console.log(contract_map[self.addr].__dict__[__name])
+        console.log(__name, contract_map[self.addr].__dict__[__name])
         return contract_map[self.addr].__dict__[__name]
 
