@@ -110,103 +110,103 @@ def get_new_difficulty(recent_longest):
     return new_difficulty, timecost
 
 
-nonce = 0
-def mining():
-    global nonce
-    global messages_out
+# nonce = 0
+# def mining():
+#     global nonce
+#     global messages_out
 
-    # TODO: validate with state transfer function
-    highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
-    chain.recent_longest = chain.get_recent_longest(highest_block_hash)
-    block_difficulty, timecost = get_new_difficulty(chain.recent_longest)
-    if setting.EASY_MINING:
-        block_difficulty = 2**255
+#     # TODO: validate with state transfer function
+#     highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+#     chain.recent_longest = chain.get_recent_longest(highest_block_hash)
+#     block_difficulty, timecost = get_new_difficulty(chain.recent_longest)
+#     if setting.EASY_MINING:
+#         block_difficulty = 2**255
 
-    now = int(time.time())
-    last_synctime = now - now % setting.NETWORK_SPREADING_SECONDS - setting.NETWORK_SPREADING_SECONDS
-    nodes_to_update = {}
-    for nodeid in tree.nodes_pool:
-        if tree.nodes_pool[nodeid][3] < last_synctime:
-            if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][3]:
-                # print('nodes_to_update', nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][3], last_synctime)
-                nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
+#     now = int(time.time())
+#     last_synctime = now - now % setting.NETWORK_SPREADING_SECONDS - setting.NETWORK_SPREADING_SECONDS
+#     nodes_to_update = {}
+#     for nodeid in tree.nodes_pool:
+#         if tree.nodes_pool[nodeid][3] < last_synctime:
+#             if nodeid not in chain.nodes_in_chain or chain.nodes_in_chain[nodeid][1] < tree.nodes_pool[nodeid][3]:
+#                 # print('nodes_to_update', nodeid, nodes_in_chain[nodeid][1], tree.nodes_pool[nodeid][3], last_synctime)
+#                 nodes_to_update[nodeid] = tree.nodes_pool[nodeid]
 
-    # print(frozen_block_hash, longest)
-    # nodeno = str(tree.nodeid2no(tree.current_nodeid))
-    pk = tree.node_sk.public_key
-    if chain.recent_longest:
-        prev_hash = chain.recent_longest[0][chain.HASH]
-        height = chain.recent_longest[0][chain.HEIGHT]
-        identity = chain.recent_longest[0][chain.IDENTITY]
+#     # print(frozen_block_hash, longest)
+#     # nodeno = str(tree.nodeid2no(tree.current_nodeid))
+#     pk = tree.node_sk.public_key
+#     if chain.recent_longest:
+#         prev_hash = chain.recent_longest[0][chain.HASH]
+#         height = chain.recent_longest[0][chain.HEIGHT]
+#         identity = chain.recent_longest[0][chain.IDENTITY]
 
-    else:
-        prev_hash, height, identity = '0'*64, 0, ':'
-    new_difficulty = int(math.log(block_difficulty, 2))
+#     else:
+#         prev_hash, height, identity = '0'*64, 0, ':'
+#     new_difficulty = int(math.log(block_difficulty, 2))
 
-    data = {}
-    data['nodes'] = nodes_to_update
-    data['proofs'] = list([list(p) for p in chain.last_hash_proofs])
-    data['subchains'] = chain.subchains_to_block
-    data['tokens'] = chain.tokens_to_block
-    data['aliases'] = chain.aliases_to_block
-    data_json = tornado.escape.json_encode(data)
+#     data = {}
+#     data['nodes'] = nodes_to_update
+#     data['proofs'] = list([list(p) for p in chain.last_hash_proofs])
+#     data['subchains'] = chain.subchains_to_block
+#     data['tokens'] = chain.tokens_to_block
+#     data['aliases'] = chain.aliases_to_block
+#     data_json = tornado.escape.json_encode(data)
 
-    # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
-    # new_identity = "%s:%s" % (nodeno, pk)
-    new_identity = pk.to_checksum_address()
-    new_timestamp = time.time()
-    # if nonce % 1000 == 0:
-    #     print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_to_block))
-    for i in range(100):
-        block_hash_obj = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8'))
-        block_hash = block_hash_obj.hexdigest()
-        block_hash_bytes = block_hash_obj.digest()
-        if int(block_hash, 16) < block_difficulty:
-            # if chain.recent_longest:
-            #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
+#     # new_identity = "%s@%s:%s" % (tree.current_nodeid, tree.current_host, tree.current_port)
+#     # new_identity = "%s:%s" % (nodeno, pk)
+#     new_identity = pk.to_checksum_address()
+#     new_timestamp = time.time()
+#     # if nonce % 1000 == 0:
+#     #     print(tree.current_port, 'mining', nonce, int(math.log(block_difficulty, 2)), height, len(chain.subchains_to_block))
+#     for i in range(100):
+#         block_hash_obj = hashlib.sha256((prev_hash + str(height+1) + str(nonce) + str(new_difficulty) + new_identity + data_json + str(new_timestamp)).encode('utf8'))
+#         block_hash = block_hash_obj.hexdigest()
+#         block_hash_bytes = block_hash_obj.digest()
+#         if int(block_hash, 16) < block_difficulty:
+#             # if chain.recent_longest:
+#             #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', timecost)
 
-            sig = tree.node_sk.sign_msg_hash(block_hash_bytes)
-            # print(sig)
-            txid = uuid.uuid4().hex
-            message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, sig.to_hex(), txid]
-            messages_out.append(message)
-            print(tree.current_port, 'mining block', height+1, block_hash, nonce)
-            nonce = 0
+#             sig = tree.node_sk.sign_msg_hash(block_hash_bytes)
+#             # print(sig)
+#             txid = uuid.uuid4().hex
+#             message = ['NEW_CHAIN_BLOCK', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, sig.to_hex(), txid]
+#             messages_out.append(message)
+#             print(tree.current_port, 'mining block', height+1, block_hash, nonce)
+#             nonce = 0
 
-            chain.new_chain_block(message)
-            break
+#             chain.new_chain_block(message)
+#             break
 
-        if int(block_hash, 16) < block_difficulty*2:
-            # if longest:
-            #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
+#         if int(block_hash, 16) < block_difficulty*2:
+#             # if longest:
+#             #     print(tree.current_port, 'height', height, 'nodeid', tree.current_nodeid, 'nonce_init', tree.nodeid2no(tree.current_nodeid), 'timecost', longest[-1][7] - longest[0][7])#.timestamp
 
-            txid = uuid.uuid4().hex
-            message = ['NEW_CHAIN_PROOF', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, txid]
-            # messages_out.append(message)
+#             txid = uuid.uuid4().hex
+#             message = ['NEW_CHAIN_PROOF', block_hash, prev_hash, height+1, nonce, new_difficulty, new_identity, data, new_timestamp, txid]
+#             # messages_out.append(message)
 
-        nonce += 1
+#         nonce += 1
 
-def validate():
-    global nonce
+# def validate():
+#     global nonce
 
-    highest_block_height, highest_block_hash, _ = chain.get_highest_block()
+#     highest_block_height, highest_block_hash, _ = chain.get_highest_block()
 
-    db = database.get_conn()
-    #print('validate nodes_to_fetch', chain.nodes_to_fetch)
-    fetched_nodes = set()
-    nodes_to_fetch = copy.copy(chain.nodes_to_fetch)
-    for nodeid in nodes_to_fetch:
-        fetched_nodes.add(nodeid)
-        new_chain_hash, new_chain_height = chain.fetch_chain(nodeid)
-        # print('validate', highest_block_hash, highest_block_height)
-        # print('validate', new_chain_hash, new_chain_height)
-        if new_chain_height > highest_block_height:
-            highest_block_hash = new_chain_hash
-            highest_block_height = new_chain_height
-            db.put(b'chain', highest_block_hash)
+#     db = database.get_conn()
+#     #print('validate nodes_to_fetch', chain.nodes_to_fetch)
+#     fetched_nodes = set()
+#     nodes_to_fetch = copy.copy(chain.nodes_to_fetch)
+#     for nodeid in nodes_to_fetch:
+#         fetched_nodes.add(nodeid)
+#         new_chain_hash, new_chain_height = chain.fetch_chain(nodeid)
+#         # print('validate', highest_block_hash, highest_block_height)
+#         # print('validate', new_chain_hash, new_chain_height)
+#         if new_chain_height > highest_block_height:
+#             highest_block_hash = new_chain_hash
+#             highest_block_height = new_chain_height
+#             db.put(b'chain', highest_block_hash)
 
-    chain.recent_longest = chain.get_recent_longest(highest_block_hash)
+#     chain.recent_longest = chain.get_recent_longest(highest_block_hash)
 
-    chain.nodes_to_fetch = chain.nodes_to_fetch - fetched_nodes
+#     chain.nodes_to_fetch = chain.nodes_to_fetch - fetched_nodes
 
 

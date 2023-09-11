@@ -369,14 +369,14 @@ class VM:
             if val:
                 self.pc += 2
             else:
-                self.pc = param * 2
+                self.pc = param
 
         elif self.co_code[self.pc] == 0x73: # POP_JUMP_IF_TRUE
             param = self.co_code[self.pc+1]
             # print('POP_JUMP_IF_TRUE', param)
             val = self.stack.pop()
             if val:
-                self.pc = param * 2
+                self.pc = param
             else:
                 self.pc += 2
 

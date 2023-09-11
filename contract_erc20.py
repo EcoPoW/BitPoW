@@ -64,6 +64,8 @@ def transfer(_to:address, _value:uint256) -> bool:
     print('transfer to', _to, _value)
     sender_amount = _state.get('balance', 0, _sender)
     sender_new_amount = sender_amount - _value
+    print('sender_amount', sender_amount, _value)
+    print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
     _state.put('balance', sender_new_amount, _sender)

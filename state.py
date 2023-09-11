@@ -2,7 +2,6 @@
 import tornado.escape
 
 import console
-import contracts
 
 
 class State:
@@ -21,22 +20,27 @@ class State:
     # def __getitem__(self, key):
     def get(self, key, default, addr):
         value = default
+        console.log(self.block_number)
+        console.log(self.contract_address)
         console.log(self.pending_state)
         k = 'globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, self.block_number)
         console.log(k)
         if k in self.pending_state:
             value_json = self.pending_state[k]
+            console.log(value_json)
             value = tornado.escape.json_decode(value_json)
             return value
 
         try:
             it = self.db.iteritems()
+            print(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8'))
             it.seek(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8'))
 
             # value_json = _trie.get(b'state_%s_%s' % (contract_address, key.encode('utf8')))
             for k, value_json in it:
                 if k.startswith(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8')):
                     # block_number = 10**15 - int(k.replace(b'%s_%s_' % (contract_address, key.encode('utf8')), b''))
+                    console.log(k, value_json)
                     value = tornado.escape.json_decode(value_json)
                 break
 

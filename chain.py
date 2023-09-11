@@ -24,6 +24,7 @@ import database
 import stf
 import eth_tx
 import console
+import state
 # import rpc
 # import node
 # import leader
@@ -446,6 +447,15 @@ def new_chain_statebody(seq):
     print(('statebody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
     db.put(('statebody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
+    # console.log('new_chain_statebody', data_json)
+    _state = state.State(db)
+    _state.block_number = height
+    data = tornado.escape.json_decode(data_json)
+    for i in data:
+        print(i)
+    _state.pending_state = data
+    _state.merge(block_hash)
+
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
     # global subchains_to_block
@@ -478,35 +488,35 @@ def new_subchain_block(seq):
     db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'), tornado.escape.json_encode([subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
     subchains_new_block_available.add(sender)
 
-def get_recent_longest(highest_block_hash):
-    db = database.get_conn()
-    block_hash = highest_block_hash
-    recent_longest = []
-    for i in range(setting.BLOCK_DIFFICULTY_CYCLE):
-        block_json = db.get(b'block_%s' % block_hash)
-        if block_json:
-            block = tornado.escape.json_decode(block_json)
-            block_hash = block[PREV_HASH].encode('utf8')
-            recent_longest.append(block)
-        else:
-            break
-    return recent_longest
+# def get_recent_longest(highest_block_hash):
+#     db = database.get_conn()
+#     block_hash = highest_block_hash
+#     recent_longest = []
+#     for i in range(setting.BLOCK_DIFFICULTY_CYCLE):
+#         block_json = db.get(b'block_%s' % block_hash)
+#         if block_json:
+#             block = tornado.escape.json_decode(block_json)
+#             block_hash = block[PREV_HASH].encode('utf8')
+#             recent_longest.append(block)
+#         else:
+#             break
+#     return recent_longest
 
-def get_highest_block(): # to remove
-    db = database.get_conn()
-    highest_block = None
-    highest_block_height = 0
+# def get_highest_block(): # to remove
+#     db = database.get_conn()
+#     highest_block = None
+#     highest_block_height = 0
 
-    highest_block_hash = db.get(b"chain")
-    if highest_block_hash:
-        block_json = db.get(b'block_%s' % highest_block_hash)
-        if block_json:
-            block = tornado.escape.json_decode(block_json)
-            highest_block_height = block[HEIGHT]
-    else:
-        highest_block_hash = b'0'*64
+#     highest_block_hash = db.get(b"chain")
+#     if highest_block_hash:
+#         block_json = db.get(b'block_%s' % highest_block_hash)
+#         if block_json:
+#             block = tornado.escape.json_decode(block_json)
+#             highest_block_height = block[HEIGHT]
+#     else:
+#         highest_block_hash = b'0'*64
 
-    return highest_block_height, highest_block_hash, highest_block
+#     return highest_block_height, highest_block_hash, highest_block
 
 
 def get_latest_block_number():
@@ -599,7 +609,24 @@ class GetStateSubchainsHandler(tornado.web.RequestHandler):
 
 class GetStateContractsHandler(tornado.web.RequestHandler):
     def get(self):
-        block_hash = self.get_argument('hash')
+        # block_hash = self.get_argument('hash')
+        addr = self.get_argument('addr')
+        block_height = self.get_argument('height')
+        no = int(block_height)
+        db = database.get_conn()
+        it = db.iteritems()
+
+        results = {}
+        # it.seek(('globalstate_%s_' % addr).encode('utf8'))
+        it.seek(('globalstate_').encode('utf8'))
+        for k, v in it:
+            # print('GetStateSubchainsHandler', k, v)
+            if not k.startswith(b'globalstate_'):
+                break
+            self.write(k)
+            self.write('<br>')
+            self.write(v)
+            self.write('<br><br>')
 
 class GetPoolSubchainsHandler(tornado.web.RequestHandler):
     def get(self):

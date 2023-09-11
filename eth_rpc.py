@@ -58,18 +58,23 @@ class EthRpcHandler(tornado.web.RequestHandler):
         req = tornado.escape.json_decode(self.request.body)
         rpc_id = req.get('id', '0')
         if req.get('method') == 'eth_blockNumber':
-            highest_block_height, _highest_block_hash, _highest_block = chain.get_highest_block() # change to get block number
-            resp = {'jsonrpc':'2.0', 'result': hex(highest_block_height), 'id':rpc_id}
+            # highest_block_height, _highest_block_hash, _highest_block = chain.get_highest_block() # change to get block number
+            latest_block_height = chain.get_latest_block_number()
+            resp = {'jsonrpc':'2.0', 'result': hex(latest_block_height), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getBlockByNumber':
-            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            latest_block_height = chain.get_latest_block_number()
+            latest_block_hashes = chain.get_block_hashes_by_number(latest_block_height)
+            if not latest_block_hashes:
+                latest_block_hashes.append('0'*64)
             # resp = {'jsonrpc':'2.0', 'result': '0x'+highest_block_hash.decode('utf8'), 'id':rpc_id}
             resp = {"jsonrpc":"2.0", "id": rpc_id,
                 "result":{
                     # "number":"0x1",
-                    "number": hex(highest_block_height),
+                    "number": hex(latest_block_height),
                     # "hash":"0xffb0c9a9f7a192c9aaf1c1f05e32ce889ffea4006d3e016b0681b8e5b6a94ed2",
-                    "hash": '0x'+highest_block_hash.decode('utf8'),
+                    "hash": '0x'+latest_block_hashes[0],
                     # "parentHash":"0x137f2bacb32744f3f8637496ec2812df9cade335762792999c1799df0157db76",
                     "nonce":"0x0000000000000042",
                     "mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -97,9 +102,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
             address = web3.Web3.to_checksum_address(req['params'][0])
             # block_height = req['params'][1]
 
-            _highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+            # _highest_block_height, highest_block_hash, _highest_block = chain.get_highest_block()
+            latest_block_height = chain.get_latest_block_number()
             db = database.get_conn()
-            blockstate_json = db.get(b'blockstate_%s' % highest_block_hash)
+            blockstate_json = db.get(b'blockstate_%s' % latest_block_height)
             blockstate = tornado.escape.json_decode(blockstate_json)
             # print('blockstate', blockstate)
             # print('address', address)
@@ -217,8 +223,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # print('nonce', tx.nonce)
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
 
-            highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
-            _state.block_number = highest_block_height
+            # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+            latest_block_height = chain.get_latest_block_number()
+            _state.block_number = latest_block_height
             _state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_state'] = _state
             contracts.vm_map[tx_to].global_vars['_self'] = tx_to
@@ -294,8 +301,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     # contract = contract_map[params[0]['to'].lower()]
                     tx_to = params[0]['to']
                     tx_data = params[0]['data']
-                    highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
-                    _state.block_number = highest_block_height
+                    # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+                    latest_block_height = chain.get_latest_block_number()
+                    _state.block_number = latest_block_height
                     _state.contract_address = tx_to
                     contracts.vm_map[tx_to].global_vars['_state'] = _state
                     contracts.vm_map[tx_to].global_vars['_self'] = tx_to
