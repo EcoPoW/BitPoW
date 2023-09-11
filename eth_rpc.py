@@ -220,9 +220,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
             state.block_number = highest_block_height
             # contract_erc20._sender = tx_from
-            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
-            contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+            _state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_state'] = _state
+            contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
 
             # print('tx_from', tx_from)
             # print('tx.to', tx.to)

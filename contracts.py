@@ -2,12 +2,28 @@
 import types
 
 import eth_utils
+import web3
 
 import vm
 import console
 
 import contract_erc20
 import contract_staking
+
+
+def call(addr, fn, params):
+    console.log(addr, fn, params)
+    console.log(vm_map[addr])
+    type_params = []
+    for k, v in zip(type_map[addr][fn], params):
+        print('type', k, v)
+        if k == 'address':
+            type_params.append(web3.Web3.to_checksum_address(v))
+        elif k == 'uint256':
+            type_params.append(v)
+
+    vm_map[addr].run(type_params, fn)
+    return
 
 
 contract_map = {
@@ -36,22 +52,23 @@ for addr, contract in contract_map.items():
 
     v = vm.VM()
     v.import_module(contract)
+    v.global_vars['print'] = console.prt
+    v.global_vars['call'] = call
     vm_map[addr] = v
 
 print(interface_map)
 print(type_map)
 
 
-class Contract:
-    def __init__(self, addr):
-        self.addr = addr
+# class Contract:
+#     def __init__(self, addr):
+#         self.addr = addr
 
-    # def __getattribute__(self, __name):
-    #     console.log(__name)
-    #     console.log(type_map[self.__dict__[addr]][__name])
-    #     return type_map[self.__dict__[addr]][__name]
+#     # def __getattribute__(self, __name):
+#     #     console.log(__name)
+#     #     console.log(type_map[self.__dict__[addr]][__name])
+#     #     return type_map[self.__dict__[addr]][__name]
 
-    def __getattr__(self, __name):
-        console.log(__name, contract_map[self.addr].__dict__[__name])
-        return contract_map[self.addr].__dict__[__name]
-
+#     def __getattr__(self, __name):
+#         console.log(__name, contract_map[self.addr].__dict__[__name])
+#         return contract_map[self.addr].__dict__[__name]

@@ -37,10 +37,10 @@ def mint(_to:address, _value:uint256):
     print('after mint', new_amount)
     _state.put('balance', _to, new_amount)
 
-    current_total = _state.get('total', 0)
+    current_total = _state.get('total', 0, _self)
     new_total = current_total + _value
     print('after mint total', new_total)
-    _state.put('total', new_total)
+    _state.put('total', new_total, _self)
 
 
 def approve(_spender:address, _value:uint256):
@@ -90,7 +90,7 @@ def decimals():
     return f'0x{18:0>64x}'
 
 def totalSupply():
-    amount = _state.get('total', 0)
+    amount = _state.get('total', 0, _self)
     return f'0x{amount:0>64x}'
 
 

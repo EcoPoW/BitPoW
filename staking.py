@@ -192,9 +192,10 @@ class MiningClient:
                                 #print('tx_from', tx_from)
                                 # contract_erc20._sender = tx_from
                                 console.log(tx_to)
+                                _state.contract_address = tx_to
                                 contracts.vm_map[tx_to].global_vars['_state'] = _state
-                                contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
                                 contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+                                contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
 
                                 func_sig = tx_data[:10]
                                 # print(interface_map[func_sig], tx_data)
