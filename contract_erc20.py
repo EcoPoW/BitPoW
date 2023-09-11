@@ -1,7 +1,9 @@
 
 from contract_types import address, uint256
-# from state import _state
-# from state import _sender
+
+# _state, _self, _sender
+# _call
+# print, 
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -29,13 +31,13 @@ from contract_types import address, uint256
 #     pass
 
 
-def mint(_to:address, _value:uint256):
+def mint(_to:address, _value:uint256) -> None:
     current_amount = _state.get('balance', 0, _to)
     new_amount = current_amount + _value
     print('before mint', current_amount)
     print('mint to', _to, _value)
     print('after mint', new_amount)
-    _state.put('balance', _to, new_amount)
+    _state.put('balance', new_amount, _to)
 
     current_total = _state.get('total', 0, _self)
     new_total = current_total + _value
@@ -43,15 +45,22 @@ def mint(_to:address, _value:uint256):
     _state.put('total', new_total, _self)
 
 
-def approve(_spender:address, _value:uint256):
-    pass
+def approve(_spender:address, _value:uint256) -> bool:
+    allowance = _state.get('allowance', {}, _sender)
+    allowance[_spender] = _value
+    print(allowance)
+    _state.put('allowance', allowance, _spender)
+    return True
 
+def allowance(_owner:address, _spender:address) -> int:
+    allowance = _state.get('allowance', {}, _owner)
+    print('allowance', allowance)
+    value = allowance.get(_spender, 0)
+    # assert value >= 0
+    # return value
+    return f'0x{value:0>64x}'
 
-def allowance(_owner:address, _spender:address):
-    pass
-
-
-def transfer(_to:address, _value:uint256):
+def transfer(_to:address, _value:uint256) -> bool:
     print('transfer to', _to, _value)
     sender_amount = _state.get('balance', 0, _sender)
     sender_new_amount = sender_amount - _value
@@ -65,7 +74,7 @@ def transfer(_to:address, _value:uint256):
     _state.put('balance', to_new_amount, _to)
 
 
-def transferFrom(_from:address, _to:address, _value:uint256):
+def transferFrom(_from:address, _to:address, _value:uint256) -> bool:
     print('erc20 transferFrom')
 
 

@@ -206,7 +206,7 @@ class MiningClient:
                                 for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
                                     # print('type', k, v)
                                     if k == 'address':
-                                        type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
+                                        type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
                                     elif k == 'uint256':
                                         type_params.append(web3.Web3.to_int(hexstr=v))
 

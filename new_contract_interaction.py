@@ -384,6 +384,7 @@ erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', ab
 # mint = erc20.functions.mint('0x0000000000000000000000000000000000000001', 1000).transact()
 # print(mint)
 
+# mint
 nonce = w3.eth.get_transaction_count(account.address)
 unsigned_tx = erc20.functions.mint(account.address, 1000).build_transaction({
     'from': account.address,
@@ -398,3 +399,31 @@ balance = erc20.functions.balanceOf(account.address).call()
 print(balance)
 totalsupply = erc20.functions.totalSupply().call()
 print(totalsupply)
+
+# approve
+nonce = w3.eth.get_transaction_count(account.address)
+unsigned_tx = erc20.functions.approve(account.address, 1000).build_transaction({
+    'from': account.address,
+    'nonce': nonce,
+})
+# print(unsigned_tx)
+signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+# print(signed_tx)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+
+# allowance
+allowance = erc20.functions.allowance(account.address, account.address).call()
+print(allowance)
+
+
+
+# nonce = w3.eth.get_transaction_count(account.address)
+# unsigned_tx = erc20.functions.mint(account.address, 1000).build_transaction({
+#     'from': account.address,
+#     'nonce': nonce,
+# })
+# # print(unsigned_tx)
+# signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+# # print(signed_tx)
+# tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)

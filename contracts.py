@@ -53,7 +53,7 @@ for addr, contract in contract_map.items():
     v = vm.VM()
     v.import_module(contract)
     v.global_vars['print'] = console.prt
-    v.global_vars['call'] = call
+    v.global_vars['_call'] = call
     vm_map[addr] = v
 
 print(interface_map)

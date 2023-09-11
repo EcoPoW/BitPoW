@@ -31,7 +31,7 @@ from contract_types import address, uint256
 
 def stake(_value:uint256):
     print(_sender, _self, _value)
-    call('0x0000000000000000000000000000000000000001', 'transferFrom', [_sender, _self, _value])
+    _call('0x0000000000000000000000000000000000000001', 'transferFrom', [_sender, _self, _value])
 
 def unstake(_spender:address, _value:uint256):
     pass

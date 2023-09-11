@@ -218,8 +218,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
 
             highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
-            state.block_number = highest_block_height
-            # contract_erc20._sender = tx_from
+            _state.block_number = highest_block_height
             _state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_state'] = _state
             contracts.vm_map[tx_to].global_vars['_self'] = tx_to
@@ -242,7 +241,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
                 # print('type', k, v)
                 if k == 'address':
-                    type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
+                    type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
                 elif k == 'uint256':
                     type_params.append(web3.Web3.to_int(hexstr=v))
 
@@ -295,6 +294,13 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     # contract = contract_map[params[0]['to'].lower()]
                     tx_to = params[0]['to']
                     tx_data = params[0]['data']
+                    highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
+                    _state.block_number = highest_block_height
+                    _state.contract_address = tx_to
+                    contracts.vm_map[tx_to].global_vars['_state'] = _state
+                    contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+                    # contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+
                     result = '0x'
 
                     if tx_data.startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
@@ -312,12 +318,12 @@ class EthRpcHandler(tornado.web.RequestHandler):
                         for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
                             # print('type', k, v)
                             if k == 'address':
-                                type_params.append(web3.Web3.to_checksum_address(web3.Web3.to_checksum_address('0x'+v[24:])))
+                                type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
                             elif k == 'uint256':
                                 type_params.append(web3.Web3.to_int(hexstr=v))
 
                         result = contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
-                        print('result', result)
+                        console.log('result', result)
 
                         resp = {'jsonrpc':'2.0', 'result': result or '0x', 'id': rpc_id}
 
