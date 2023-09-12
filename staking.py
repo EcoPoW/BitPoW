@@ -20,6 +20,8 @@ import hexbytes
 import tornado.ioloop
 import tornado.gen
 import tornado.websocket
+import tornado.autoreload
+
 import rocksdb
 
 import contracts
@@ -32,8 +34,7 @@ if not os.path.exists('miners'):
     os.makedirs('miners')
 db = rocksdb.DB('miners/staking.db', rocksdb.Options(create_if_missing=True))
 
-_state = state.State(db)
-# contract_erc20._state = _state
+state.init_state(db)
 
 
 def pow(conn):
@@ -81,7 +82,6 @@ class MiningClient:
     def __init__(self, url, timeout):
         self.url = url
         self.timeout = timeout
-        self.ioloop = tornado.ioloop.IOLoop.instance()
         self.ws = None
         self.current_mining = None
         self.next_mining = {}
@@ -90,7 +90,6 @@ class MiningClient:
         self.connect()
         tornado.ioloop.PeriodicCallback(self.keep_alive, 20000).start()
         tornado.ioloop.PeriodicCallback(self.poll, 100).start()
-        self.ioloop.start()
 
     @tornado.gen.coroutine
     def connect(self):
@@ -152,6 +151,8 @@ class MiningClient:
                         else:
                             parent_hash = obj['blockhashes'][0]
                         block_number = obj['height']
+
+                        _state = state.get_state()
                         _state.block_number = block_number + 1
 
                         for addr in self.current_mining:
@@ -190,12 +191,12 @@ class MiningClient:
                                 tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
                                 tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
                                 #print('tx_from', tx_from)
-                                # contract_erc20._sender = tx_from
-                                console.log(tx_to)
-                                _state.contract_address = tx_to
+
+                                contracts.vm_map[tx_to].global_vars['_call'] = state.call
                                 contracts.vm_map[tx_to].global_vars['_state'] = _state
-                                contracts.vm_map[tx_to].global_vars['_self'] = tx_to
                                 contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+                                _state.contract_address = tx_to
+                                contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
 
                                 func_sig = tx_data[:10]
                                 # print(interface_map[func_sig], tx_data)
@@ -217,14 +218,13 @@ class MiningClient:
                             txbody.append([addr, last_tx_height, last_tx_hash])
 
                         console.log(txbody)
-                        console.log(_state.pending_state)
+                        console.log(state.pending_state)
                         self.txbody_json = json.dumps(txbody)
-                        self.statebody_json = json.dumps(_state.pending_state, sort_keys=True)
+                        self.statebody_json = json.dumps(state.pending_state, sort_keys=True)
                         txbody_hash = hashlib.sha256(self.txbody_json.encode('utf8')).hexdigest()
                         statebody_hash = hashlib.sha256(self.statebody_json.encode('utf8')).hexdigest()
                         console.log(txbody_hash)
                         console.log(statebody_hash)
-                        _state.merge('')
 
                         self.header_data = {
                             'txbody_hash': txbody_hash,
@@ -271,6 +271,9 @@ class MiningClient:
                     self.ws.write_message(json.dumps(message))
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce]
                     self.ws.write_message(json.dumps(message))
+
+                    state.merge('', state.pending_state)
+                    state.pending_state = {}
                     self.current_mining = None
 
 ps = []
@@ -283,3 +286,5 @@ if __name__ == "__main__":
     process.start()
     client = MiningClient("ws://127.0.0.1:9001/miner", 5)
 
+    tornado.autoreload.start()
+    tornado.ioloop.IOLoop.instance().start()

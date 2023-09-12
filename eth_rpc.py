@@ -24,9 +24,8 @@ import eth_tx
 import console
 import setting
 
-_state = state.State(database.get_conn())
-# contract_erc20._state = _state
 
+state.init_state(database.get_conn())
 
 # class ProxyEthRpcHandler(tornado.web.RequestHandler):
 #     def options(self):
@@ -225,11 +224,16 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
             # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
             latest_block_height = chain.get_latest_block_number()
+
+            _state = state.get_state()
             _state.block_number = latest_block_height
-            _state.contract_address = tx_to
+            contracts.vm_map[tx_to].global_vars['_call'] = state.call
             contracts.vm_map[tx_to].global_vars['_state'] = _state
-            contracts.vm_map[tx_to].global_vars['_self'] = tx_to
+            _state.sender = tx_from
             contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+            _state.contract_address = tx_to
+            contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+
 
             # print('tx_from', tx_from)
             # print('tx.to', tx.to)
@@ -303,11 +307,14 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     tx_data = params[0]['data']
                     # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
                     latest_block_height = chain.get_latest_block_number()
+
+                    _state = state.get_state()
                     _state.block_number = latest_block_height
-                    _state.contract_address = tx_to
+                    contracts.vm_map[tx_to].global_vars['_call'] = state.call
                     contracts.vm_map[tx_to].global_vars['_state'] = _state
-                    contracts.vm_map[tx_to].global_vars['_self'] = tx_to
                     # contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+                    _state.contract_address = tx_to
+                    contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
 
                     result = '0x'
 

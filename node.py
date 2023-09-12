@@ -36,13 +36,10 @@ class Application(tornado.web.Application):
                     (r"/get_pool_subchains", chain.GetPoolSubchainsHandler),
                     (r"/get_pool_blocks", chain.GetPoolBlocksHandler),
 
-                    # (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
-                    (r"/get_block", chain.GetBlockHandler), # to remove
-                    (r"/get_block_state", chain.GetBlockStateHandler), # to remove
-                    (r"/get_subchain_latest", chain.GetHighestSubchainBlockHashHandler),
-                    (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
-                    (r"/get_subchain_block", chain.GetSubchainBlockHandler),
-                    (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
+                    # (r"/get_subchain_latest", chain.GetHighestSubchainBlockHashHandler),
+                    # (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
+                    # (r"/get_subchain_block", chain.GetSubchainBlockHandler),
+                    # (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
 

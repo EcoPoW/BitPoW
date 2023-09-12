@@ -404,9 +404,9 @@ elif sys.argv[1] == 'totalsupply':
     totalsupply = erc20.functions.totalSupply().call()
     print('totalsupply', totalsupply)
 
-elif sys.argv[1] == 'totalsupply':
+elif sys.argv[1] == 'approve':
     nonce = w3.eth.get_transaction_count(account.address)
-    unsigned_tx = erc20.functions.approve(account.address, 1000).build_transaction({
+    unsigned_tx = erc20.functions.approve('0x0000000000000000000000000000000000000002', 1000).build_transaction({
         'from': account.address,
         'nonce': nonce,
     })

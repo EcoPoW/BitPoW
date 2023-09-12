@@ -448,13 +448,10 @@ def new_chain_statebody(seq):
     db.put(('statebody_%s_%s' % (str(setting.REVERSED_NO-height).zfill(16), block_hash)).encode('utf8'), data_json.encode('utf8'))
 
     # console.log('new_chain_statebody', data_json)
-    _state = state.State(db)
-    _state.block_number = height
     data = tornado.escape.json_decode(data_json)
     for i in data:
         print(i)
-    _state.pending_state = data
-    _state.merge(block_hash)
+    state.merge(block_hash, data)
 
 # @tornado.gen.coroutine
 def new_subchain_block(seq):
@@ -611,8 +608,8 @@ class GetStateContractsHandler(tornado.web.RequestHandler):
     def get(self):
         # block_hash = self.get_argument('hash')
         addr = self.get_argument('addr')
-        block_height = self.get_argument('height')
-        no = int(block_height)
+        # block_height = self.get_argument('height')
+        # no = int(block_height)
         db = database.get_conn()
         it = db.iteritems()
 
@@ -686,75 +683,49 @@ class GetPoolBlocksHandler(tornado.web.RequestHandler):
 
         self.finish(results)
 
-class GetHighestBlockStateHandler(tornado.web.RequestHandler):
-    def get(self):
-        db = database.get_conn()
-        block_hash = db.get(b'chain')
-        blockstate_json = db.get(b'blockstate_%s' % block_hash)
-        self.finish(blockstate_json)
 
-class GetBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'block_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"block": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"block": None})
+# class GetSubchainBlockStateHandler(tornado.web.RequestHandler):
+#     def get(self):
+#         block_hash = self.get_argument("hash")
+#         db = database.get_conn()
+#         block_json = db.get(b'msgstate_%s' % block_hash.encode('utf8'))
+#         if block_json:
+#             self.finish({"state": tornado.escape.json_decode(block_json)})
+#         else:
+#             self.finish({"state": None})
 
-class GetBlockStateHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'blockstate_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"state": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"state": None})
-
-class GetSubchainBlockStateHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'msgstate_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"state": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"state": None})
-
-class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
-    def get(self):
-        # TODO: fixed key 'chain0x0000' for rocksdb
-        sender = self.get_argument('sender')
-        assert sender.startswith('0x')
-        assert len(sender) == 42
-        db = database.get_conn()
-        highest_block_hash = db.get(b'chain_%s' % sender.encode('utf8'))
-        if highest_block_hash:
-            self.finish({"hash": highest_block_hash.decode('utf8')})
-        else:
-            self.finish({"hash": '0'*64})
+# class GetHighestSubchainBlockHashHandler(tornado.web.RequestHandler):
+#     def get(self):
+#         # TODO: fixed key 'chain0x0000' for rocksdb
+#         sender = self.get_argument('sender')
+#         assert sender.startswith('0x')
+#         assert len(sender) == 42
+#         db = database.get_conn()
+#         highest_block_hash = db.get(b'chain_%s' % sender.encode('utf8'))
+#         if highest_block_hash:
+#             self.finish({"hash": highest_block_hash.decode('utf8')})
+#         else:
+#             self.finish({"hash": '0'*64})
 
 
-class GetHighestSubchainBlockStateHandler(tornado.web.RequestHandler):
-    def get(self):
-        sender = self.get_argument('sender')
-        db = database.get_conn()
-        msg_hash = db.get(b'chain_%s' % sender.encode('utf8'))
-        msgstate_json = db.get(b'msgstate_%s' % msg_hash)
-        # chat_master_pk
-        self.finish(msgstate_json)
+# class GetHighestSubchainBlockStateHandler(tornado.web.RequestHandler):
+#     def get(self):
+#         sender = self.get_argument('sender')
+#         db = database.get_conn()
+#         msg_hash = db.get(b'chain_%s' % sender.encode('utf8'))
+#         msgstate_json = db.get(b'msgstate_%s' % msg_hash)
+#         # chat_master_pk
+#         self.finish(msgstate_json)
 
-class GetSubchainBlockHandler(tornado.web.RequestHandler):
-    def get(self):
-        block_hash = self.get_argument("hash")
-        db = database.get_conn()
-        block_json = db.get(b'msg_%s' % block_hash.encode('utf8'))
-        if block_json:
-            self.finish({"msg": tornado.escape.json_decode(block_json)})
-        else:
-            self.finish({"msg": None})
+# class GetSubchainBlockHandler(tornado.web.RequestHandler):
+#     def get(self):
+#         block_hash = self.get_argument("hash")
+#         db = database.get_conn()
+#         block_json = db.get(b'msg_%s' % block_hash.encode('utf8'))
+#         if block_json:
+#             self.finish({"msg": tornado.escape.json_decode(block_json)})
+#         else:
+#             self.finish({"msg": None})
 
 def fetch_chain(nodeid):
     print('node', tree.current_nodeid, 'fetch chain', nodeid)

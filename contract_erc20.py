@@ -1,9 +1,9 @@
 
 from contract_types import address, uint256
 
-# _state, _self, _sender
-# _call
-# print, 
+# _state
+# _self, _sender, _caller, _call
+# print
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -49,14 +49,13 @@ def approve(_spender:address, _value:uint256) -> bool:
     allowance = _state.get('allowance', {}, _sender)
     allowance[_spender] = _value
     print(allowance)
-    _state.put('allowance', allowance, _spender)
+    _state.put('allowance', allowance, _sender)
     return True
 
 def allowance(_owner:address, _spender:address) -> int:
     allowance = _state.get('allowance', {}, _owner)
     print('allowance', allowance)
     value = allowance.get(_spender, 0)
-    # assert value >= 0
     # return value
     return f'0x{value:0>64x}'
 
@@ -70,14 +69,35 @@ def transfer(_to:address, _value:uint256) -> bool:
     print('after transfer sender', sender_new_amount)
     _state.put('balance', sender_new_amount, _sender)
 
-    to_amount = _state.get('balance', 0, _to)
-    to_new_amount = to_amount + _value
-    print('after transfer receiver', to_new_amount)
-    _state.put('balance', to_new_amount, _to)
+    receiver_amount = _state.get('balance', 0, _to)
+    receiver_new_amount = receiver_amount + _value
+    print('after transfer receiver', receiver_new_amount)
+    _state.put('balance', receiver_new_amount, _to)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256) -> bool:
-    print('erc20 transferFrom')
+    print('erc20 transferFrom', _from, _to, _self)
+
+    allowance = _state.get('allowance', {}, _from)
+    print('allowance', allowance)
+    value = allowance.get(_to, 0)
+    print('value', value)
+    assert value >= _value
+    allowance[_to] = value - _value
+    _state.put('allowance', allowance, _from)
+
+    sender_amount = _state.get('balance', 0, _from)
+    sender_new_amount = sender_amount - _value
+    print('sender_amount', sender_amount, _value)
+    print('sender_new_amount', sender_new_amount)
+    assert sender_new_amount >= 0
+    print('after transfer sender', sender_new_amount)
+    _state.put('balance', sender_new_amount, _from)
+
+    receiver_amount = _state.get('balance', 0, _to)
+    receiver_new_amount = receiver_amount + _value
+    print('after transfer receiver', receiver_new_amount)
+    _state.put('balance', receiver_new_amount, _to)
 
 
 def balanceOf(_owner:address):
