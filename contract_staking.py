@@ -1,7 +1,5 @@
 
 from contract_types import address, uint256
-# from state import _state
-# from state import _sender
 
 # function name() public view returns (string)
 # function symbol() public view returns (string)
@@ -31,6 +29,11 @@ from contract_types import address, uint256
 
 def stake(_value:uint256):
     print(_sender, _self, _value)
+    assert _value > 0
+    value = _state.get('staking', [0, 0], _sender)
+    value[0] += _value
+    value[1] = _block_number
+    _state.put('staking', value, _sender)
     _call('0x0000000000000000000000000000000000000001', 'transferFrom', [_sender, _self, _value])
 
 def unstake(_spender:address, _value:uint256):

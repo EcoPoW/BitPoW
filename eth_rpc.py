@@ -227,6 +227,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
             _state = state.get_state()
             _state.block_number = latest_block_height
+            contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
             contracts.vm_map[tx_to].global_vars['_call'] = state.call
             contracts.vm_map[tx_to].global_vars['_state'] = _state
             _state.sender = tx_from
@@ -310,6 +311,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
                     _state = state.get_state()
                     _state.block_number = latest_block_height
+                    contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
                     contracts.vm_map[tx_to].global_vars['_call'] = state.call
                     contracts.vm_map[tx_to].global_vars['_state'] = _state
                     # contracts.vm_map[tx_to].global_vars['_sender'] = tx_from

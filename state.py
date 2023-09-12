@@ -64,6 +64,7 @@ def call(addr, fn, params):
         elif k == 'uint256':
             type_params.append(v)
 
+    contracts.vm_map[addr].global_vars['_block_number'] = _state.block_number
     contracts.vm_map[addr].global_vars['_call'] = call
     contracts.vm_map[addr].global_vars['_state'] = _state
     contracts.vm_map[addr].global_vars['_sender'] = _state.sender

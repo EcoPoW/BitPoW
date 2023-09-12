@@ -608,18 +608,25 @@ class GetStateContractsHandler(tornado.web.RequestHandler):
     def get(self):
         # block_hash = self.get_argument('hash')
         addr = self.get_argument('addr')
-        # block_height = self.get_argument('height')
-        # no = int(block_height)
+        block_height = self.get_argument('height', None)
+        if block_height:
+            no = int(block_height)
+            self.write('<a href="/get_state_contracts?addr=%s&height=%s">Prev</a> ' % (addr, no-1))
+            self.write('<a href="/get_state_contracts?addr=%s&height=%s">Next</a> ' % (addr, no+1))
+            self.write('<br><br>')
         db = database.get_conn()
         it = db.iteritems()
 
         results = {}
         # it.seek(('globalstate_%s_' % addr).encode('utf8'))
-        it.seek(('globalstate_').encode('utf8'))
+        it.seek(('globalstate_%s_' % addr).encode('utf8'))
         for k, v in it:
-            # print('GetStateSubchainsHandler', k, v)
-            if not k.startswith(b'globalstate_'):
+            # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
+            if not k.startswith(('globalstate_%s_' % addr).encode('utf8')):
                 break
+            reversed_no = int(k.decode('utf8').split('_')[4])
+            if block_height and setting.REVERSED_NO - reversed_no != no:
+                continue
             self.write(k)
             self.write('<br>')
             self.write(v)

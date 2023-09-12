@@ -194,6 +194,7 @@ class MiningClient:
                                 tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
                                 #print('tx_from', tx_from)
 
+                                contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
                                 contracts.vm_map[tx_to].global_vars['_call'] = state.call
                                 contracts.vm_map[tx_to].global_vars['_state'] = _state
                                 contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
