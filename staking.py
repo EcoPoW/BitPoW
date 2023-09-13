@@ -79,6 +79,104 @@ def pow(conn):
         pass
 
 
+def mining():
+    txbody = []
+    req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+    console.log('get_chain_latest', req.text)
+    obj = req.json()
+    if obj['height'] == 0:
+        parent_hash = '0'*64
+    else:
+        parent_hash = obj['blockhashes'][0]
+    block_number = obj['height']
+
+    _state = state.get_state()
+    _state.block_number = block_number + 1
+
+    req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
+    pool_subchains = req.json()
+    console.log('get_pool_subchains', req.json())
+    req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
+    console.log('get_state_subchains', req.text)
+    state_subchains = req.json()
+
+    for addr in pool_subchains:
+        #console.log('current_mining', self.current_mining)
+        console.log('get_pool_subchains addr', addr, pool_subchains[addr])
+        to_no, to_hash = pool_subchains[addr]
+        console.log('get_state_subchains addr', state_subchains[addr])
+        from_no = 0
+        if state_subchains[addr]:
+            from_no = state_subchains[addr]['height']
+        console.log('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        txblocks = req.json()['blocks']
+        txblocks.reverse()
+        console.log(txblocks)
+        last_tx_hash = None
+        last_tx_height= 0
+        for txblock in txblocks:
+            pprint.pprint(txblock)
+            tx_list = txblock[4]
+            tx_to = tx_list[4]
+            tx_data = tx_list[6]
+            tx_signature_hex = txblock[5]
+            tx_signature_obj = eth_account.Account._keys.Signature(signature_bytes=hexbytes.HexBytes(tx_signature_hex))
+            vrs = tx_signature_obj.vrs
+
+            tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
+            tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
+            #print('tx_from', tx_from)
+
+            contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
+            contracts.vm_map[tx_to].global_vars['_call'] = state.call
+            contracts.vm_map[tx_to].global_vars['_state'] = _state
+            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+            _state.contract_address = tx_to
+            contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+
+            func_sig = tx_data[:10]
+            # print(interface_map[func_sig], tx_data)
+            func_params_data = tx_data[10:]
+            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+            #print('func', interface_map[func_sig].__name__, func_params)
+            type_params = []
+            for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
+                # print('type', k, v)
+                if k == 'address':
+                    type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
+                elif k == 'uint256':
+                    type_params.append(web3.Web3.to_int(hexstr=v))
+
+            # result = interface_map[func_sig](*func_params)
+            contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
+            last_tx_height = tx_list[0]
+            last_tx_hash = txblock[0]
+        
+        if txblocks:
+            txbody.append([addr, last_tx_height, last_tx_hash])
+
+    console.log(txbody)
+    console.log(state.pending_state)
+    txbody_json = json.dumps(txbody)
+    statebody_json = json.dumps(state.pending_state, sort_keys=True)
+    txbody_hash = hashlib.sha256(txbody_json.encode('utf8')).hexdigest()
+    statebody_hash = hashlib.sha256(statebody_json.encode('utf8')).hexdigest()
+    console.log(txbody_hash)
+    console.log(statebody_hash)
+
+    header_data = {
+        'txbody_hash': txbody_hash,
+        'statebody_hash': statebody_hash,
+        'height': block_number + 1,
+        'difficulty': 2**254,
+        'parent': parent_hash,
+        'address': user_addr,
+        'timestamp': 0,
+    }
+
+    return header_data, txbody_json, statebody_json
+
 class MiningClient:
     def __init__(self, url, timeout):
         self.url = url
@@ -132,7 +230,7 @@ class MiningClient:
                     console.log(seq[1], seq[2]['height'])
                     contract_address = '0x0000000000000000000000000000000000000002'
                     parent_hash = seq[1]
-                    block_height = seq[2]['height']
+                    block_number = seq[2]['height']
                     #no = int(block_height)
                     it = db.iteritems()
 
@@ -181,7 +279,6 @@ class MiningClient:
 
                     txs = self.next_mining.setdefault(sender, [])
                     txs.append(data)
-                    txbody = []
                     #statebody = {}
                     #print('txs', txs)
                     console.log('current_mining', self.current_mining)
@@ -190,107 +287,15 @@ class MiningClient:
                         self.next_mining = {}
                         console.log('current_mining', self.current_mining)
 
-                        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
-                        console.log('get_chain_latest', req.text)
-                        obj = req.json()
-                        if obj['height'] == 0:
-                            parent_hash = '0'*64
-                        else:
-                            parent_hash = obj['blockhashes'][0]
-                        block_number = obj['height']
-
-                        _state = state.get_state()
-                        _state.block_number = block_number + 1
-
                         for addr in self.current_mining:
                             #print('current_mining', current_mining)
                             console.log('current_mining[addr]', addr, self.current_mining[addr])
 
-                        req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
-                        pool_subchains = req.json()
-                        console.log('get_pool_subchains', req.json())
-                        req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
-                        console.log('get_state_subchains', req.text)
-                        state_subchains = req.json()
+                        self.header_data, self.txbody_json, self.statebody_json = mining()
 
-                        for addr in pool_subchains:
-                            #console.log('current_mining', self.current_mining)
-                            console.log('get_pool_subchains addr', addr, pool_subchains[addr])
-                            to_no, to_hash = pool_subchains[addr]
-                            console.log('get_state_subchains addr', state_subchains[addr])
-                            from_no = 0
-                            if state_subchains[addr]:
-                                from_no = state_subchains[addr]['height']
-                            console.log('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
-                            req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
-                            txblocks = req.json()['blocks']
-                            txblocks.reverse()
-                            console.log(txblocks)
-                            last_tx_hash = None
-                            last_tx_height= 0
-                            for txblock in txblocks:
-                                pprint.pprint(txblock)
-                                tx_list = txblock[4]
-                                tx_to = tx_list[4]
-                                tx_data = tx_list[6]
-                                tx_signature_hex = txblock[5]
-                                tx_signature_obj = eth_account.Account._keys.Signature(signature_bytes=hexbytes.HexBytes(tx_signature_hex))
-                                vrs = tx_signature_obj.vrs
-
-                                tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
-                                tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
-                                #print('tx_from', tx_from)
-
-                                contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
-                                contracts.vm_map[tx_to].global_vars['_call'] = state.call
-                                contracts.vm_map[tx_to].global_vars['_state'] = _state
-                                contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
-                                _state.contract_address = tx_to
-                                contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
-
-                                func_sig = tx_data[:10]
-                                # print(interface_map[func_sig], tx_data)
-                                func_params_data = tx_data[10:]
-                                func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                                #print('func', interface_map[func_sig].__name__, func_params)
-                                type_params = []
-                                for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
-                                    # print('type', k, v)
-                                    if k == 'address':
-                                        type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
-                                    elif k == 'uint256':
-                                        type_params.append(web3.Web3.to_int(hexstr=v))
-
-                                # result = interface_map[func_sig](*func_params)
-                                contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
-                                last_tx_height = tx_list[0]
-                                last_tx_hash = txblock[0]
-                            
-                            if txblocks:
-                                txbody.append([addr, last_tx_height, last_tx_hash])
-
-                        console.log(txbody)
-                        console.log(state.pending_state)
-                        self.txbody_json = json.dumps(txbody)
-                        self.statebody_json = json.dumps(state.pending_state, sort_keys=True)
-                        txbody_hash = hashlib.sha256(self.txbody_json.encode('utf8')).hexdigest()
-                        statebody_hash = hashlib.sha256(self.statebody_json.encode('utf8')).hexdigest()
-                        console.log(txbody_hash)
-                        console.log(statebody_hash)
-
-                        self.header_data = {
-                            'txbody_hash': txbody_hash,
-                            'statebody_hash': statebody_hash,
-                            'height': block_number + 1,
-                            'difficulty': 2**254,
-                            'parent': parent_hash,
-                            'address': '0x'+'0'*40,
-                            'timestamp': 0,
-                        }
                         block_hash = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8')).digest()
                         console.log(block_hash)
                         conn.send(['START', block_hash, 0])
-
                     else:
                         pass
 
@@ -324,7 +329,7 @@ class MiningClient:
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce]
                     self.ws.write_message(json.dumps(message))
 
-                    state.merge('', state.pending_state)
+                    state.merge(block_hash, state.pending_state)
                     state.pending_state = {}
                     self.current_mining = None
 

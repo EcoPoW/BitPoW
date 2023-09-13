@@ -387,7 +387,8 @@ erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', ab
 
 nonce = w3.eth.get_transaction_count(account.address)
 print(nonce)
-if sys.argv[2] == 'mint':
+action = sys.argv[2]
+if action == 'mint':
     unsigned_tx = erc20.functions.mint(account.address, 1000).build_transaction({
         'from': account.address,
         'nonce': nonce,
@@ -397,15 +398,15 @@ if sys.argv[2] == 'mint':
     # print(signed_tx)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-elif sys.argv[1] == 'balance':
+elif action == 'balance':
     balance = erc20.functions.balanceOf(account.address).call()
     print('balance', balance)
 
-elif sys.argv[1] == 'totalsupply':
+elif action == 'totalsupply':
     totalsupply = erc20.functions.totalSupply().call()
     print('totalsupply', totalsupply)
 
-elif sys.argv[1] == 'approve':
+elif action == 'approve':
     unsigned_tx = erc20.functions.approve('0x0000000000000000000000000000000000000002', 1000).build_transaction({
         'from': account.address,
         'nonce': nonce,
@@ -415,11 +416,11 @@ elif sys.argv[1] == 'approve':
     # print(signed_tx)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-elif sys.argv[1] == 'allowance':
+elif action == 'allowance':
     allowance = erc20.functions.allowance(account.address, account.address).call()
     print('allowance', allowance)
 
-elif sys.argv[1] == 'transfer':
+elif action == 'transfer':
     unsigned_tx = erc20.functions.transfer('0x0000000000000000000000000000000000000002', 1000).build_transaction({
         'from': account.address,
         'nonce': nonce,
