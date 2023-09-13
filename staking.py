@@ -28,6 +28,7 @@ import contracts
 import state
 import eth_tx
 import console
+import setting
 
 
 if not os.path.exists('miners'):
@@ -111,15 +112,61 @@ class MiningClient:
                 self.ws = None
                 break
             else:
-                #console.log(msg)
+                console.log(msg)
                 seq = json.loads(msg)
-                if seq[0] == '_NEW_CHAIN_BLOCK':
+                if seq[0] == 'NEW_CHAIN_BLOCK':
                     # next_mining.append(message['name'])
                     if not self.current_mining:
                         self.current_mining = self.next_mining
                         self.next_mining = {}
                         commitment = hashlib.sha256(json.dumps(self.current_mining).encode('utf8')).digest()
                         conn.send(['START', commitment, 0])
+
+                elif seq[0] == 'NEW_CHAIN_TXBODY':
+                    pass
+
+                elif seq[0] == 'NEW_CHAIN_STATEBODY':
+                    pass
+
+                elif seq[0] == 'NEW_CHAIN_HEADER':
+                    console.log(seq[1], seq[2]['height'])
+                    contract_address = '0x0000000000000000000000000000000000000002'
+                    parent_hash = seq[1]
+                    block_height = seq[2]['height']
+                    #no = int(block_height)
+                    it = db.iteritems()
+
+                    results = {}
+                    it.seek(('globalstate_%s_' % contract_address).encode('utf8'))
+                    for k, v in it:
+                        # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
+                        if not k.startswith(('globalstate_%s_' % contract_address).encode('utf8')):
+                            break
+
+                        ks = k.decode('utf8').split('_')
+                        no = setting.REVERSED_NO - int(ks[4])
+                        height, _ = results.get(addr, (0, None))
+                        print(k, v)
+                        if no > height:
+                            results[addr] = no, json.loads(v)
+                        # if block_height and setting.REVERSED_NO - reversed_no != no:
+                        #     continue
+                    console.log(results)
+
+                    total = 0
+                    for k, v in results.items():
+                        total += v[1][0]
+                    console.log(total)
+
+                    for k, v in results.items():
+                        pos_data = {
+                            'height': block_number + 1,
+                            'parent': parent_hash,
+                            'address': k,
+                            'total': total,
+                        }
+                        block_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
+                        print(k, int.from_bytes(block_hash, byteorder='big', signed=False), v[1][0], v[1][1])
 
                 elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
                     data = seq[5]
@@ -161,7 +208,7 @@ class MiningClient:
 
                         req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
                         pool_subchains = req.json()
-                        #console.log('get_pool_subchains', req.json())
+                        console.log('get_pool_subchains', req.json())
                         req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
                         console.log('get_state_subchains', req.text)
                         state_subchains = req.json()
@@ -174,11 +221,13 @@ class MiningClient:
                             from_no = 0
                             if state_subchains[addr]:
                                 from_no = state_subchains[addr]['height']
+                            console.log('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
                             req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
                             txblocks = req.json()['blocks']
                             txblocks.reverse()
+                            console.log(txblocks)
                             last_tx_hash = None
-                            last_tx_height= None
+                            last_tx_height= 0
                             for txblock in txblocks:
                                 pprint.pprint(txblock)
                                 tx_list = txblock[4]
@@ -216,7 +265,9 @@ class MiningClient:
                                 contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
                                 last_tx_height = tx_list[0]
                                 last_tx_hash = txblock[0]
-                            txbody.append([addr, last_tx_height, last_tx_hash])
+                            
+                            if txblocks:
+                                txbody.append([addr, last_tx_height, last_tx_hash])
 
                         console.log(txbody)
                         console.log(state.pending_state)
@@ -280,6 +331,7 @@ class MiningClient:
 ps = []
 cs = []
 if __name__ == "__main__":
+    user_addr = sys.argv[1]
     conn, child_conn = multiprocessing.Pipe()
     process = multiprocessing.Process(target=pow, args=(child_conn,))
     ps.append(process)
