@@ -13,7 +13,7 @@ import pprint
 # import eth_hash.auto
 import web3
 import eth_account
-import eth_utils
+# import eth_utils
 import requests
 import hexbytes
 
@@ -33,7 +33,7 @@ import setting
 
 if not os.path.exists('miners'):
     os.makedirs('miners')
-db = rocksdb.DB('miners/staking.db', rocksdb.Options(create_if_missing=True))
+db = rocksdb.DB('miners/consensus.db', rocksdb.Options(create_if_missing=True))
 
 state.init_state(db)
 
@@ -79,24 +79,67 @@ def pow(conn):
         pass
 
 
-def mining():
-    txbody = []
-    req = requests.get('http://127.0.0.1:9001/get_chain_latest')
-    console.log('get_chain_latest', req.text)
-    obj = req.json()
-    if obj['height'] == 0:
-        parent_hash = '0'*64
-    else:
-        parent_hash = obj['blockhashes'][0]
-    block_number = obj['height']
+def pos(parent_block_hash, parent_block_number):
+    it = db.iteritems()
+    contract_address = '0x0000000000000000000000000000000000000002'
+    results = {}
+    it.seek(('globalstate_%s_' % contract_address).encode('utf8'))
+    for k, v in it:
+        # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
+        if not k.startswith(('globalstate_%s_' % contract_address).encode('utf8')):
+            break
 
+        ks = k.decode('utf8').split('_')
+        no = setting.REVERSED_NO - int(ks[4])
+        addr = ks[3]
+        height, _ = results.get(addr, (0, None))
+        print(k, v)
+        if no > height:
+            results[addr] = no, json.loads(v)
+        # if block_height and setting.REVERSED_NO - reversed_no != no:
+        #     continue
+    console.log(results)
+
+    total = 0
+    for k, v in results.items():
+        total += v[1][0]
+    console.log(total)
+
+    rank_addr = {}
+    ranks = []
+    user_rank = 0
+    for k, v in results.items():
+        pos_data = {
+            'height': parent_block_number + 1,
+            'parent': parent_block_hash,
+            'address': k,
+            'total': total,
+        }
+        pos_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
+        rank = int.from_bytes(pos_hash, byteorder='big', signed=False) // (v[1][0] * (parent_block_number - v[1][1]))
+        print(k, rank, parent_block_number - v[1][1])
+        rank_addr.setdefault(rank, []).append(k)
+        ranks.append(rank)
+
+        if k == user_addr:
+            user_rank = rank
+
+    ranks.sort()
+    print(user_addr, user_rank)
+    print(ranks)
+    if user_rank:
+        print(ranks.index(user_rank))
+
+
+def new_block(parent_block_hash, parent_block_number):
+    txbody = []
     _state = state.get_state()
-    _state.block_number = block_number + 1
+    _state.block_number = parent_block_number + 1
 
     req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
     pool_subchains = req.json()
     console.log('get_pool_subchains', req.json())
-    req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), block_number))
+    req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), parent_block_number))
     console.log('get_state_subchains', req.text)
     state_subchains = req.json()
 
@@ -168,14 +211,15 @@ def mining():
     header_data = {
         'txbody_hash': txbody_hash,
         'statebody_hash': statebody_hash,
-        'height': block_number + 1,
+        'height': parent_block_number + 1,
         'difficulty': 2**254,
-        'parent': parent_hash,
+        'parent': parent_block_hash,
         'address': user_addr,
         'timestamp': 0,
     }
 
     return header_data, txbody_json, statebody_json
+
 
 class MiningClient:
     def __init__(self, url, timeout):
@@ -227,59 +271,10 @@ class MiningClient:
                     pass
 
                 elif seq[0] == 'NEW_CHAIN_HEADER':
-                    console.log(seq[1], seq[2]['height'])
-                    contract_address = '0x0000000000000000000000000000000000000002'
-                    parent_hash = seq[1]
-                    block_number = seq[2]['height']
-                    it = db.iteritems()
-
-                    results = {}
-                    it.seek(('globalstate_%s_' % contract_address).encode('utf8'))
-                    for k, v in it:
-                        # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
-                        if not k.startswith(('globalstate_%s_' % contract_address).encode('utf8')):
-                            break
-
-                        ks = k.decode('utf8').split('_')
-                        no = setting.REVERSED_NO - int(ks[4])
-                        addr = ks[3]
-                        height, _ = results.get(addr, (0, None))
-                        print(k, v)
-                        if no > height:
-                            results[addr] = no, json.loads(v)
-                        # if block_height and setting.REVERSED_NO - reversed_no != no:
-                        #     continue
-                    console.log(results)
-
-                    total = 0
-                    for k, v in results.items():
-                        total += v[1][0]
-                    console.log(total)
-
-                    rank_addr = {}
-                    ranks = []
-                    user_rank = 0
-                    for k, v in results.items():
-                        pos_data = {
-                            'height': block_number + 1,
-                            'parent': parent_hash,
-                            'address': k,
-                            'total': total,
-                        }
-                        pos_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
-                        rank = int.from_bytes(pos_hash, byteorder='big', signed=False) // (v[1][0] * (block_number - v[1][1]))
-                        print(k, rank, block_number - v[1][1])
-                        rank_addr.setdefault(rank, []).append(k)
-                        ranks.append(rank)
-
-                        if k == user_addr:
-                            user_rank = rank
-
-                    ranks.sort()
-                    print(user_addr, user_rank)
-                    print(ranks)
-                    if user_rank:
-                        print(ranks.index(user_rank))
+                    parent_block_hash = seq[1]
+                    parent_block_number = seq[2]['height']
+                    console.log(parent_block_hash, parent_block_number)
+                    pos(parent_block_hash, parent_block_number)
 
                 elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
                     data = seq[5]
@@ -306,11 +301,35 @@ class MiningClient:
                             #print('current_mining', current_mining)
                             console.log('current_mining[addr]', addr, self.current_mining[addr])
 
-                        self.header_data, self.txbody_json, self.statebody_json = mining()
 
-                        block_hash = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8')).digest()
+                        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                        console.log('get_chain_latest', req.text)
+                        obj = req.json()
+                        if obj['height'] == 0:
+                            parent_block_hash = '0'*64
+                        else:
+                            parent_block_hash = obj['blockhashes'][0]
+                        parent_block_number = obj['height']
+
+                        self.header_data, self.txbody_json, self.statebody_json = new_block(parent_block_hash, parent_block_number)
+
+                        block_hash_obj = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8'))
+                        block_hash = block_hash_obj.hexdigest()
                         console.log(block_hash)
-                        conn.send(['START', block_hash, 0])
+                        if setting.POW:
+                            conn.send(['START', block_hash_obj.digest(), 0])
+                        else:
+                            pos(parent_block_hash, parent_block_number)
+                            message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
+                            self.ws.write_message(json.dumps(message))
+                            message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
+                            self.ws.write_message(json.dumps(message))
+                            message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, -1]
+                            self.ws.write_message(json.dumps(message))
+
+                            state.merge(block_hash, state.pending_state)
+                            state.pending_state = {}
+                            self.current_mining = None
                     else:
                         pass
 
@@ -327,10 +346,10 @@ class MiningClient:
                 if m[0] == 'DONE':
                     # continue
                     console.log(m)
-                    block_hash = m[1]
+                    block_hash_bytes = m[1]
                     end = m[3]
-                    console.log(block_hash)
-                    conn.send(['START', block_hash, end])
+                    console.log(block_hash_bytes)
+                    conn.send(['START', block_hash_bytes, end])
 
                 elif m[0] == 'FOUND':
                     # submit to chain

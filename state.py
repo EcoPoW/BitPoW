@@ -18,33 +18,33 @@ class State:
     def put(self, key, value, addr):
         global pending_state
         value_json = tornado.escape.json_encode(value)
-        console.log('globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, str(10**15 - self.block_number).zfill(16)), value_json)
+        # console.log('globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, str(10**15 - self.block_number).zfill(16)), value_json)
         pending_state['globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, self.block_number)] = value_json
 
     # def __getitem__(self, key):
     def get(self, key, default, addr):
         global pending_state
         value = default
-        console.log(self.block_number)
-        console.log(self.contract_address)
-        console.log(pending_state)
+        # console.log(self.block_number)
+        # console.log(self.contract_address)
+        # console.log(pending_state)
         k = 'globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, self.block_number)
-        console.log(k)
+        # console.log(k)
         if k in pending_state:
             value_json = pending_state[k]
-            console.log(value_json)
+            # console.log(value_json)
             value = tornado.escape.json_decode(value_json)
             return value
 
         it = db.iteritems()
-        console.log(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8'))
+        # console.log(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8'))
         it.seek(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8'))
 
         # value_json = _trie.get(b'state_%s_%s' % (contract_address, key.encode('utf8')))
         for k, value_json in it:
             if k.startswith(('globalstate_%s_%s_%s' % (self.contract_address, key, addr)).encode('utf8')):
                 # block_number = 10**15 - int(k.replace(b'%s_%s_' % (contract_address, key.encode('utf8')), b''))
-                console.log(k, value_json)
+                # console.log(k, value_json)
                 # try:
                 value = tornado.escape.json_decode(value_json)
                 # except:
@@ -54,8 +54,8 @@ class State:
         return value
 
 def call(addr, fn, params):
-    console.log(addr, fn, params)
-    console.log(contracts.vm_map[addr])
+    # console.log(addr, fn, params)
+    # console.log(contracts.vm_map[addr])
     type_params = []
     for k, v in zip(contracts.type_map[addr][fn], params):
         print('type', k, v)
@@ -75,9 +75,9 @@ def call(addr, fn, params):
 
 def merge(block_hash, pending_state):
     global db
-    console.log('merge')
+    # console.log('merge')
     for k, v in pending_state.items():
-        console.log(k,v)
+        # console.log(k,v)
         _, contract_address, key, addr, block_number = k.split('_')
         db.put(('globalstate_%s_%s_%s_%s_%s' % (contract_address, key, addr, str(10**15 - int(block_number)).zfill(16), block_hash)).encode('utf8'), v.encode('utf8'))
     pending_state = {}
