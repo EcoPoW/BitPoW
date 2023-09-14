@@ -218,47 +218,37 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 tx_to = web3.Web3.to_checksum_address(tx.to)
                 tx_data = web3.Web3.to_hex(tx.data)
                 tx_nonce = tx.nonce
-            # print('eth_rlp2list', tx_list, vrs)
-            # print('nonce', tx.nonce)
+
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
+            # latest_block_height = chain.get_latest_block_number()
 
-            # highest_block_height, highest_block_hash, highest_block = chain.get_highest_block()
-            latest_block_height = chain.get_latest_block_number()
-
-            _state = state.get_state()
-            _state.block_number = latest_block_height
-            contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
-            contracts.vm_map[tx_to].global_vars['_call'] = state.call
-            contracts.vm_map[tx_to].global_vars['_state'] = _state
-            _state.sender = tx_from
-            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
-            _state.contract_address = tx_to
-            contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+            # _state = state.get_state()
+            # _state.block_number = latest_block_height
+            # contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
+            # contracts.vm_map[tx_to].global_vars['_call'] = state.call
+            # contracts.vm_map[tx_to].global_vars['_state'] = _state
+            # _state.sender = tx_from
+            # contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+            # _state.contract_address = tx_to
+            # contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
 
 
-            # print('tx_from', tx_from)
-            # print('tx.to', tx.to)
-            # print('tx_to', tx_to)
-            # print('txhash', tx_hash)
-            # print('tx.data', tx.data)
-            # contract = contract_map[tx_to.lower()]
-            result = '0x'
+            # result = '0x'
+            # func_sig = tx_data[:10]
+            # # print(interface_map[func_sig], tx_data)
+            # func_params_data = tx_data[10:]
+            # func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
+            # print('func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
+            # type_params = []
+            # for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
+            #     # print('type', k, v)
+            #     if k == 'address':
+            #         type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
+            #     elif k == 'uint256':
+            #         type_params.append(web3.Web3.to_int(hexstr=v))
 
-            func_sig = tx_data[:10]
-            # print(interface_map[func_sig], tx_data)
-            func_params_data = tx_data[10:]
-            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-            print('func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
-            type_params = []
-            for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
-                # print('type', k, v)
-                if k == 'address':
-                    type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
-                elif k == 'uint256':
-                    type_params.append(web3.Web3.to_int(hexstr=v))
-
-            # result = interface_map[func_sig](*func_params)
-            contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
+            # # result = interface_map[func_sig](*func_params)
+            # contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
 
             prev_hash = '0'*64
             db = database.get_conn()

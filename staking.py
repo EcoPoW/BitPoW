@@ -231,7 +231,6 @@ class MiningClient:
                     contract_address = '0x0000000000000000000000000000000000000002'
                     parent_hash = seq[1]
                     block_number = seq[2]['height']
-                    #no = int(block_height)
                     it = db.iteritems()
 
                     results = {}
@@ -243,6 +242,7 @@ class MiningClient:
 
                         ks = k.decode('utf8').split('_')
                         no = setting.REVERSED_NO - int(ks[4])
+                        addr = ks[3]
                         height, _ = results.get(addr, (0, None))
                         print(k, v)
                         if no > height:
@@ -256,6 +256,9 @@ class MiningClient:
                         total += v[1][0]
                     console.log(total)
 
+                    rank_addr = {}
+                    ranks = []
+                    user_rank = 0
                     for k, v in results.items():
                         pos_data = {
                             'height': block_number + 1,
@@ -263,8 +266,20 @@ class MiningClient:
                             'address': k,
                             'total': total,
                         }
-                        block_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
-                        print(k, int.from_bytes(block_hash, byteorder='big', signed=False), v[1][0], v[1][1])
+                        pos_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
+                        rank = int.from_bytes(pos_hash, byteorder='big', signed=False) // (v[1][0] * (block_number - v[1][1]))
+                        print(k, rank, block_number - v[1][1])
+                        rank_addr.setdefault(rank, []).append(k)
+                        ranks.append(rank)
+
+                        if k == user_addr:
+                            user_rank = rank
+
+                    ranks.sort()
+                    print(user_addr, user_rank)
+                    print(ranks)
+                    if user_rank:
+                        print(ranks.index(user_rank))
 
                 elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
                     data = seq[5]
