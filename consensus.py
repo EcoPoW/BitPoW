@@ -41,7 +41,6 @@ state.init_state(db)
 def pow(conn):
     start = 0
     try:
-        d = 6
         sleep = True
         while True:
             if conn.poll():
@@ -50,7 +49,7 @@ def pow(conn):
                     console.log('start', m)
                     block_hash = m[1]
                     start = m[2]
-                    #difficulty = m[3]
+                    target = m[3]
                     sleep = False
                 elif m[0] == 'STOP':
                     sleep = True
@@ -65,14 +64,15 @@ def pow(conn):
             for nonce in range(start, start+10000000):
                 if nonce % 100000 == 0:
                     print(nonce)
-                h = hashlib.sha256(block_hash + str(nonce).encode('utf8')).hexdigest()
-                if h.startswith('0'*d):
-                    console.log(h, nonce)
-                    conn.send(['FOUND', block_hash, nonce])
+                pow_hash= hashlib.sha256(block_hash + str(nonce).encode('utf8')).digest()
+                difficulty = int.from_bytes(pow_hash, byteorder='big', signed=False)
+                if difficulty <= target:
+                    console.log(pow_hash.hex(), nonce)
+                    conn.send(['FOUND', block_hash, nonce, difficulty])
                     sleep = True
                     break
             else:
-                conn.send(['DONE', block_hash, start, start+10000000])
+                conn.send(['DONE', block_hash, start, start+10000000, target])
                 sleep = True
 
     except:
@@ -130,6 +130,7 @@ def pos(parent_block_hash, parent_block_number):
     if user_rank:
         print(ranks.index(user_rank))
 
+    return user_rank
 
 def new_block(parent_block_hash, parent_block_number):
     txbody = []
@@ -231,7 +232,8 @@ class MiningClient:
         self.header_data = None
 
         self.connect()
-        tornado.ioloop.PeriodicCallback(self.keep_alive, 20000).start()
+        tornado.ioloop.PeriodicCallback(self.keep_alive, 3000).start()
+        tornado.ioloop.PeriodicCallback(self.pos, 5000).start()
         tornado.ioloop.PeriodicCallback(self.poll, 100).start()
 
     @tornado.gen.coroutine
@@ -253,55 +255,67 @@ class MiningClient:
                 console.log("connection closed")
                 self.ws = None
                 break
-            else:
-                console.log(msg)
-                seq = json.loads(msg)
-                if seq[0] == 'NEW_CHAIN_BLOCK':
-                    # next_mining.append(message['name'])
-                    if not self.current_mining:
-                        self.current_mining = self.next_mining
-                        self.next_mining = {}
-                        commitment = hashlib.sha256(json.dumps(self.current_mining).encode('utf8')).digest()
-                        conn.send(['START', commitment, 0])
 
-                elif seq[0] == 'NEW_CHAIN_TXBODY':
-                    pass
+            console.log(msg)
+            seq = json.loads(msg)
+            if seq[0] == 'NEW_CHAIN_TXBODY':
+                pass
 
-                elif seq[0] == 'NEW_CHAIN_STATEBODY':
-                    pass
+            elif seq[0] == 'NEW_CHAIN_STATEBODY':
+                pass
 
-                elif seq[0] == 'NEW_CHAIN_HEADER':
-                    parent_block_hash = seq[1]
-                    parent_block_number = seq[2]['height']
-                    console.log(parent_block_hash, parent_block_number)
-                    pos(parent_block_hash, parent_block_number)
+            elif seq[0] == 'NEW_CHAIN_HEADER':
+                parent_block_hash = seq[1]
+                parent_block_number = seq[2]['height']
+                console.log(parent_block_hash, parent_block_number)
 
-                elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
-                    data = seq[5]
-                    count = data[0]
-                    signature = seq[6]
-                    eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
-                    signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
-                    pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
-                    sender = pubkey.to_checksum_address()
-                    console.log('sender', sender, 'count', count)
-                    console.log('data', data)
+                #state.merge(block_hash, state.pending_state)
+                state.pending_state = {}
+                #self.current_mining = None
 
-                    txs = self.next_mining.setdefault(sender, [])
-                    txs.append(data)
-                    #statebody = {}
-                    #print('txs', txs)
+                if setting.POW:
+                    # stop if mining
+                    req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                    console.log('get_chain_latest', req.text)
+                    obj = req.json()
+                    if obj['height'] == 0:
+                        parent_block_hash = '0'*64
+                    else:
+                        parent_block_hash = obj['blockhashes'][0]
+                    parent_block_number = obj['height']
+
+                    self.header_data, self.txbody_json, self.statebody_json = new_block(parent_block_hash, parent_block_number)
+                    block_hash_obj = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8'))
+                    block_hash = block_hash_obj.hexdigest()
+                    console.log(block_hash)
+                    conn.send(['START', block_hash_obj.digest(), 0, 2**230])
+
+            elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
+                data = seq[5]
+                count = data[0]
+                signature = seq[6]
+                eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+                signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+                pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+                sender = pubkey.to_checksum_address()
+                console.log('sender', sender, 'count', count)
+                console.log('data', data)
+
+                txs = self.next_mining.setdefault(sender, [])
+                txs.append(data)
+                #statebody = {}
+                #print('txs', txs)
+                console.log('current_mining', self.current_mining)
+                if not self.current_mining:
+                    self.current_mining = self.next_mining
+                    self.next_mining = {}
                     console.log('current_mining', self.current_mining)
-                    if not self.current_mining:
-                        self.current_mining = self.next_mining
-                        self.next_mining = {}
-                        console.log('current_mining', self.current_mining)
 
-                        for addr in self.current_mining:
-                            #print('current_mining', current_mining)
-                            console.log('current_mining[addr]', addr, self.current_mining[addr])
+                    for addr in self.current_mining:
+                        #print('current_mining', current_mining)
+                        console.log('current_mining[addr]', addr, self.current_mining[addr])
 
-
+                    if setting.POW:
                         req = requests.get('http://127.0.0.1:9001/get_chain_latest')
                         console.log('get_chain_latest', req.text)
                         obj = req.json()
@@ -312,26 +326,11 @@ class MiningClient:
                         parent_block_number = obj['height']
 
                         self.header_data, self.txbody_json, self.statebody_json = new_block(parent_block_hash, parent_block_number)
-
                         block_hash_obj = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8'))
                         block_hash = block_hash_obj.hexdigest()
                         console.log(block_hash)
-                        if setting.POW:
-                            conn.send(['START', block_hash_obj.digest(), 0])
-                        else:
-                            pos(parent_block_hash, parent_block_number)
-                            message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
-                            self.ws.write_message(json.dumps(message))
-                            message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
-                            self.ws.write_message(json.dumps(message))
-                            message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, -1]
-                            self.ws.write_message(json.dumps(message))
+                        conn.send(['START', block_hash_obj.digest(), 0, 2**230])
 
-                            state.merge(block_hash, state.pending_state)
-                            state.pending_state = {}
-                            self.current_mining = None
-                    else:
-                        pass
 
     def keep_alive(self):
         if self.ws is None:
@@ -348,24 +347,63 @@ class MiningClient:
                     console.log(m)
                     block_hash_bytes = m[1]
                     end = m[3]
-                    console.log(block_hash_bytes)
-                    conn.send(['START', block_hash_bytes, end])
+                    target = m[4]
+                    console.log(block_hash_bytes.hex())
+                    conn.send(['START', block_hash_bytes, end, target])
 
                 elif m[0] == 'FOUND':
                     # submit to chain
                     console.log(m)
                     block_hash = m[1].hex()
                     nonce = m[2]
+                    difficulty = m[3]
                     message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
                     self.ws.write_message(json.dumps(message))
                     message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
                     self.ws.write_message(json.dumps(message))
-                    message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce]
+                    message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce, difficulty]
                     self.ws.write_message(json.dumps(message))
 
                     state.merge(block_hash, state.pending_state)
                     state.pending_state = {}
                     self.current_mining = None
+
+    def pos(self):
+        if setting.POW:
+            return
+
+        #state.merge(block_hash, state.pending_state)
+        #state.pending_state = {}
+
+        self.current_mining = self.next_mining
+        self.next_mining = {}
+        console.log('current_mining', self.current_mining)
+
+        for addr in self.current_mining:
+            #print('current_mining', current_mining)
+            console.log('current_mining[addr]', addr, self.current_mining[addr])
+
+        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+        console.log('get_chain_latest', req.text)
+        obj = req.json()
+        if obj['height'] == 0:
+            parent_block_hash = '0'*64
+        else:
+            parent_block_hash = obj['blockhashes'][0]
+        parent_block_number = obj['height']
+
+        self.header_data, self.txbody_json, self.statebody_json = new_block(parent_block_hash, parent_block_number)
+        block_hash_obj = hashlib.sha256(json.dumps(self.header_data, sort_keys=True).encode('utf8'))
+        block_hash = block_hash_obj.hexdigest()
+        console.log(block_hash)
+
+        user_rank = pos(parent_block_hash, parent_block_number)
+        message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
+        self.ws.write_message(json.dumps(message))
+        message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
+        self.ws.write_message(json.dumps(message))
+        message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, -1, user_rank]
+        self.ws.write_message(json.dumps(message))
 
 ps = []
 cs = []

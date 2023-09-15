@@ -1,6 +1,7 @@
 
 #import traceback
 import inspect
+import pprint
 
 def log(*t):
     print()
@@ -12,7 +13,8 @@ def log(*t):
     #    func = line.split('\n')[1].strip()
     #    funcs.append(func)
     #print('> '+'\n> '.join(funcs[:-2]))
-    print(*t)
+    for i in list(t):
+        pprint.pprint(i)
 
 def prt(*t):
     print()

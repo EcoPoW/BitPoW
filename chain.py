@@ -413,7 +413,7 @@ def new_chain_block(seq):
 
 def new_chain_header(seq):
     console.log(seq)
-    _header, block_hash, header_data, block_nonce = seq
+    _header, block_hash, header_data, block_nonce, difficulty = seq
     txbody_hash = header_data['txbody_hash']
     statebody_hash = header_data['statebody_hash']
     height = header_data['height']
