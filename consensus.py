@@ -116,8 +116,11 @@ def pos(parent_block_hash, parent_block_number):
             'total': total,
         }
         pos_hash = hashlib.sha256(json.dumps(pos_data, sort_keys=True).encode('utf8')).digest()
-        rank = int.from_bytes(pos_hash, byteorder='big', signed=False) // (v[1][0] * (parent_block_number - v[1][1]))
-        print(k, rank, parent_block_number - v[1][1])
+        staking_value = v[1][0]
+        staking_coinage = parent_block_number + 1 - v[1][1]
+        print(staking_value, staking_coinage)
+        rank = int.from_bytes(pos_hash, byteorder='big', signed=False) // (staking_value * staking_coinage)
+        print(k, rank)
         rank_addr.setdefault(rank, []).append(k)
         ranks.append(rank)
 
@@ -233,7 +236,7 @@ class MiningClient:
 
         self.connect()
         tornado.ioloop.PeriodicCallback(self.keep_alive, 3000).start()
-        tornado.ioloop.PeriodicCallback(self.pos, 5000).start()
+        tornado.ioloop.PeriodicCallback(self.pos, 10000).start()
         tornado.ioloop.PeriodicCallback(self.poll, 100).start()
 
     @tornado.gen.coroutine
@@ -372,9 +375,6 @@ class MiningClient:
         if setting.POW:
             return
 
-        #state.merge(block_hash, state.pending_state)
-        #state.pending_state = {}
-
         self.current_mining = self.next_mining
         self.next_mining = {}
         console.log('current_mining', self.current_mining)
@@ -397,7 +397,11 @@ class MiningClient:
         block_hash = block_hash_obj.hexdigest()
         console.log(block_hash)
 
+        state.merge(block_hash, state.pending_state)
+        state.pending_state = {}
+
         user_rank = pos(parent_block_hash, parent_block_number)
+        console.log(user_rank)
         message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
         self.ws.write_message(json.dumps(message))
         message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]

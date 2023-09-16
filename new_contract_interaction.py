@@ -231,7 +231,7 @@ w3 = web3.Web3(web3.Web3.HTTPProvider('http://127.0.0.1:9001/'))
 #     }
 # ]'''
 
-contract_abi = '''[
+erc20_abi = '''[
     {
         "constant": true,
         "inputs": [],
@@ -358,6 +358,36 @@ contract_abi = '''[
     }
 ]'''
 
+
+staking_abi = '''[
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_owner", "type": "address"},
+            {"name": "_spender", "type": "address"}
+        ],
+        "name": "unstake",
+        "outputs": [
+            {"name": "", "type": "uint256"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "stake",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]'''
+
+
 keyfile_name = sys.argv[1]
 try:
     f = open(keyfile_name, 'rt')
@@ -379,7 +409,8 @@ except:
 
 # print('keyfile_json', keyfile_json)
 
-erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', abi=contract_abi)
+erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', abi=erc20_abi)
+staking = w3.eth.contract(address='0x0000000000000000000000000000000000000002', abi=staking_abi)
 
 
 # mint = erc20.functions.mint('0x0000000000000000000000000000000000000001', 1000).transact()
@@ -387,46 +418,58 @@ erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', ab
 
 nonce = w3.eth.get_transaction_count(account.address)
 print(nonce)
-action = sys.argv[2]
-if action == 'mint':
-    unsigned_tx = erc20.functions.mint(account.address, 1000).build_transaction({
-        'from': account.address,
-        'nonce': nonce,
-    })
-    # print(unsigned_tx)
-    signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
-    # print(signed_tx)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+for action in sys.argv[2:]:
+    if action == 'mint':
+        unsigned_tx = erc20.functions.mint(account.address, 1000).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-elif action == 'balance':
-    balance = erc20.functions.balanceOf(account.address).call()
-    print('balance', balance)
+    elif action == 'balance':
+        balance = erc20.functions.balanceOf(account.address).call()
+        print('balance', balance)
 
-elif action == 'totalsupply':
-    totalsupply = erc20.functions.totalSupply().call()
-    print('totalsupply', totalsupply)
+    elif action == 'totalsupply':
+        totalsupply = erc20.functions.totalSupply().call()
+        print('totalsupply', totalsupply)
 
-elif action == 'approve':
-    unsigned_tx = erc20.functions.approve('0x0000000000000000000000000000000000000002', 1000).build_transaction({
-        'from': account.address,
-        'nonce': nonce,
-    })
-    # print(unsigned_tx)
-    signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
-    # print(signed_tx)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    elif action == 'approve':
+        unsigned_tx = erc20.functions.approve('0x0000000000000000000000000000000000000002', 1000).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-elif action == 'allowance':
-    allowance = erc20.functions.allowance(account.address, account.address).call()
-    print('allowance', allowance)
+    elif action == 'allowance':
+        allowance = erc20.functions.allowance(account.address, account.address).call()
+        print('allowance', allowance)
 
-elif action == 'transfer':
-    unsigned_tx = erc20.functions.transfer('0x0000000000000000000000000000000000000002', 1000).build_transaction({
-        'from': account.address,
-        'nonce': nonce,
-    })
-    # print(unsigned_tx)
-    signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
-    # print(signed_tx)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    elif action == 'transfer':
+        unsigned_tx = erc20.functions.transfer('0x0000000000000000000000000000000000000002', 1000).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
+
+    elif action == 'stake':
+        unsigned_tx = staking.functions.stake(1000).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    nonce += 1
