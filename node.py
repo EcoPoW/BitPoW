@@ -345,7 +345,6 @@ class TraceHandler(tornado.web.RequestHandler):
 
 def main():
     tree.main()
-    # fs.main()
 
     server = Application()
     server.listen(tree.current_port, '0.0.0.0')

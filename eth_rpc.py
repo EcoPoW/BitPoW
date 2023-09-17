@@ -25,8 +25,6 @@ import console
 import setting
 
 
-state.init_state(database.get_conn())
-
 # class ProxyEthRpcHandler(tornado.web.RequestHandler):
 #     def options(self):
 #         pass
@@ -389,3 +387,5 @@ class EthRpcHandler(tornado.web.RequestHandler):
 
         # print(resp)
         self.write(tornado.escape.json_encode(resp))
+
+

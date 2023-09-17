@@ -23,6 +23,7 @@ import mine
 import chain
 import database
 import eth_rpc
+import state
 import console
 
 # import ecdsa
@@ -549,11 +550,15 @@ def main():
     if not args.name:
         print('--name reqired')
         sys.exit()
+
     current_name = args.name
-    json_data = {}
+    db = database.get_conn(current_name)
+    state.init_state(db)
 
     if not os.path.exists('miners'):
         os.makedirs('miners')
+
+    json_data = {}
     if os.path.exists('miners/%s.json' % current_name):
         with open('miners/%s.json' % current_name) as f:
             json_data = tornado.escape.json_decode(f.read())
@@ -594,7 +599,6 @@ def main():
             no = int(current_port) - setting.DASHBOARD_PORT
             parent_port = (no >> 1) + setting.DASHBOARD_PORT
 
-    database.main()
 
     sk_filename = "miners/%s.key" % current_name
     if os.path.exists(sk_filename):

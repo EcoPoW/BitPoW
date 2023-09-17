@@ -15,9 +15,3 @@ def get_conn(current_name = None):
     conn = rocksdb.DB('miners/%s.db' % current_name, rocksdb.Options(create_if_missing=True))
     return conn
 
-
-def main():
-    import tree
-    if not tree.current_name:
-        return
-    get_conn(tree.current_name)
