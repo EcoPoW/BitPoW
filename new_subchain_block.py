@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 import os
 import time
@@ -15,6 +14,7 @@ import json
 import requests
 # import ecdsa
 import eth_keys
+import eth_account
 
 
 users = {}
@@ -30,7 +30,7 @@ def main(width, count):
 
 
         sender_address = user_sk.public_key.to_checksum_address()
-        rsp = requests.get('http://127.0.0.1:9001/get_highest_subchain_block_hash?sender=%s' % sender_address)
+        rsp = requests.get('http://127.0.0.1:9001/get_subchain_latest?sender=%s' % sender_address)
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
         rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
@@ -40,7 +40,7 @@ def main(width, count):
     f.close()
 
     # print(subchain_blockhash)
-    rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
+    rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
     block_hash_before_transactions = rsp.json()['hash']
 
     # print('')
@@ -96,7 +96,7 @@ def main(width, count):
     last_transaction_block_hash = block_hash
     print('lets wait')
     while True:
-        rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
+        rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
         block_hash = rsp.json()['hash']
         rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
         block = rsp.json()['block']
@@ -105,7 +105,7 @@ def main(width, count):
         time.sleep(1)
 
     while True:
-        rsp = requests.get('http://127.0.0.1:9001/get_highest_block_hash')
+        rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
         block_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
         rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)

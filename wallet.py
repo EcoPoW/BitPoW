@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 import sys
 import os
@@ -74,7 +73,7 @@ def main():
         account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender_address = account.address
 
-        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
+        rsp = requests.get('http://%s:%s/get_subchain_latest?sender=%s' % (host, port, sender_address))
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))
@@ -119,7 +118,7 @@ def main():
         # receiver = sender
         receiver = '0x'
 
-        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender))
+        rsp = requests.get('http://%s:%s/get_subchain_latest?sender=%s' % (host, port, sender))
         highest_subchain_hash = rsp.json()['hash']
         block_hash = highest_subchain_hash
         print('sender', sender)
@@ -191,7 +190,7 @@ def main():
         account = web3.eth.Account.from_key(open(key, 'r').read().strip())
         sender_address = account.address
 
-        rsp = requests.get('http://%s:%s/get_highest_subchain_block_hash?sender=%s' % (host, port, sender_address))
+        rsp = requests.get('http://%s:%s/get_subchain_latest?sender=%s' % (host, port, sender_address))
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
         rsp = requests.get('http://%s:%s/get_subchain_block?hash=%s' % (host, port, prev_hash))

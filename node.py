@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 import os
 import time
@@ -16,11 +15,10 @@ import tornado.escape
 
 import setting
 import tree
-import miner
+import mine
 import chain
 import database
-import rpc
-import chat
+import eth_rpc
 
 tracemalloc.start()
 
@@ -31,51 +29,36 @@ class Application(tornado.web.Application):
                     (r"/nodes_available", AvailableNodesHandler),
                     (r"/get_node", GetNodeHandler),
 
-                    (r"/get_highest_block_hash", chain.GetHighestBlockHashHandler),
-                    (r"/get_highest_block_state", chain.GetHighestBlockStateHandler),
-                    (r"/get_block", chain.GetBlockHandler),
-                    (r"/get_block_state", chain.GetBlockStateHandler),
-                    # (r"/get_proof", chain.GetProofHandler),
+                    (r"/get_chain_latest", chain.GetChainLatestHashHandler),
+                    (r"/get_chain_block", chain.GetChainBlockHandler),
+                    (r"/get_state_subchains", chain.GetStateSubchainsHandler),
+                    (r"/get_state_contracts", chain.GetStateContractsHandler),
+                    (r"/get_pool_subchains", chain.GetPoolSubchainsHandler),
+                    (r"/get_pool_blocks", chain.GetPoolBlocksHandler),
 
-                    (r"/get_highest_subchain_block_hash", chain.GetHighestSubchainBlockHashHandler),
-                    (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
-                    (r"/get_subchain_block", chain.GetSubchainBlockHandler),
+                    # (r"/get_subchain_latest", chain.GetHighestSubchainBlockHashHandler),
+                    # (r"/get_highest_subchain_block_state", chain.GetHighestSubchainBlockStateHandler),
+                    # (r"/get_subchain_block", chain.GetSubchainBlockHandler),
+                    # (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
                     (r"/new_subchain_block", NewSubchainBlockHandler),
                     (r"/new_subchain_block_batch", NewSubchainBlockBatchHandler),
-                    (r"/get_subchain_block_state", chain.GetSubchainBlockStateHandler),
-
-                    (r"/get_highest_tempchain_block_hash", chain.GetHighestTempchainBlockHashHandler),
-                    (r"/get_tempchain_block", chain.GetTempchainBlockHandler),
-                    (r"/new_tempchain_block", NewTempchainBlockHandler),
-                    (r"/get_tempchain_block_state", chain.GetTempchainBlockStateHandler),
 
                     (r"/dashboard", DashboardHandler),
-                    (r"/chain_view", ChainExplorerHandler),
+                    (r"/chain_blocks", ChainBlocksHandler),
+                    (r"/chain_block", ChainBlockHandler),
                     (r"/subchain_list", SubchainListHandler),
-                    (r"/subchain_view", SubchainViewHandler),
-                    # (r"/tempchain_list", TempchainListHandler),
-                    # (r"/tempchain_view", TempchainViewHandler),
+                    (r"/subchain_blocks", SubchainBlocksHandler),
 
                     (r"/scan/address/(.*)", ScanAddressHandler),
                     (r"/scan/tx/(.*)", ScanTxHandler),
-
-                    (r"/faucet", TempchainViewHandler),
-                    (r"/send", TempchainViewHandler),
 
                     # (r"/disconnect", DisconnectHandler),
                     # (r"/broadcast", BroadcastHandler),
                     # (r"/upload_chunk", UploadChunkHandler),
                     (r"/tracemalloc", TraceHandler),
-                    # (r"/eth_rpc", rpc.EthRpcHandler),
-                    # (r"/", rpc.ProxyEthRpcHandler),
-                    (r"/", rpc.EthRpcHandler),
-                    # (r"/chat_contact_new", chat.ChatContactNewHandler),
-                    # (r"/chat_contact_remove", chat.ChatContactRemoveHandler),
-                    # (r"/chat_group_new", DashboardHandler),
-                    # (r"/chat_group_join", DashboardHandler),
-                    # (r"/chat_group_leave", DashboardHandler),
-                    # (r"/chat_group_kick", DashboardHandler),
-                    # (r"/chat_msg_new", DashboardHandler),
+                    # (r"/eth_rpc", eth_rpc.EthRpcHandler),
+                    # (r"/", eth_rpc.ProxyEthRpcHandler),
+                    (r"/", eth_rpc.EthRpcHandler),
                     # (r"/", MainHandler),
                 ]
         settings = {"debug":True}
@@ -168,20 +151,6 @@ class NewSubchainBlockBatchHandler(tornado.web.RequestHandler):
         # self.finish({"block": block})
         self.finish({})
 
-class NewTempchainBlockHandler(tornado.web.RequestHandler):
-    # def get(self):
-    #     block =  ["58745b596bcfc8376527fd37cb2ca34224ff4d1d4f1d41053a889742f4bc77a8", "0000000000000000000000000000000000000000000000000000000000000000", "0xb88744C14D2E92cC653493df18bEF2E4b263c1FD", "0x504E18e367F32050951452Affc56082847628d28", 1, {"amount": 6}, 1633745105.8568707, "0x64a7f9a8b19cfd7597ecc6a49ada434b2101a7a8afc0ac78e59a59af3152eedc1a26e9a9b660373b8eae7bc2c646b393f0a51bd904e5a16336ebc3c3d77710c401"]
-    #     chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
-    #     tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
-    #     self.finish({"block": block})
-
-    def post(self):
-        block = tornado.escape.json_decode(self.request.body)
-
-        chain.new_tempchain_block(['NEW_TEMPCHAIN_BLOCK'] + block)
-        tree.forward(['NEW_TEMPCHAIN_BLOCK'] + block) # + [time.time(), uuid.uuid4().hex]
-        self.finish({"block": block})
-
 
 class DashboardHandler(tornado.web.RequestHandler):
     def get(self):
@@ -189,7 +158,7 @@ class DashboardHandler(tornado.web.RequestHandler):
         nodes_available.sort(key=lambda l:len(l[2]))
 
         parents = []
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('<br><br>current_nodeid: %s <br>' % tree.current_nodeid)
@@ -249,47 +218,58 @@ class DashboardHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class ChainExplorerHandler(tornado.web.RequestHandler):
+class ChainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
-        block_hash = self.get_argument('hash', None)
+        block_height = self.get_argument('height', None)
         db = database.get_conn()
-        if not block_hash:
-            block_hash = db.get(b'chain')
-        else:
-            block_hash = block_hash.encode('utf8')
-
-        if not block_hash:
-            self.write('hash required')
-            return
 
         self.write('<a href="/dashboard">Dashboard</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
 
-        for i in range(10):
-            block_json = db.get(b'block_%s' % block_hash)
-            if not block_json:
-                return
-
-            block = tornado.escape.json_decode(block_json)
-            block_hash = block[chain.PREV_HASH].encode('utf8')
-
-            self.write("<a href='/get_block_state?hash=%s'>%s</a><br>" % (block[0], block[2]))
-            self.write("<code>%s</code><br><br>" % block_json)
-            # blockstate_json = db.get(b'blockstate_%s' % block_hash)
-            # self.write("<code>%s</code><br><br><br>" % blockstate_json)
-
-        self.write("<a href='/chain_view?hash=%s'>Next</a><br>" % block_hash.decode('utf8'))
+        it = db.iteritems()
+        it.seek(b'headerblock_')
+        for key, value in it:
+            if not key.decode('utf8').startswith('headerblock_'):
+                break
+            header = tornado.escape.json_decode(value)
+            block_hash = header[0]
+            header_data = header[1]
+            height = header_data['height']
+            self.write("<a href='/chain_block?height=%s&hash=%s'>%s</a><br>" % (height, block_hash, key, ))
+            self.write("%s<br><br>" % (header_data, ))
+            self.write("%s<br><br>" % (value, ))
 
 
-class SubchainViewHandler(tornado.web.RequestHandler):
+class ChainBlockHandler(tornado.web.RequestHandler):
+    def get(self):
+        block_height = self.get_argument('height', None)
+        block_hash= self.get_argument('hash', None)
+        db = database.get_conn()
+
+        self.write('<a href="/dashboard">Dashboard</a> ')
+        self.write('<a href="/subchain_list">Subchain list</a> ')
+        # self.write('<a href="/tempchain_list">Temp list</a>')
+        self.write('</br></br>')
+
+        txbody = db.get(('txbody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
+        txs = tornado.escape.json_decode(txbody)
+        for addr, height, subchain_hash in txs:
+            self.write("<a href='/get_pool_blocks?addr=%s&to_no=%s&to_hash=%s'>%s</a> <a href='/get_state_subchains?addrs=%s&height=%s'>%s</a> %s<br>" % (addr, height, subchain_hash, addr, addr, int(block_height)-1, subchain_hash, height))
+        self.write("<br>")
+        self.write("%s<br><br>" % (txbody, ))
+        statebody = db.get(('statebody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
+        self.write("%s<br><br>" % (statebody, ))
+
+
+class SubchainBlocksHandler(tornado.web.RequestHandler):
     def get(self):
         sender = self.get_argument('sender')
         assert len(sender) == 42 and (sender.startswith('0x') or sender.startswith('1x'))
         hash = self.get_argument('hash', None)
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
@@ -312,7 +292,7 @@ class SubchainViewHandler(tornado.web.RequestHandler):
             self.write("<code>%s</code><br><br>" % msg_json)
             msg_hash = msg[chain.PREV_HASH].encode('utf8')
 
-        self.write("<a href='/subchain_view?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
+        self.write("<a href='/subchain_blocks?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
 
 
 class SubchainListHandler(tornado.web.RequestHandler):
@@ -320,70 +300,20 @@ class SubchainListHandler(tornado.web.RequestHandler):
         db = database.get_conn()
         it = db.iteritems()
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
+        self.write('<a href="/chain_blocks">Chain view</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
         it.seek(b'chain_')
         for k, v in it:
             # if k == b'chain':
-            #     # self.write("<a href='/chain_view?hash=%s'>main chain</a><br>"% v.decode())
+            #     # self.write("<a href='/chain_blocks?hash=%s'>main chain</a><br>"% v.decode())
             #     continue
             # if not k.startswith(b'chain_'):
             #     break
-            if len(k) == 42+6 and k.startswith(b'chain_0x'):
-                self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Account '), v.decode()))
-            elif len(k) == 42+6 and k.startswith(b'chain_1x'):
-                self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
-
-
-class TempchainListHandler(tornado.web.RequestHandler):
-    def get(self):
-        db = database.get_conn()
-        it = db.iteritems()
-        self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> <br><br>')
-        it.seek(b'tempchain_')
-        for k, v in it:
-            # if k == b'chain':
-            #     # self.write("<a href='/chain_view?hash=%s'>main chain</a><br>"% v.decode())
-            #     continue
-            # if len(k) == 40+5:
-            self.write("<a href='/tempchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('tempchain_', ''), k.decode(), v.decode()))
-            # elif len(k) == 64+5:
-            #     self.write("<a href='/subchain_view?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain', '0x'), k.decode().replace('chain', 'Contract 0x'), v.decode()))
-
-
-class TempchainViewHandler(tornado.web.RequestHandler):
-    def get(self):
-        sender = self.get_argument('sender')
-        # assert sender.startswith('0x') and (len(sender) == 42 or len(sender) == 66)
-        hash = self.get_argument('hash', None)
-        self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/chain_view">Chain view</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> ')
-        # self.write('<a href="/tempchain_list">Temp list</a>')
-        self.write('</br></br>')
-
-        db = database.get_conn()
-        if hash is None:
-            msg_hash = db.get(b'tempchain_%s' % sender.encode('utf8'))
-            if not msg_hash:
-                return
-        else:
-            msg_hash = hash.encode('utf8')
-
-        for i in range(2000):
-            msg_json = db.get(b'tempmsg_%s' % msg_hash)
-            if not msg_json:
-                return
-
-            msg = tornado.escape.json_decode(msg_json)
-            self.write("<a href='/get_tempchain_block_state?hash=%s'>%s</a><br>" % (msg[0], msg[3]))
-            self.write("<code>%s</code><br><br>" % msg_json)
-            msg_hash = msg[chain.PREV_HASH].encode('utf8')
-
-        self.write("<a href='/subchain_view?sender=%s&hash=%s'>Next</a><br>" % (sender, msg_hash.decode('utf8')))
+            if len(k) == 42+6:
+                self.write("<a href='/subchain_blocks?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Account '), v.decode()))
+            # elif len(k) == 42+6 and k.startswith(b'chain_1x'):
+            #     self.write("<a href='/subchain_blocks?sender=%s'>%s</a> %s<br>"% (k.decode().replace('chain_', ''), k.decode().replace('chain_', 'Contract '), v.decode()))
 
 
 class UploadChunkHandler(tornado.web.RequestHandler):
@@ -416,23 +346,9 @@ class TraceHandler(tornado.web.RequestHandler):
 def main():
     tree.main()
 
-    # miner.main()
-    tornado.ioloop.IOLoop.instance().call_later(1, miner.looping)
-
-    # leader.main()
-    # tornado.ioloop.IOLoop.instance().call_later(1, leader.mining)
-
-    # fs.main()
-
-    worker_threading = threading.Thread(target=miner.worker_thread)
-    worker_threading.start()
-    chain.worker_thread_pause = False
-
     server = Application()
     server.listen(tree.current_port, '0.0.0.0')
     tornado.ioloop.IOLoop.instance().start()
-
-    worker_threading.join()
 
 if __name__ == '__main__':
     main()
