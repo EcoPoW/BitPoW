@@ -142,9 +142,9 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         elif seq[0] == 'NEW_CHAIN_STAKING':
             pass
 
-        elif seq[0] == 'NEW_CHAIN_BLOCK':
-            print("MinerHandler NEW_CHAIN_BLOCK", seq)
-            chain.new_chain_block(seq)
+        # elif seq[0] == 'NEW_CHAIN_BLOCK':
+        #     print("MinerHandler NEW_CHAIN_BLOCK", seq)
+        #     chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_HEADER":
             print("MinerHandler got NEW_CHAIN_HEADER", seq)
@@ -283,9 +283,21 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
             node_neighborhoods[nodeid] = tuple(seq[2])
             # print(current_port, "NODE_NEIGHBOURHOODS", current_nodeid, nodeid, node_neighborhoods)
 
-        elif seq[0] == "NEW_CHAIN_BLOCK":
-            print("NEW_CHAIN_BLOCK", seq)
-            chain.new_chain_block(seq)
+        # elif seq[0] == "NEW_CHAIN_BLOCK":
+        #     print("NEW_CHAIN_BLOCK", seq)
+        #     chain.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_HEADER":
+            print("MinerHandler got NEW_CHAIN_HEADER", seq)
+            chain.new_chain_header(seq)
+
+        elif seq[0] == "NEW_CHAIN_TXBODY":
+            print("MinerHandler got NEW_CHAIN_TXBODY", seq)
+            chain.new_chain_txbody(seq)
+
+        elif seq[0] == "NEW_CHAIN_STATEBODY":
+            print("MinerHandler got NEW_CHAIN_STATEBODY", seq)
+            chain.new_chain_statebody(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             chain.new_subchain_block(seq)
@@ -419,9 +431,21 @@ class NodeConnector(object):
             node_neighborhoods[nodeid] = tuple(seq[2])
             # print(current_port, "NODE_NEIGHBOURHOODS", current_nodeid, nodeid, node_neighborhoods)
 
-        elif seq[0] == "NEW_CHAIN_BLOCK":
-            print("NEW_CHAIN_BLOCK", seq)
-            chain.new_chain_block(seq)
+        # elif seq[0] == "NEW_CHAIN_BLOCK":
+        #     print("NEW_CHAIN_BLOCK", seq)
+        #     chain.new_chain_block(seq)
+
+        elif seq[0] == "NEW_CHAIN_HEADER":
+            print("MinerHandler got NEW_CHAIN_HEADER", seq)
+            chain.new_chain_header(seq)
+
+        elif seq[0] == "NEW_CHAIN_TXBODY":
+            print("MinerHandler got NEW_CHAIN_TXBODY", seq)
+            chain.new_chain_txbody(seq)
+
+        elif seq[0] == "NEW_CHAIN_STATEBODY":
+            print("MinerHandler got NEW_CHAIN_STATEBODY", seq)
+            chain.new_chain_statebody(seq)
 
         elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
             chain.new_subchain_block(seq)

@@ -360,9 +360,11 @@ class MiningClient:
                     block_hash = m[1].hex()
                     nonce = m[2]
                     difficulty = m[3]
-                    message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
+                    msgid = hashlib.sha256(('%s_%s_%s' % (block_hash, self.header_data['height'], self.txbody_json)).encode('utf8')).hexdigest()
+                    message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json, msgid]
                     self.ws.write_message(json.dumps(message))
-                    message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
+                    msgid = hashlib.sha256(('%s_%s_%s' % (block_hash, self.header_data['height'], self.statebody_json)).encode('utf8')).hexdigest()
+                    message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json, msgid]
                     self.ws.write_message(json.dumps(message))
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce, difficulty]
                     self.ws.write_message(json.dumps(message))
@@ -402,9 +404,11 @@ class MiningClient:
 
         user_rank = pos(parent_block_hash, parent_block_number)
         console.log(user_rank)
-        message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json]
+        msgid = hashlib.sha256(('%s_%s_%s' % (block_hash, self.header_data['height'], self.txbody_json)).encode('utf8')).hexdigest()
+        message = ['NEW_CHAIN_TXBODY', block_hash, self.header_data['height'], self.txbody_json, msgid]
         self.ws.write_message(json.dumps(message))
-        message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json]
+        msgid = hashlib.sha256(('%s_%s_%s' % (block_hash, self.header_data['height'], self.statebody_json)).encode('utf8')).hexdigest()
+        message = ['NEW_CHAIN_STATEBODY', block_hash, self.header_data['height'], self.statebody_json, msgid]
         self.ws.write_message(json.dumps(message))
         message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, -1, user_rank]
         self.ws.write_message(json.dumps(message))
