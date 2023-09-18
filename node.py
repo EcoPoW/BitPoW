@@ -203,9 +203,9 @@ class DashboardHandler(tornado.web.RequestHandler):
         for branch in nodes_available:
             self.write("%s:%s %s <br>" % branch)
 
-        self.write('<br>subchain block to mine:<br>')
-        for i, h in chain.subchains_to_block.items():
-            self.write("%s %s<br>" % (i, h))
+        # self.write('<br>subchain block to mine:<br>')
+        # for i, h in chain.subchains_to_block.items():
+        #     self.write("%s %s<br>" % (i, h))
 
         self.write('<br>pool:<br>')
         db = database.get_conn()
@@ -224,7 +224,7 @@ class ChainBlocksHandler(tornado.web.RequestHandler):
         db = database.get_conn()
 
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> ')
+        # self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
 
@@ -249,7 +249,7 @@ class ChainBlockHandler(tornado.web.RequestHandler):
         db = database.get_conn()
 
         self.write('<a href="/dashboard">Dashboard</a> ')
-        self.write('<a href="/subchain_list">Subchain list</a> ')
+        # self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
 
