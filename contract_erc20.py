@@ -1,5 +1,5 @@
 
-from contract_types import address, uint256
+from contract_types import address, string, uint8, uint256
 
 # _state
 # _self, _sender, _caller, _call
@@ -19,16 +19,22 @@ from contract_types import address, uint256
 # event Approval(address indexed _owner, address indexed _spender, uint256 _value)
 
 
-# def init(_name, _symbol, _decimals):
-#     global name
-#     global symbol
-#     global decimals
+def init(_name:string, _symbol:string, _decimals:uint8, _owner:address):
+    name = _state.get('name', None, _self)
+    if not name:
+        _state.put('name', _name, _self)
 
-#     if not (name, symbol, decimals):
-#         name = _name
-#         symbol = _symbol
-#         decimals = _decimals
-#     pass
+    symbol = _state.get('symbol', None, _self)
+    if not symbol:
+        _state.put('symbol', _symbol, _self)
+
+    decimals = _state.get('decimals', None, _self)
+    if not decimals:
+        _state.put('decimals', _decimals, _self)
+
+    owner = _state.get('owner', None, _self)
+    if not owner:
+        _state.put('owner', _owner, _self)
 
 
 def mint(_to:address, _value:uint256) -> None:
@@ -52,7 +58,7 @@ def approve(_spender:address, _value:uint256) -> bool:
     _state.put('allowance', allowance, _sender)
     return True
 
-def allowance(_owner:address, _spender:address) -> int:
+def allowance(_owner:address, _spender:address) -> uint256:
     allowance = _state.get('allowance', {}, _owner)
     print('allowance', allowance)
     value = allowance.get(_spender, 0)

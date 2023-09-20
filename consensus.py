@@ -31,9 +31,9 @@ import console
 import setting
 
 
-if not os.path.exists('miners'):
-    os.makedirs('miners')
-db = rocksdb.DB('miners/consensus.db', rocksdb.Options(create_if_missing=True))
+if not os.path.exists('users'):
+    os.makedirs('users')
+db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
 
 state.init_state(db)
 

@@ -10,8 +10,8 @@ def get_conn(current_name = None):
     if conn:
         return conn
 
-    if not os.path.exists('miners'):
-        os.makedirs('miners')
-    conn = rocksdb.DB('miners/%s.db' % current_name, rocksdb.Options(create_if_missing=True))
+    if not os.path.exists('users'):
+        os.makedirs('users')
+    conn = rocksdb.DB('users/%s.db' % current_name, rocksdb.Options(create_if_missing=True))
     return conn
 
