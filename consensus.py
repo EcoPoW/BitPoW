@@ -13,7 +13,7 @@ import pprint
 # import eth_hash.auto
 import web3
 import eth_account
-# import eth_utils
+import eth_abi
 import requests
 import hexbytes
 
@@ -31,9 +31,9 @@ import console
 import setting
 
 
-if not os.path.exists('miners'):
-    os.makedirs('miners')
-db = rocksdb.DB('miners/consensus.db', rocksdb.Options(create_if_missing=True))
+if not os.path.exists('users'):
+    os.makedirs('users')
+db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
 
 state.init_state(db)
 
@@ -187,13 +187,11 @@ def new_block(parent_block_hash, parent_block_number):
             func_params_data = tx_data[10:]
             func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
             #print('func', interface_map[func_sig].__name__, func_params)
-            type_params = []
-            for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
-                # print('type', k, v)
-                if k == 'address':
-                    type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
-                elif k == 'uint256':
-                    type_params.append(web3.Web3.to_int(hexstr=v))
+            func_params_type = contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+            console.log(func_params_type)
+            console.log(func_params_data)
+            type_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
+            console.log(type_params)
 
             # result = interface_map[func_sig](*func_params)
             contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)

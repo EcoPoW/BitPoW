@@ -10,7 +10,7 @@ import tornado
 import web3
 import eth_account
 # import eth_typing
-import eth_utils
+import eth_abi
 import hexbytes
 
 import chain
@@ -315,17 +315,13 @@ class EthRpcHandler(tornado.web.RequestHandler):
                         func_sig = tx_data[:10]
                         print(contracts.interface_map[tx_to][func_sig], tx_data)
                         func_params_data = tx_data[10:]
-                        func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-                        print('eth_call func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
                         # result = interface_map[func_sig](*func_params)
 
-                        type_params = []
-                        for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
-                            # print('type', k, v)
-                            if k == 'address':
-                                type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
-                            elif k == 'uint256':
-                                type_params.append(web3.Web3.to_int(hexstr=v))
+                        func_params_type = contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+                        console.log(func_params_type)
+                        console.log(func_params_data)
+                        type_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
+                        console.log(type_params)
 
                         result = contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
                         console.log('result', result)

@@ -2,6 +2,9 @@
 pip
 six
 tornado==6.3.2
+eth-utils==2.1.0
+eth-abi==4.1.0
+eth-keys==0.4.0
 web3==6.4.0
-eth-hash[pycryptodome]
+#eth-hash[pycryptodome]
 requests

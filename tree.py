@@ -139,8 +139,8 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
             self.write_message(tornado.escape.json_encode(["MINER_NODE_ID", current_nodeid]))
 
-        elif seq[0] == 'NEW_CHAIN_STAKING':
-            pass
+        # elif seq[0] == 'NEW_CHAIN_STAKING':
+        #     pass
 
         # elif seq[0] == 'NEW_CHAIN_BLOCK':
         #     print("MinerHandler NEW_CHAIN_BLOCK", seq)
@@ -579,12 +579,12 @@ def main():
     db = database.get_conn(current_name)
     state.init_state(db)
 
-    if not os.path.exists('miners'):
-        os.makedirs('miners')
+    if not os.path.exists('users'):
+        os.makedirs('users')
 
     json_data = {}
-    if os.path.exists('miners/%s.json' % current_name):
-        with open('miners/%s.json' % current_name) as f:
+    if os.path.exists('users/%s.json' % current_name):
+        with open('users/%s.json' % current_name) as f:
             json_data = tornado.escape.json_decode(f.read())
             current_host = json_data.get('current_host')
             current_port = json_data.get('current_port')
@@ -615,7 +615,7 @@ def main():
         bootstrap_url = args.bootstrap_url
         # json_data['bootstrap_url'] = bootstrap_url
 
-    with open('miners/%s.json' % current_name, 'w') as f:
+    with open('users/%s.json' % current_name, 'w') as f:
         f.write(tornado.escape.json_encode(json_data))
 
     if setting.BOOTSTRAP_BY_PORT_NO:
@@ -624,7 +624,7 @@ def main():
             parent_port = (no >> 1) + setting.DASHBOARD_PORT
 
 
-    sk_filename = "miners/%s.key" % current_name
+    sk_filename = 'users/%s.key' % current_name
     if os.path.exists(sk_filename):
         f = open(sk_filename, 'rb')
         raw_key = f.read(32)
