@@ -1,6 +1,9 @@
 
+import sys
 import functools
 import types
+
+assert sys.version_info.major == 3
 
 class VM:
     '''for python 3.10'''
@@ -370,14 +373,20 @@ class VM:
             if val:
                 self.pc += 2
             else:
-                self.pc = param
+                if sys.version_info.minor == 8:
+                    self.pc = param
+                elif sys.version_info.minor == 10:
+                    self.pc = param * 2
 
         elif self.co_code[self.pc] == 0x73: # POP_JUMP_IF_TRUE
             param = self.co_code[self.pc+1]
             # print('POP_JUMP_IF_TRUE', param)
             val = self.stack.pop()
             if val:
-                self.pc = param
+                if sys.version_info.minor == 8:
+                    self.pc = param
+                elif sys.version_info.minor == 10:
+                    self.pc = param * 2
             else:
                 self.pc += 2
 
