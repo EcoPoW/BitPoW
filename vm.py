@@ -90,7 +90,7 @@ class VM:
         return False
 
     def step(self):
-        print('PC', self.pc, hex(self.co_code[self.pc]))
+        # print('PC', self.pc, hex(self.co_code[self.pc]))
         # print('local_vars', self.local_vars)
         if self.co_code[self.pc] == 0x0: # NOP
             print('NOP')
@@ -535,7 +535,9 @@ class VM:
             # print('CALL_METHOD', param)
             # print('CALL_METHOD', self.stack)
             obj = self.stack[-2-param]
+            # print('CALL_METHOD', obj)
             method = self.stack[-1-param]
+            # print('CALL_METHOD', method)
             if param:
                 params = self.stack[-param:]
             else:

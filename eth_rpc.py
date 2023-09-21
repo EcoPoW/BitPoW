@@ -319,14 +319,14 @@ class EthRpcHandler(tornado.web.RequestHandler):
             if tx_to in contracts.vm_map:
                 latest_block_height = chain.get_latest_block_number()
 
-                _state = state.get_state()
-                _state.block_number = latest_block_height
-                contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
+                state.block_number = latest_block_height
+                contracts.vm_map[tx_to].global_vars['_block_number'] = state.block_number
                 contracts.vm_map[tx_to].global_vars['_call'] = state.call
-                contracts.vm_map[tx_to].global_vars['_state'] = _state
+                contracts.vm_map[tx_to].global_vars['_get'] = state.get
+                contracts.vm_map[tx_to].global_vars['_put'] = state.put
                 # contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
-                _state.contract_address = tx_to
-                contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+                state.contract_address = tx_to
+                contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
 
                 func_sig = tx_data[:10]
                 # print(contracts.interface_map[tx_to][func_sig], tx_data)

@@ -137,8 +137,7 @@ def pos(parent_block_hash, parent_block_number):
 
 def new_block(parent_block_hash, parent_block_number):
     txbody = []
-    _state = state.get_state()
-    _state.block_number = parent_block_number + 1
+    state.block_number = parent_block_number + 1
 
     req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
     pool_subchains = req.json()
@@ -175,12 +174,13 @@ def new_block(parent_block_hash, parent_block_number):
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
             #print('tx_from', tx_from)
 
-            contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
+            contracts.vm_map[tx_to].global_vars['_block_number'] = state.block_number
             contracts.vm_map[tx_to].global_vars['_call'] = state.call
-            contracts.vm_map[tx_to].global_vars['_state'] = _state
+            contracts.vm_map[tx_to].global_vars['_get'] = state.get
+            contracts.vm_map[tx_to].global_vars['_put'] = state.put
             contracts.vm_map[tx_to].global_vars['_sender'] = tx_from.lower()
-            _state.contract_address = tx_to
-            contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+            state.contract_address = tx_to
+            contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
 
             func_sig = tx_data[:10]
             # print(interface_map[func_sig], tx_data)
