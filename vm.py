@@ -84,6 +84,7 @@ class VM:
             # print('stack', self.stack)
         # print('---')
         # print('global_vars', self.global_vars)
+        return False
 
     def step(self):
         print('PC', self.pc, hex(self.co_code[self.pc]))

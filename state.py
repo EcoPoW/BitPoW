@@ -56,13 +56,13 @@ class State:
 def call(addr, fn, params):
     # console.log(addr, fn, params)
     # console.log(contracts.vm_map[addr])
-    type_params = []
-    for k, v in zip(contracts.type_map[addr][fn], params):
+    func_params = []
+    for k, v in zip(contracts.params_map[addr][fn], params):
         print('type', k, v)
         if k == 'address':
-            type_params.append(web3.Web3.to_checksum_address(v))
+            func_params.append(web3.Web3.to_checksum_address(v))
         elif k == 'uint256':
-            type_params.append(v)
+            func_params.append(v)
 
     contracts.vm_map[addr].global_vars['_block_number'] = _state.block_number
     contracts.vm_map[addr].global_vars['_call'] = call
@@ -70,7 +70,7 @@ def call(addr, fn, params):
     contracts.vm_map[addr].global_vars['_sender'] = _state.sender
     _state.contract_address = addr
     contracts.vm_map[addr].global_vars['_self'] = _state.contract_address
-    contracts.vm_map[addr].run(type_params, fn)
+    contracts.vm_map[addr].run(func_params, fn)
     return
 
 def merge(block_hash, pending_state):

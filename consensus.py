@@ -185,19 +185,17 @@ def new_block(parent_block_hash, parent_block_number):
             func_sig = tx_data[:10]
             # print(interface_map[func_sig], tx_data)
             func_params_data = tx_data[10:]
-            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-            #print('func', interface_map[func_sig].__name__, func_params)
-            func_params_type = contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+            func_params_type = contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
             console.log(func_params_type)
             console.log(func_params_data)
-            type_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
-            console.log(type_params)
+            func_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
+            console.log(func_params)
 
             # result = interface_map[func_sig](*func_params)
-            contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
+            contracts.vm_map[tx_to].run(func_params, contracts.interface_map[tx_to][func_sig].__name__)
             last_tx_height = tx_list[0]
             last_tx_hash = txblock[0]
-        
+
         if txblocks:
             txbody.append([addr, last_tx_height, last_tx_hash])
 

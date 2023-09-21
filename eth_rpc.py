@@ -237,16 +237,16 @@ class EthRpcHandler(tornado.web.RequestHandler):
             # func_params_data = tx_data[10:]
             # func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
             # print('func', contracts.interface_map[tx_to][func_sig].__name__, func_params)
-            # type_params = []
-            # for k, v in zip(contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
+            # func_params = []
+            # for k, v in zip(contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__], func_params):
             #     # print('type', k, v)
             #     if k == 'address':
-            #         type_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
+            #         func_params.append(web3.Web3.to_checksum_address('0x'+v[24:]))
             #     elif k == 'uint256':
-            #         type_params.append(web3.Web3.to_int(hexstr=v))
+            #         func_params.append(web3.Web3.to_int(hexstr=v))
 
             # # result = interface_map[func_sig](*func_params)
-            # contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
+            # contracts.vm_map[tx_to].run(func_params, contracts.interface_map[tx_to][func_sig].__name__)
 
             prev_hash = '0'*64
             db = database.get_conn()
@@ -306,8 +306,6 @@ class EthRpcHandler(tornado.web.RequestHandler):
                     _state.contract_address = tx_to
                     contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
 
-                    result = '0x'
-
                     if tx_data.startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":{"code":-32603,"message":"Error: Transaction reverted without a reason string","data":{"message":"Error: Transaction reverted without a reason string","data":"0x"}}}
                         resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
@@ -317,16 +315,18 @@ class EthRpcHandler(tornado.web.RequestHandler):
                         func_params_data = tx_data[10:]
                         # result = interface_map[func_sig](*func_params)
 
-                        func_params_type = contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+                        func_params_type = contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
                         console.log(func_params_type)
                         console.log(func_params_data)
-                        type_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
-                        console.log(type_params)
+                        func_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
+                        console.log(func_params)
 
-                        result = contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
-                        console.log('result', result)
+                        value = contracts.vm_map[tx_to].run(func_params, contracts.interface_map[tx_to][func_sig].__name__)
+                        func_return_type = contracts.return_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+                        result = eth_abi.encode([func_return_type], [value])
+                        print('result', result)
 
-                        resp = {'jsonrpc':'2.0', 'result': result or '0x', 'id': rpc_id}
+                        resp = {'jsonrpc':'2.0', 'result': '0x'+result.hex(), 'id': rpc_id}
 
                 else:
                     resp = {'jsonrpc':'2.0', 'result': '0x', 'id': rpc_id}

@@ -19,7 +19,7 @@ from contract_types import address, string, uint8, uint256
 # event Approval(address indexed _owner, address indexed _spender, uint256 _value)
 
 
-def init(_name:string, _symbol:string, _decimals:uint8, _owner:address):
+def init(_name:string, _symbol:string, _decimals:uint8, _owner:address) -> None:
     name = _state.get('name', None, _self)
     if not name:
         _state.put('name', _name, _self)
@@ -37,7 +37,11 @@ def init(_name:string, _symbol:string, _decimals:uint8, _owner:address):
         _state.put('owner', _owner, _self)
 
 
-def mint(_to:address, _value:uint256) -> None:
+def mint(_to:address, _value:uint256) -> bool:
+    owner = _state.get('owner', None, _self)
+    if owner and owner != _sender:
+        return False
+
     current_amount = _state.get('balance', 0, _to)
     new_amount = current_amount + _value
     print('before mint', current_amount)
@@ -50,6 +54,7 @@ def mint(_to:address, _value:uint256) -> None:
     print('after mint total', new_total)
     _state.put('total', new_total, _self)
 
+    return True
 
 def approve(_spender:address, _value:uint256) -> bool:
     allowance = _state.get('allowance', {}, _sender)
@@ -106,29 +111,35 @@ def transferFrom(_from:address, _to:address, _value:uint256) -> bool:
     _state.put('balance', receiver_new_amount, _to)
 
 
-def balanceOf(_owner:address):
+def balanceOf(_owner:address) -> uint256:
     amount = _state.get('balance', 0, _owner)
     print('balanceOf', _owner, amount)
-
-    return f'0x{amount:0>64x}'
+    return amount
+    # return f'0x{amount:0>64x}'
     # return '0x0000000000000000000000000000000000000000000000000000000000001000'
 
 
-def name():
-    return None
+def name() -> string:
+    name = _state.get('name', '', _self)
+    return name
 
-def symbol():
-    sym = hex(ord('U'))[2:]
-    print('sym', sym)
-    return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001%s00000000000000000000000000000000000000' % sym
+def symbol() -> string:
+    sym = _state.get('symbol', '', _self)
+    return sym
+    # sym = hex(ord('U'))[2:]
+    # print('sym', sym)
+    # return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001%s00000000000000000000000000000000000000' % sym
     # return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000' #POW
 
-def decimals():
-    return f'0x{18:0>64x}'
+def decimals() -> uint8:
+    dec = _state.get('decimals', 0, _self)
+    return dec
+    #return f'0x{18:0>64x}'
 
-def totalSupply():
+def totalSupply() -> uint256:
     amount = _state.get('total', 0, _self)
-    return f'0x{amount:0>64x}'
+    return amount
+    # return f'0x{amount:0>64x}'
 
 
 # hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
