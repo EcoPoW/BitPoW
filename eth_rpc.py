@@ -176,8 +176,8 @@ class EthRpcHandler(tornado.web.RequestHandler):
         elif req.get('method') == 'eth_gasPrice':
             resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
-        elif req.get('method') == 'eth_estimateGas':
-            resp = {'jsonrpc':'2.0', 'result': '0x52', 'id': rpc_id}
+        elif req.get('method') == 'eth_estimateGas': # Fuck! Dont change this 0x5208 again!
+            resp = {'jsonrpc':'2.0', 'result': '0x5208', 'id': rpc_id} # 21000 gas
 
         elif req.get('method') == 'eth_maxPriorityFeePerGas':
             resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
