@@ -70,17 +70,17 @@ class VM:
         pc = -1
         while pc != self.pc:
             pc = self.pc
-            try:
-                r = self.step()
-                if r:
-                    print('return value', r)
-                    return r
-            except BaseException as e:
-                print('except', e.__class__.__name__, dir(e.__class__))
-                print('blocks', self.blocks)
-                if self.blocks:
-                    new_pc = self.blocks[-1]
-                    self.pc = new_pc
+            # try:
+            r = self.step()
+            if r is not None:
+                print('return value', r)
+                return r
+            # except BaseException as e:
+            #     print('except', e.__class__.__name__, dir(e.__class__))
+            #     print('blocks', self.blocks)
+            #     if self.blocks:
+            #         new_pc = self.blocks[-1]
+            #         self.pc = new_pc
             # print('stack', self.stack)
         # print('---')
         # print('global_vars', self.global_vars)

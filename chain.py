@@ -413,7 +413,7 @@ subchains_new_block_available = set()
 
 
 def new_chain_header(seq):
-    console.log(seq)
+    # console.log(seq)
     _header, block_hash, header_data, block_nonce, difficulty = seq
     txbody_hash = header_data['txbody_hash']
     statebody_hash = header_data['statebody_hash']
@@ -422,18 +422,18 @@ def new_chain_header(seq):
     data_json = tornado.escape.json_encode(data)
     db = database.get_conn()
     reversed_height = str(setting.REVERSED_NO-height).zfill(16)
-    print(('headerblock_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
+    # print(('headerblock_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
     db.put(('headerblock_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
 
 def new_chain_txbody(seq):
-    console.log(seq)
+    # console.log(seq)
     _header, block_hash, height, data_json, _msgid = seq
     db = database.get_conn()
     reversed_height = str(setting.REVERSED_NO-height).zfill(16)
     print(('txbody_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
     db.put(('txbody_%s_%s' % (reversed_height, block_hash)).encode('utf8'), data_json.encode('utf8'))
 
-    console.log('data_json', data_json)
+    # console.log('data_json', data_json)
     data = tornado.escape.json_decode(data_json)
     for i in data:
         console.log(i)
@@ -443,7 +443,7 @@ def new_chain_txbody(seq):
         db.put(('globalsubchain_%s_%s_%s' % (subchain_addr, reversed_height, block_hash)).encode('utf8'), value.encode('utf8'))
 
 def new_chain_statebody(seq):
-    print('new_chain_statebody', seq)
+    # print('new_chain_statebody', seq)
     _header, block_hash, height, data_json, _msgid = seq
     db = database.get_conn()
     reversed_height = str(setting.REVERSED_NO-height).zfill(16)
@@ -452,8 +452,8 @@ def new_chain_statebody(seq):
 
     # console.log('new_chain_statebody', data_json)
     data = tornado.escape.json_decode(data_json)
-    for i in data:
-        print(i)
+    # for i in data:
+        # print(i)
     state.merge(block_hash, data)
 
 # @tornado.gen.coroutine
@@ -525,7 +525,7 @@ def get_latest_block_number():
     it.seek(('headerblock_').encode('utf8'))
     no = 0
     for k, v in it:
-        print('get_latest_block_number', k, v)
+        # print('get_latest_block_number', k, v)
         if k.decode('utf8').startswith('headerblock_'):
             ks = k.decode('utf8').split('_')
             reverse_no = int(ks[1])
@@ -539,7 +539,7 @@ def get_block_hashes_by_number(no):
     hashes = []
     it.seek(('headerblock_%s' % str(setting.REVERSED_NO-no).zfill(16)).encode('utf8'))
     for k, v in it:
-        print('get_block_hashes_by_number', k, v)
+        # print('get_block_hashes_by_number', k, v)
         if k.decode('utf8').startswith('headerblock_%s' % str(setting.REVERSED_NO-no).zfill(16)):
             header = tornado.escape.json_decode(v)
             blockhash = header[0]
@@ -596,11 +596,11 @@ class GetStateSubchainsHandler(tornado.web.RequestHandler):
 
         results = {}
         for addr in addrs.split(','):
-            print('addr', addr)
+            # print('addr', addr)
             results[addr] = None
             it.seek(('globalsubchain_%s_%s' % (addr, str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
             for k, v in it:
-                print('GetStateSubchainsHandler', k, v)
+                # print('GetStateSubchainsHandler', k, v)
                 if not k.startswith(b'globalsubchain_'):
                     break
                 results[addr] = tornado.escape.json_decode(v)
@@ -656,7 +656,7 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
                 results[addr] = [count, subchain_key_list[3]]
                 break
 
-        print('GetPoolSubchainsHandler results', results)
+        # print('GetPoolSubchainsHandler results', results)
         self.finish(results)
 
 

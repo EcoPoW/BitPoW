@@ -1,5 +1,5 @@
 
-from contract_types import address, string, uint8, uint256
+from contract_types import address, string, uint8, uint256, bytes4
 
 # _state
 # _self, _sender, _caller, _call
@@ -121,10 +121,12 @@ def balanceOf(_owner:address) -> uint256:
 
 def name() -> string:
     name = _state.get('name', '', _self)
+    print('name', name)
     return name
 
 def symbol() -> string:
     sym = _state.get('symbol', '', _self)
+    print('symbol', sym)
     return sym
     # sym = hex(ord('U'))[2:]
     # print('sym', sym)
@@ -133,6 +135,7 @@ def symbol() -> string:
 
 def decimals() -> uint8:
     dec = _state.get('decimals', 0, _self)
+    print('decimals', dec)
     return dec
     #return f'0x{18:0>64x}'
 
@@ -141,6 +144,13 @@ def totalSupply() -> uint256:
     return amount
     # return f'0x{amount:0>64x}'
 
+def supportsInterface(_bytes:bytes4) -> bool:
+    print('bytes4', _bytes.hex())
+    if _bytes.hex() == '80ac58cd': # 721
+        return False
+    if _bytes.hex() == 'd9b67a26': # 1155
+        return False
+    return True
 
 # hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 # Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
