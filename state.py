@@ -15,21 +15,23 @@ class State:
         self.sender = None
 
     # def __setitem__(self, key, value):
-    def put(self, key, value, addr):
+    def put(self, key, value, _addr):
         global pending_state
+        addr = _addr.lower()
         value_json = tornado.escape.json_encode(value)
         # console.log('globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, str(10**15 - self.block_number).zfill(16)), value_json)
         pending_state['globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, self.block_number)] = value_json
 
     # def __getitem__(self, key):
-    def get(self, key, default, addr):
+    def get(self, key, default, _addr):
         global pending_state
         value = default
-        # console.log(self.block_number)
-        # console.log(self.contract_address)
-        # console.log(pending_state)
+        addr = _addr.lower()
+        console.log(self.block_number)
+        console.log(self.contract_address)
+        console.log(pending_state)
         k = 'globalstate_%s_%s_%s_%s' % (self.contract_address, key, addr, self.block_number)
-        # console.log(k)
+        console.log(k)
         if k in pending_state:
             value_json = pending_state[k]
             # console.log(value_json)
@@ -53,7 +55,8 @@ class State:
 
         return value
 
-def call(addr, fn, params):
+def call(_addr, fn, params):
+    addr = _addr.lower()
     # console.log(addr, fn, params)
     # console.log(contracts.vm_map[addr])
     func_params = []
@@ -67,7 +70,7 @@ def call(addr, fn, params):
     contracts.vm_map[addr].global_vars['_block_number'] = _state.block_number
     contracts.vm_map[addr].global_vars['_call'] = call
     contracts.vm_map[addr].global_vars['_state'] = _state
-    contracts.vm_map[addr].global_vars['_sender'] = _state.sender
+    contracts.vm_map[addr].global_vars['_sender'] = _state.sender.lower()
     _state.contract_address = addr
     contracts.vm_map[addr].global_vars['_self'] = _state.contract_address
     contracts.vm_map[addr].run(func_params, fn)

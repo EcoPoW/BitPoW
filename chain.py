@@ -486,6 +486,7 @@ def new_subchain_block(seq):
     db = database.get_conn()
     console.log(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
     db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'), tornado.escape.json_encode([subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
+    db.put(('tx_0x%s' % subchain_hash).encode('utf8'), ('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
     subchains_new_block_available.add(sender)
 
 # def get_recent_longest(highest_block_hash):

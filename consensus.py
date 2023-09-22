@@ -163,7 +163,7 @@ def new_block(parent_block_hash, parent_block_number):
         last_tx_hash = None
         last_tx_height= 0
         for txblock in txblocks:
-            pprint.pprint(txblock)
+            #pprint.pprint(txblock)
             tx_list = txblock[4]
             tx_to = tx_list[4]
             tx_data = tx_list[6]
@@ -178,7 +178,7 @@ def new_block(parent_block_hash, parent_block_number):
             contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
             contracts.vm_map[tx_to].global_vars['_call'] = state.call
             contracts.vm_map[tx_to].global_vars['_state'] = _state
-            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
+            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from.lower()
             _state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
 

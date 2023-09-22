@@ -142,23 +142,28 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': hex(balance*(10**18)//10), 'id':rpc_id}
 
         elif req.get('method') == 'eth_getTransactionReceipt':
-            msg_hash = req['params'][0]
+            tx_hash = req['params'][0]
             db = database.get_conn()
-            msg_json = db.get(b'msg_%s' % msg_hash.encode('utf8')[2:])
-            print(msg_json)
-            msg = tornado.escape.json_decode(msg_json)
-            data = msg[chain.MSG_DATA]
+            print(tx_hash)
+            tx_bytes = db.get(b'tx_%s' % tx_hash.encode('utf8'))
+            print(tx_bytes)
+            sender = tx_bytes.decode('utf8').split('_')[1]
+            subchain_block_json = db.get(tx_bytes)
+            print(subchain_block_json)
+            subchain_block = tornado.escape.json_decode(subchain_block_json)
+            data = subchain_block[chain.MSG_DATA]
+            print(data)
             # count = data[0]
-            signature = msg[chain.MSG_SIGNATURE]
-            eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
-            signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
-            pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
-            sender = pubkey.to_checksum_address()
+            #signature = msg[chain.MSG_SIGNATURE]
+            #eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+            #signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
+            #pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
+            #sender = pubkey.to_checksum_address()
 
             result = {
-                'transactionHash': msg_hash,
+                'transactionHash': tx_hash,
                 'transactionIndex': 0,
-                'blockHash': msg_hash,
+                'blockHash': tx_hash,
                 'blockNumber': 0,
                 'from': sender,
                 'to': data[3],

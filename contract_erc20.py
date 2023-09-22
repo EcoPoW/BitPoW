@@ -39,6 +39,7 @@ def init(_name:string, _symbol:string, _decimals:uint8, _owner:address) -> None:
 
 def mint(_to:address, _value:uint256) -> bool:
     owner = _state.get('owner', None, _self)
+    print('mint sender owner', _sender, owner)
     if owner and owner != _sender:
         return False
 
@@ -71,10 +72,10 @@ def allowance(_owner:address, _spender:address) -> uint256:
     return f'0x{value:0>64x}'
 
 def transfer(_to:address, _value:uint256) -> bool:
-    print('transfer to', _to, _value)
+    print('transfer to', _sender, _to, _value)
     sender_amount = _state.get('balance', 0, _sender)
-    sender_new_amount = sender_amount - _value
     print('sender_amount', sender_amount, _value)
+    sender_new_amount = sender_amount - _value
     print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
