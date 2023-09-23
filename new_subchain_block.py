@@ -17,6 +17,8 @@ import eth_keys
 import eth_account
 
 
+API_ENDPOINT = 'http://127.0.0.1:9001'
+
 users = {}
 subchain_blockhash = {}
 
@@ -30,17 +32,17 @@ def main(width, count):
 
 
         sender_address = user_sk.public_key.to_checksum_address()
-        rsp = requests.get('http://127.0.0.1:9001/get_subchain_latest?sender=%s' % sender_address)
+        rsp = requests.get(API_ENDPOINT+'/get_subchain_latest?sender=%s' % sender_address)
         prev_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
-        rsp = requests.get('http://127.0.0.1:9001/get_subchain_block?hash=%s' % prev_hash)
+        rsp = requests.get(API_ENDPOINT+'/get_subchain_block?hash=%s' % prev_hash)
         block = rsp.json()['msg']
         # print('block', sender_address, block)
         subchain_blockhash[sender_address] = block
     f.close()
 
     # print(subchain_blockhash)
-    rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
+    rsp = requests.get(API_ENDPOINT+'/get_chain_latest')
     block_hash_before_transactions = rsp.json()['hash']
 
     # print('')
@@ -89,26 +91,26 @@ def main(width, count):
         for sender_address, block in send_queue:
             blocks.append(block)
         # print(sender_address, block)
-        rsp = requests.post('http://127.0.0.1:9001/new_subchain_block_batch', json=blocks)
+        rsp = requests.post(API_ENDPOINT+'/new_subchain_block_batch', json=blocks)
         # print("gen subchain block", block)
         # print('')
 
     last_transaction_block_hash = block_hash
     print('lets wait')
     while True:
-        rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
+        rsp = requests.get(API_ENDPOINT+'/get_chain_latest')
         block_hash = rsp.json()['hash']
-        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
+        rsp = requests.get(API_ENDPOINT+'/get_block?hash=%s' % block_hash)
         block = rsp.json()['block']
         if block[6]['subchains']:
             break
         time.sleep(1)
 
     while True:
-        rsp = requests.get('http://127.0.0.1:9001/get_chain_latest')
+        rsp = requests.get(API_ENDPOINT+'/get_chain_latest')
         block_hash = rsp.json()['hash']
         # print('prev_hash', prev_hash)
-        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
+        rsp = requests.get(API_ENDPOINT+'/get_block?hash=%s' % block_hash)
         block = rsp.json()['block']
         if not block[6]['subchains']:
             t_finished = block[7]
@@ -118,7 +120,7 @@ def main(width, count):
         time.sleep(1)
 
     while True:
-        rsp = requests.get('http://127.0.0.1:9001/get_block?hash=%s' % block_hash)
+        rsp = requests.get(API_ENDPOINT+'/get_block?hash=%s' % block_hash)
         block = rsp.json()['block']
         if not block[6]['subchains']:
             t_start = block[7]

@@ -6,7 +6,8 @@ import web3
 import eth_account
 
 
-w3 = web3.Web3(web3.Web3.HTTPProvider('http://127.0.0.1:9001/'))
+API_ENDPOINT = 'http://127.0.0.1:9001'
+w3 = web3.Web3(web3.Web3.HTTPProvider(API_ENDPOINT+'/'))
 
 # contract_abi = '''[
 #     {

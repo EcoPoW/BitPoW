@@ -218,7 +218,7 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         forward(message)
         # self.write_message(tornado.escape.json_encode(message))
 
-        print('====', self.from_host, self.from_port, self.branch)
+        print(self.from_host, self.from_port, self.branch)
         if tuple([self.from_host, self.from_port, self.branch]) not in nodes_available:
             nodes_available.add(tuple([self.from_host, self.from_port, self.branch]))
 

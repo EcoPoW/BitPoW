@@ -30,6 +30,8 @@ import eth_tx
 import console
 import setting
 
+API_ENDPOINT = 'http://127.0.0.1:9001'
+WS_ENDPOINT = 'ws://127.0.0.1:9001'
 
 if not os.path.exists('users'):
     os.makedirs('users')
@@ -139,10 +141,10 @@ def new_block(parent_block_hash, parent_block_number):
     txbody = []
     state.block_number = parent_block_number + 1
 
-    req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
+    req = requests.get(API_ENDPOINT+'/get_pool_subchains')
     pool_subchains = req.json()
     console.log('get_pool_subchains', req.json())
-    req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), parent_block_number))
+    req = requests.get(API_ENDPOINT+'/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), parent_block_number))
     console.log('get_state_subchains', req.text)
     state_subchains = req.json()
 
@@ -154,8 +156,8 @@ def new_block(parent_block_hash, parent_block_number):
         from_no = 0
         if state_subchains[addr]:
             from_no = state_subchains[addr]['height']
-        console.log('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
-        req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        console.log(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        req = requests.get(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
         txblocks = req.json()['blocks']
         txblocks.reverse()
         console.log(txblocks)
@@ -274,7 +276,7 @@ class MiningClient:
 
                 if setting.POW:
                     # stop if mining
-                    req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                    req = requests.get(API_ENDPOINT+'/get_chain_latest')
                     console.log('get_chain_latest', req.text)
                     obj = req.json()
                     if obj['height'] == 0:
@@ -315,7 +317,7 @@ class MiningClient:
                         console.log('current_mining[addr]', addr, self.current_mining[addr])
 
                     if setting.POW:
-                        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                        req = requests.get(API_ENDPOINT+'/get_chain_latest')
                         console.log('get_chain_latest', req.text)
                         obj = req.json()
                         if obj['height'] == 0:
@@ -381,7 +383,7 @@ class MiningClient:
             #print('current_mining', current_mining)
             console.log('current_mining[addr]', addr, self.current_mining[addr])
 
-        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+        req = requests.get(API_ENDPOINT+'/get_chain_latest')
         console.log('get_chain_latest', req.text)
         obj = req.json()
         if obj['height'] == 0:
@@ -418,7 +420,7 @@ if __name__ == "__main__":
     ps.append(process)
     cs.append(conn)
     process.start()
-    client = MiningClient("ws://127.0.0.1:9001/miner", 5)
+    client = MiningClient(WS_ENDPOINT+'/miner', 5)
 
     tornado.autoreload.start()
     tornado.ioloop.IOLoop.instance().start()
