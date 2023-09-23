@@ -229,19 +229,11 @@ class ChainBlocksHandler(tornado.web.RequestHandler):
         self.write('</br></br>')
 
         block_height = self.get_argument('height', None)
-        if block_height:
-            no = int(block_height)
-        else:
-            no = 0
-            
-        self.write('<a href="/chain_blocks?height=%s">Prev</a> ' % (no-10))
-        self.write('<a href="/chain_blocks?height=%s">Next</a> ' % (no+10))
-        self.write('<br><br>')
-
+        current_height = None
         db = database.get_conn()
         it = db.iteritems()
-        if no:
-            it.seek(('headerblock_%s' % str(setting.REVERSED_NO-int(no)).zfill(16)).encode('utf8'))
+        if block_height:
+            it.seek(('headerblock_%s' % str(setting.REVERSED_NO-int(block_height)).zfill(16)).encode('utf8'))
         else:
             it.seek(b'headerblock_')
         for key, value in it:
@@ -251,24 +243,29 @@ class ChainBlocksHandler(tornado.web.RequestHandler):
             block_hash = header[0]
             header_data = header[1]
             height = header_data['height']
+            if not current_height:
+                current_height = height
+                self.write('<a href="/chain_blocks?height=%s">Prev</a> ' % (current_height+10))
+                self.write('<a href="/chain_blocks?height=%s">Next</a> ' % (current_height-10))
+                self.write('<br><br>')
             self.write("<a href='/chain_block?height=%s&hash=%s'>%s</a><br>" % (height, block_hash, key, ))
             self.write("%s<br><br>" % (header_data, ))
             self.write("%s<br><br>" % (value, ))
-            if height <= no - 10:
+            if height + 9 <= current_height:
                 break
 
 
 class ChainBlockHandler(tornado.web.RequestHandler):
     def get(self):
-        block_height = self.get_argument('height', None)
         block_hash= self.get_argument('hash', None)
-        db = database.get_conn()
+        block_height = self.get_argument('height', None)
 
         self.write('<a href="/dashboard">Dashboard</a> ')
         # self.write('<a href="/subchain_list">Subchain list</a> ')
         # self.write('<a href="/tempchain_list">Temp list</a>')
         self.write('</br></br>')
 
+        db = database.get_conn()
         txbody = db.get(('txbody_%s_%s' % (str(setting.REVERSED_NO-int(block_height)).zfill(16), block_hash)).encode('utf8'))
         txs = tornado.escape.json_decode(txbody)
         for addr, height, subchain_hash in txs:
