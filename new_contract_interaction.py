@@ -9,7 +9,6 @@ import eth_account
 
 
 API_ENDPOINT = 'http://127.0.0.1:9001'
-w3 = web3.Web3(web3.Web3.HTTPProvider(API_ENDPOINT+'/'))
 
 
 try:
@@ -68,6 +67,7 @@ except:
 # print('keyfile_json', keyfile_json)
 print(account.key.hex())
 
+w3 = web3.Web3(web3.Web3.HTTPProvider(API_ENDPOINT+'/'))
 
 # contract_abi = '''[
 #     {
