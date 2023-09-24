@@ -415,10 +415,10 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': 'BitPoW', 'id': rpc_id}
 
         elif req.get('method') == 'eth_chainId':
-            resp = {'jsonrpc':'2.0', 'result': hex(520), 'id':rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': hex(setting.CHAIN_ID), 'id':rpc_id}
 
         elif req.get('method') == 'net_version':
-            resp = {'jsonrpc':'2.0', 'result': '520','id': rpc_id}
+            resp = {'jsonrpc':'2.0', 'result': str(setting.CHAIN_ID),'id': rpc_id}
 
         # print(resp)
         self.write(tornado.escape.json_encode(resp))
