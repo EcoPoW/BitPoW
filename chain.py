@@ -485,8 +485,8 @@ def new_subchain_block(seq):
 
     db = database.get_conn()
     console.log(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
-    db.put(('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'), tornado.escape.json_encode([subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
-    db.put(('tx_0x%s' % subchain_hash).encode('utf8'), ('subchain_%s_%s_%s' % (sender, str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
+    db.put(('subchain_%s_%s_%s' % (sender.lower(), str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'), tornado.escape.json_encode([subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature]).encode('utf8'))
+    db.put(('tx_0x%s' % subchain_hash).encode('utf8'), ('subchain_%s_%s_%s' % (sender.lower(), str(setting.REVERSED_NO - height).zfill(16), subchain_hash)).encode('utf8'))
     subchains_new_block_available.add(sender)
 
 # def get_recent_longest(highest_block_hash):
@@ -645,9 +645,9 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
 
         for addr in subchains_new_block_available:
             print(addr)
-            it.seek(('subchain_%s_' % addr).encode('utf8'))
+            it.seek(('subchain_%s_' % addr.lower()).encode('utf8'))
             for subchain_key, subchain_value in it:
-                if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr):
+                if not subchain_key.decode('utf8').startswith('subchain_%s_' % addr.lower()):
                     break
 
                 subchain_key_list = subchain_key.decode('utf8').split('_')
@@ -676,12 +676,12 @@ class GetPoolBlocksHandler(tornado.web.RequestHandler):
         if to_no and to_hash:
             reversed_to_no = setting.REVERSED_NO - int(to_no)
             console.log('GetPoolBlocksHandler', addr, str(reversed_to_no).zfill(16), to_hash)
-            it.seek(('subchain_%s_%s_%s' % (addr, str(reversed_to_no).zfill(16), to_hash)).encode('utf8'))
+            it.seek(('subchain_%s_%s_%s' % (addr.lower(), str(reversed_to_no).zfill(16), to_hash)).encode('utf8'))
         else:
-            it.seek(('subchain_%s_' % (addr, )).encode('utf8'))
+            it.seek(('subchain_%s_' % (addr.lower(), )).encode('utf8'))
 
         for subchain_key, subchain_value in it:
-            if not subchain_key.decode('utf8').startswith('subchain_%s_' % (addr, )):
+            if not subchain_key.decode('utf8').startswith('subchain_%s_' % (addr.lower(), )):
                 break
             ks = subchain_key.decode('utf8').split('_')
             current_no = setting.REVERSED_NO - int(ks[2])

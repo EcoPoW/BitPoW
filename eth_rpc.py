@@ -188,7 +188,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
             resp = {'jsonrpc':'2.0', 'result': '0x0', 'id': rpc_id}
 
         elif req.get('method') == 'eth_getTransactionCount':
-            address = web3.Web3.to_checksum_address(req['params'][0])
+            address = req['params'][0].lower()
             console.log('eth_getTransactionCount address', address)
             db = database.get_conn()
             count = 0
@@ -231,7 +231,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 tx_data = web3.Web3.to_hex(tx.data)
                 tx_nonce = tx.nonce
 
-            tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
+            tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs).lower()
             # latest_block_height = chain.get_latest_block_number()
 
             # _state = state.get_state()

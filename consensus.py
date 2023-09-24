@@ -234,7 +234,7 @@ class MiningClient:
 
         self.connect()
         tornado.ioloop.PeriodicCallback(self.keep_alive, 3000).start()
-        tornado.ioloop.PeriodicCallback(self.pos, 10000).start()
+        tornado.ioloop.PeriodicCallback(self.pos, setting.BLOCK_INTERVAL_SECONDS*1000).start()
         tornado.ioloop.PeriodicCallback(self.poll, 100).start()
 
     @tornado.gen.coroutine
