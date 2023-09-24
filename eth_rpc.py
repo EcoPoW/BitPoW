@@ -277,7 +277,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 subchain_key_list = subchain_key.decode('utf8').split('_')
                 reversed_height = int(subchain_key_list[2])
                 count = setting.REVERSED_NO - reversed_height
-                print(count, tx_nonce)
+                print(reversed_height, count, tx_nonce)
                 assert count + 1 == tx_nonce
 
                 tx = tornado.escape.json_decode(subchain_value)
@@ -311,7 +311,7 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 #if 'to' in params[0] and 'data' in params[0] and params[0]['to'].lower() in contracts.contract_map:
                     # contract = contract_map[params[0]['to'].lower()]
             tx_to = params[0]['to']
-            tx_data = params[0]['data']
+            tx_data = params[0]['data'].replace('0x', '')
             #if tx_data.startswith('0x01ffc9a7'): # 80ac58cd for 721 and d9b67a26 for 1155
                 #resp = {"jsonrpc":"2.0","id":rpc_id,"error":{"code":-32603,"message":"Error: Transaction reverted without a reason string","data":{"message":"Error: Transaction reverted without a reason string","data":"0x"}}}
             #    resp = {"jsonrpc":"2.0","id":rpc_id,"error":-32603}
@@ -328,9 +328,9 @@ class EthRpcHandler(tornado.web.RequestHandler):
                 state.contract_address = tx_to
                 contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
 
-                func_sig = tx_data[:10]
+                func_sig = tx_data[:8]
                 # print(contracts.interface_map[tx_to][func_sig], tx_data)
-                func_params_data = tx_data[10:]
+                func_params_data = tx_data[8:]
                 # result = interface_map[func_sig](*func_params)
 
                 func_params_type = contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
