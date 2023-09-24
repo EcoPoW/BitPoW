@@ -7,6 +7,7 @@ import multiprocessing
 import json
 import types
 import pprint
+import argparse
 # import threading
 # import curses
 
@@ -29,15 +30,6 @@ import state
 import eth_tx
 import console
 import setting
-
-API_ENDPOINT = 'http://127.0.0.1:9001'
-WS_ENDPOINT = 'ws://127.0.0.1:9001'
-
-if not os.path.exists('users'):
-    os.makedirs('users')
-db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
-
-state.init_state(db)
 
 
 def pow(conn):
@@ -184,9 +176,9 @@ def new_block(parent_block_hash, parent_block_number):
             state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
 
-            func_sig = tx_data[:10]
+            func_sig = tx_data[:8]
             # print(interface_map[func_sig], tx_data)
-            func_params_data = tx_data[10:]
+            func_params_data = tx_data[8:]
             func_params_type = contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
             console.log(func_params_type)
             console.log(func_params_data)
@@ -413,8 +405,47 @@ class MiningClient:
 
 ps = []
 cs = []
+
+API_ENDPOINT = 'http://127.0.0.1:9001'
+WS_ENDPOINT = 'ws://127.0.0.1:9001'
+
+
 if __name__ == "__main__":
-    user_addr = sys.argv[1]
+    if not os.path.exists('users'):
+        os.makedirs('users')
+    db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
+    state.init_state(db)
+
+    try:
+        with open('users/consensus.json', 'r') as f:
+            config_obj = json.loads(f.read())
+            if 'api' in config_obj:
+                API_ENDPOINT = config_obj['api']
+            if 'ws' in config_obj:
+                WS_ENDPOINT = config_obj['ws']
+            if 'key' in config_obj:
+                user_addr = config_obj['key']
+    except:
+        config_obj = {}
+
+    parser = argparse.ArgumentParser(description='consensus.py [--api=http://127.0.0.1:9001] [--ws=ws://127.0.0.1:9001] [--key=user/keyfile.json]')
+    parser.add_argument('--key')
+    parser.add_argument('--api')
+    parser.add_argument('--ws')
+    args = parser.parse_args()
+    if args.api:
+        API_ENDPOINT = args.api
+        config_obj['api'] = args.api
+    if args.ws:
+        WS_ENDPOINT = args.ws
+        config_obj['ws'] = args.ws
+    if args.key:
+        user_addr = args.key
+        config_obj['key'] = args.key
+    with open('users/consensus.json', 'w') as f:
+        f.write(json.dumps(config_obj))
+    pprint.pprint(config_obj)
+ 
     conn, child_conn = multiprocessing.Pipe()
     process = multiprocessing.Process(target=pow, args=(child_conn,))
     ps.append(process)

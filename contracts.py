@@ -34,7 +34,7 @@ for addr, contract in contract_map.items():
             params = [v.__annotations__[i].__name__ for i in v.__code__.co_varnames[:v.__code__.co_argcount]]
             func_sig = '%s(%s)' % (k, ','.join(params))
             # print(func_sig, '0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8])
-            interface_map[addr]['0x'+eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
+            interface_map[addr][eth_utils.keccak(func_sig.encode('utf8')).hex()[:8]] = v
             params_map[addr][k] = params
 
             #console.log(k, v.__annotations__.get('return', None))

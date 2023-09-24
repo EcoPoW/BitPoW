@@ -18,7 +18,7 @@ def eth_rlp2list(tx_rlp_bytes):
         max_fee = int.from_bytes(tx_rlp_list[4], 'big')
         to = web3.Web3.to_checksum_address(tx_rlp_list[5])
         value = int.from_bytes(tx_rlp_list[6], 'big')
-        data = '0x%s' % tx_rlp_list[7].hex()
+        data = tx_rlp_list[7].hex()
         # print(tx_rlp_list[5])
         v = int.from_bytes(tx_rlp_list[9], 'big')
         r = int.from_bytes(tx_rlp_list[10], 'big')
@@ -37,7 +37,7 @@ def eth_rlp2list(tx_rlp_bytes):
         gas = int.from_bytes(tx_rlp_list[2], 'big')
         to = web3.Web3.to_checksum_address(tx_rlp_list[3])
         value = int.from_bytes(tx_rlp_list[4], 'big')
-        data = '0x%s' % tx_rlp_list[5].hex()
+        data = tx_rlp_list[5].hex()
         # print(tx_rlp_list[5])
         v = int.from_bytes(tx_rlp_list[6], 'big')
         r = int.from_bytes(tx_rlp_list[7], 'big')
@@ -48,7 +48,7 @@ def eth_rlp2list(tx_rlp_bytes):
 
 
 def hash_of_eth_tx_list(tx_list):
-    print('hash_of_eth_tx_list', hash_of_eth_tx_list)
+    print('hash_of_eth_tx_list', tx_list)
     if len(tx_list) == 8:
         nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
         gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
