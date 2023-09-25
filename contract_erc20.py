@@ -40,7 +40,7 @@ def init(_name:string, _symbol:string, _decimals:uint8, _owner:address) -> None:
 def mint(_to:address, _value:uint256) -> bool:
     owner = _get('owner', None, _self)
     print('mint sender owner', _sender, owner)
-    if owner and owner != _sender:
+    if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
         return False
 
     current_amount = _get('balance', 0, _to)

@@ -465,6 +465,7 @@ staking_abi = '''[
 
 erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', abi=erc20_abi)
 staking = w3.eth.contract(address='0x0000000000000000000000000000000000000002', abi=staking_abi)
+erc20u = w3.eth.contract(address='0x0000000000000000000000000000000000000003', abi=erc20_abi)
 
 
 nonce = w3.eth.get_transaction_count(account.address)
@@ -522,6 +523,25 @@ for action in sys.argv[1:]:
         # print(signed_tx)
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
+    elif action == 'initu':
+        unsigned_tx = erc20u.functions.init('USD', 'U', 18, '0x0000000000000000000000000000000000000000').build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    elif action == 'mintu':
+        unsigned_tx = erc20u.functions.mint(account.address, 10**19).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
     elif action == 'stake':
         unsigned_tx = staking.functions.stake(1000).build_transaction({
