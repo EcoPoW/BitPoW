@@ -1,6 +1,9 @@
 
+import sys
 import functools
 import types
+
+assert sys.version_info.major == 3
 
 class VM:
     '''for python 3.10'''
@@ -70,23 +73,24 @@ class VM:
         pc = -1
         while pc != self.pc:
             pc = self.pc
-            try:
-                r = self.step()
-                if r:
-                    print('return value', r)
-                    return r
-            except BaseException as e:
-                print('except', e.__class__.__name__, dir(e.__class__))
-                print('blocks', self.blocks)
-                if self.blocks:
-                    new_pc = self.blocks[-1]
-                    self.pc = new_pc
+            # try:
+            r = self.step()
+            if r is not None:
+                print('return value', r)
+                return r
+            # except BaseException as e:
+            #     print('except', e.__class__.__name__, dir(e.__class__))
+            #     print('blocks', self.blocks)
+            #     if self.blocks:
+            #         new_pc = self.blocks[-1]
+            #         self.pc = new_pc
             # print('stack', self.stack)
         # print('---')
         # print('global_vars', self.global_vars)
+        return False
 
     def step(self):
-        print('PC', self.pc, hex(self.co_code[self.pc]))
+        # print('PC', self.pc, hex(self.co_code[self.pc]))
         # print('local_vars', self.local_vars)
         if self.co_code[self.pc] == 0x0: # NOP
             print('NOP')
@@ -369,14 +373,20 @@ class VM:
             if val:
                 self.pc += 2
             else:
-                self.pc = param
+                if sys.version_info.minor == 8:
+                    self.pc = param
+                elif sys.version_info.minor == 10:
+                    self.pc = param * 2
 
         elif self.co_code[self.pc] == 0x73: # POP_JUMP_IF_TRUE
             param = self.co_code[self.pc+1]
             # print('POP_JUMP_IF_TRUE', param)
             val = self.stack.pop()
             if val:
-                self.pc = param
+                if sys.version_info.minor == 8:
+                    self.pc = param
+                elif sys.version_info.minor == 10:
+                    self.pc = param * 2
             else:
                 self.pc += 2
 
@@ -525,7 +535,9 @@ class VM:
             # print('CALL_METHOD', param)
             # print('CALL_METHOD', self.stack)
             obj = self.stack[-2-param]
+            # print('CALL_METHOD', obj)
             method = self.stack[-1-param]
+            # print('CALL_METHOD', method)
             if param:
                 params = self.stack[-param:]
             else:

@@ -56,6 +56,8 @@ processed_message_queue = []
 def forward(seq):
     global processed_message_ids
     global processed_message_queue
+    # print(seq)
+    # print(processed_message_queue)
     if processed_message_queue and processed_message_queue[0][1] < time.time() - 60:
         msg_id, msg_timestamp = processed_message_queue.pop(0)
         if msg_id in processed_message_ids:
@@ -133,7 +135,7 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        console.log(message)
+        # console.log(message)
         seq = tornado.escape.json_decode(message)
         if seq[0] == 'GET_MINER_NODE':
             print("MinerHandler GET_MINER_NODE", seq, current_nodeid)
@@ -147,15 +149,15 @@ class MinerHandler(tornado.websocket.WebSocketHandler):
         #     chain.new_chain_block(seq)
 
         elif seq[0] == "NEW_CHAIN_HEADER":
-            print("MinerHandler got NEW_CHAIN_HEADER", seq)
+            # print("MinerHandler got NEW_CHAIN_HEADER", seq)
             chain.new_chain_header(seq)
 
         elif seq[0] == "NEW_CHAIN_TXBODY":
-            print("MinerHandler got NEW_CHAIN_TXBODY", seq)
+            # print("MinerHandler got NEW_CHAIN_TXBODY", seq)
             chain.new_chain_txbody(seq)
 
         elif seq[0] == "NEW_CHAIN_STATEBODY":
-            print("MinerHandler got NEW_CHAIN_STATEBODY", seq)
+            # print("MinerHandler got NEW_CHAIN_STATEBODY", seq)
             chain.new_chain_statebody(seq)
 
         # elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
@@ -216,7 +218,7 @@ class NodeHandler(tornado.websocket.WebSocketHandler):
         forward(message)
         # self.write_message(tornado.escape.json_encode(message))
 
-        print('====', self.from_host, self.from_port, self.branch)
+        print(self.from_host, self.from_port, self.branch)
         if tuple([self.from_host, self.from_port, self.branch]) not in nodes_available:
             nodes_available.add(tuple([self.from_host, self.from_port, self.branch]))
 
@@ -381,7 +383,7 @@ class NodeConnector(object):
             parent_port = seq[8]
             timestamp = seq[9]
             singature = seq[10]
-            print('====NodeConnector', seq)
+            print('NodeConnector', seq)
 
             if parent_nodeid is not None:
                 nodes_pool[parent_nodeid] = [parent_pk, parent_ip, parent_port, timestamp]

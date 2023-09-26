@@ -7,6 +7,7 @@ import multiprocessing
 import json
 import types
 import pprint
+import argparse
 # import threading
 # import curses
 
@@ -29,13 +30,6 @@ import state
 import eth_tx
 import console
 import setting
-
-
-if not os.path.exists('users'):
-    os.makedirs('users')
-db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
-
-state.init_state(db)
 
 
 def pow(conn):
@@ -137,13 +131,12 @@ def pos(parent_block_hash, parent_block_number):
 
 def new_block(parent_block_hash, parent_block_number):
     txbody = []
-    _state = state.get_state()
-    _state.block_number = parent_block_number + 1
+    state.block_number = parent_block_number + 1
 
-    req = requests.get('http://127.0.0.1:9001/get_pool_subchains')
+    req = requests.get(API_ENDPOINT+'/get_pool_subchains')
     pool_subchains = req.json()
     console.log('get_pool_subchains', req.json())
-    req = requests.get('http://127.0.0.1:9001/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), parent_block_number))
+    req = requests.get(API_ENDPOINT+'/get_state_subchains?addrs=%s&height=%s' % (','.join(pool_subchains.keys()), parent_block_number))
     console.log('get_state_subchains', req.text)
     state_subchains = req.json()
 
@@ -155,18 +148,22 @@ def new_block(parent_block_hash, parent_block_number):
         from_no = 0
         if state_subchains[addr]:
             from_no = state_subchains[addr]['height']
-        console.log('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
-        req = requests.get('http://127.0.0.1:9001/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        console.log(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
+        req = requests.get(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
         txblocks = req.json()['blocks']
         txblocks.reverse()
         console.log(txblocks)
         last_tx_hash = None
         last_tx_height= 0
         for txblock in txblocks:
-            pprint.pprint(txblock)
+            #pprint.pprint(txblock)
             tx_list = txblock[4]
-            tx_to = tx_list[4]
-            tx_data = tx_list[6]
+            if len(tx_list) == 8:
+                tx_to = tx_list[5]
+                tx_data = tx_list[7]
+            else:
+                tx_to = tx_list[4]
+                tx_data = tx_list[6]
             tx_signature_hex = txblock[5]
             tx_signature_obj = eth_account.Account._keys.Signature(signature_bytes=hexbytes.HexBytes(tx_signature_hex))
             vrs = tx_signature_obj.vrs
@@ -175,29 +172,31 @@ def new_block(parent_block_hash, parent_block_number):
             tx_from = eth_account.Account._recover_hash(tx_hash, vrs=vrs)
             #print('tx_from', tx_from)
 
-            contracts.vm_map[tx_to].global_vars['_block_number'] = _state.block_number
+            contracts.vm_map[tx_to].global_vars['_block_number'] = state.block_number
             contracts.vm_map[tx_to].global_vars['_call'] = state.call
-            contracts.vm_map[tx_to].global_vars['_state'] = _state
-            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from
-            _state.contract_address = tx_to
-            contracts.vm_map[tx_to].global_vars['_self'] = _state.contract_address
+            contracts.vm_map[tx_to].global_vars['_get'] = state.get
+            contracts.vm_map[tx_to].global_vars['_put'] = state.put
+            contracts.vm_map[tx_to].global_vars['_sender'] = tx_from.lower()
+            state.contract_address = tx_to
+            contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
 
-            func_sig = tx_data[:10]
+            func_sig = tx_data[:8]
             # print(interface_map[func_sig], tx_data)
-            func_params_data = tx_data[10:]
-            func_params = [func_params_data[i:i+64] for i in range(0, len(func_params_data)-2, 64)]
-            #print('func', interface_map[func_sig].__name__, func_params)
-            func_params_type = contracts.type_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
+            func_params_data = tx_data[8:]
+            func_params_type = contracts.params_map[tx_to][contracts.interface_map[tx_to][func_sig].__name__]
             console.log(func_params_type)
             console.log(func_params_data)
-            type_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
-            console.log(type_params)
+            func_params = eth_abi.decode(func_params_type, hexbytes.HexBytes(func_params_data))
+            console.log(func_params)
 
             # result = interface_map[func_sig](*func_params)
-            contracts.vm_map[tx_to].run(type_params, contracts.interface_map[tx_to][func_sig].__name__)
-            last_tx_height = tx_list[0]
+            contracts.vm_map[tx_to].run(func_params, contracts.interface_map[tx_to][func_sig].__name__)
+            if len(tx_list) == 8:
+                last_tx_height = tx_list[1]
+            else:
+                last_tx_height = tx_list[0]
             last_tx_hash = txblock[0]
-        
+
         if txblocks:
             txbody.append([addr, last_tx_height, last_tx_hash])
 
@@ -234,7 +233,7 @@ class MiningClient:
 
         self.connect()
         tornado.ioloop.PeriodicCallback(self.keep_alive, 3000).start()
-        tornado.ioloop.PeriodicCallback(self.pos, 10000).start()
+        tornado.ioloop.PeriodicCallback(self.pos, setting.BLOCK_INTERVAL_SECONDS*1000).start()
         tornado.ioloop.PeriodicCallback(self.poll, 100).start()
 
     @tornado.gen.coroutine
@@ -276,7 +275,7 @@ class MiningClient:
 
                 if setting.POW:
                     # stop if mining
-                    req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                    req = requests.get(API_ENDPOINT+'/get_chain_latest')
                     console.log('get_chain_latest', req.text)
                     obj = req.json()
                     if obj['height'] == 0:
@@ -292,18 +291,21 @@ class MiningClient:
                     conn.send(['START', block_hash_obj.digest(), 0, 2**230])
 
             elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
-                data = seq[5]
-                count = data[0]
+                tx_list = seq[5]
+                if len(tx_list) == 8:
+                    count = tx_list[1]
+                else:
+                    count = tx_list[0]
                 signature = seq[6]
-                eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+                eth_tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
                 signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
                 pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
                 sender = pubkey.to_checksum_address()
                 console.log('sender', sender, 'count', count)
-                console.log('data', data)
+                console.log('tx_list', tx_list)
 
                 txs = self.next_mining.setdefault(sender, [])
-                txs.append(data)
+                txs.append(tx_list)
                 #statebody = {}
                 #print('txs', txs)
                 console.log('current_mining', self.current_mining)
@@ -317,7 +319,7 @@ class MiningClient:
                         console.log('current_mining[addr]', addr, self.current_mining[addr])
 
                     if setting.POW:
-                        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+                        req = requests.get(API_ENDPOINT+'/get_chain_latest')
                         console.log('get_chain_latest', req.text)
                         obj = req.json()
                         if obj['height'] == 0:
@@ -383,7 +385,7 @@ class MiningClient:
             #print('current_mining', current_mining)
             console.log('current_mining[addr]', addr, self.current_mining[addr])
 
-        req = requests.get('http://127.0.0.1:9001/get_chain_latest')
+        req = requests.get(API_ENDPOINT+'/get_chain_latest')
         console.log('get_chain_latest', req.text)
         obj = req.json()
         if obj['height'] == 0:
@@ -413,14 +415,53 @@ class MiningClient:
 
 ps = []
 cs = []
+
+API_ENDPOINT = 'http://127.0.0.1:9001'
+WS_ENDPOINT = 'ws://127.0.0.1:9001'
+
+
 if __name__ == "__main__":
-    user_addr = sys.argv[1]
+    if not os.path.exists('users'):
+        os.makedirs('users')
+    db = rocksdb.DB('users/consensus.db', rocksdb.Options(create_if_missing=True))
+    state.init_state(db)
+
+    try:
+        with open('users/consensus.json', 'r') as f:
+            config_obj = json.loads(f.read())
+            if 'api' in config_obj:
+                API_ENDPOINT = config_obj['api']
+            if 'ws' in config_obj:
+                WS_ENDPOINT = config_obj['ws']
+            if 'key' in config_obj:
+                user_addr = config_obj['key']
+    except:
+        config_obj = {}
+
+    parser = argparse.ArgumentParser(description='consensus.py [--api=http://127.0.0.1:9001] [--ws=ws://127.0.0.1:9001] [--key=user/keyfile.json]')
+    parser.add_argument('--key')
+    parser.add_argument('--api')
+    parser.add_argument('--ws')
+    args = parser.parse_args()
+    if args.api:
+        API_ENDPOINT = args.api
+        config_obj['api'] = args.api
+    if args.ws:
+        WS_ENDPOINT = args.ws
+        config_obj['ws'] = args.ws
+    if args.key:
+        user_addr = args.key
+        config_obj['key'] = args.key
+    with open('users/consensus.json', 'w') as f:
+        f.write(json.dumps(config_obj))
+    pprint.pprint(config_obj)
+ 
     conn, child_conn = multiprocessing.Pipe()
     process = multiprocessing.Process(target=pow, args=(child_conn,))
     ps.append(process)
     cs.append(conn)
     process.start()
-    client = MiningClient("ws://127.0.0.1:9001/miner", 5)
+    client = MiningClient(WS_ENDPOINT+'/miner', 5)
 
     tornado.autoreload.start()
     tornado.ioloop.IOLoop.instance().start()
