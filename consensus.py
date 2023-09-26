@@ -158,8 +158,12 @@ def new_block(parent_block_hash, parent_block_number):
         for txblock in txblocks:
             #pprint.pprint(txblock)
             tx_list = txblock[4]
-            tx_to = tx_list[4]
-            tx_data = tx_list[6]
+            if len(tx_list) == 8:
+                tx_to = tx_list[5]
+                tx_data = tx_list[7]
+            else:
+                tx_to = tx_list[4]
+                tx_data = tx_list[6]
             tx_signature_hex = txblock[5]
             tx_signature_obj = eth_account.Account._keys.Signature(signature_bytes=hexbytes.HexBytes(tx_signature_hex))
             vrs = tx_signature_obj.vrs
@@ -187,7 +191,10 @@ def new_block(parent_block_hash, parent_block_number):
 
             # result = interface_map[func_sig](*func_params)
             contracts.vm_map[tx_to].run(func_params, contracts.interface_map[tx_to][func_sig].__name__)
-            last_tx_height = tx_list[0]
+            if len(tx_list) == 8:
+                last_tx_height = tx_list[1]
+            else:
+                last_tx_height = tx_list[0]
             last_tx_hash = txblock[0]
 
         if txblocks:
@@ -284,18 +291,21 @@ class MiningClient:
                     conn.send(['START', block_hash_obj.digest(), 0, 2**230])
 
             elif seq[0] == 'NEW_SUBCHAIN_BLOCK':
-                data = seq[5]
-                count = data[0]
+                tx_list = seq[5]
+                if len(tx_list) == 8:
+                    count = tx_list[1]
+                else:
+                    count = tx_list[0]
                 signature = seq[6]
-                eth_tx_hash = eth_tx.hash_of_eth_tx_list(data)
+                eth_tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
                 signature_obj = eth_account.Account._keys.Signature(bytes.fromhex(signature[2:]))
                 pubkey = signature_obj.recover_public_key_from_msg_hash(eth_tx_hash)
                 sender = pubkey.to_checksum_address()
                 console.log('sender', sender, 'count', count)
-                console.log('data', data)
+                console.log('tx_list', tx_list)
 
                 txs = self.next_mining.setdefault(sender, [])
-                txs.append(data)
+                txs.append(tx_list)
                 #statebody = {}
                 #print('txs', txs)
                 console.log('current_mining', self.current_mining)

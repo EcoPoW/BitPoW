@@ -462,10 +462,11 @@ def new_subchain_block(seq):
     global subchains_new_block_available
     _header, subchain_hash, prev_hash, tx_type, timestamp, tx_list, signature = seq
     if len(tx_list) == 8:
-        receiver = tx_list[4]
+        receiver = tx_list[5]
+        height = tx_list[1]
     else:
         receiver = tx_list[3]
-    height = tx_list[0]
+        height = tx_list[0]
     print('new_subchain_block tx_list', tx_list)
 
     eth_tx_hash = eth_tx.hash_of_eth_tx_list(tx_list)
