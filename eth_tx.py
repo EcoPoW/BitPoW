@@ -12,6 +12,7 @@ def eth_rlp2list(tx_rlp_bytes):
     if tx_rlp_bytes.startswith(b'\x02'):
         tx_rlp_list = rlp.decode(tx_rlp_bytes[1:])
         print('eth_rlp2list type2', tx_rlp_list)
+        chain_id = int.from_bytes(tx_rlp_list[0], 'big')
         nonce = int.from_bytes(tx_rlp_list[1], 'big')
         gas_price = int.from_bytes(tx_rlp_list[2], 'big')
         max_priority = int.from_bytes(tx_rlp_list[3], 'big')
@@ -23,11 +24,11 @@ def eth_rlp2list(tx_rlp_bytes):
         v = int.from_bytes(tx_rlp_list[9], 'big')
         r = int.from_bytes(tx_rlp_list[10], 'big')
         s = int.from_bytes(tx_rlp_list[11], 'big')
-        chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
-        if not chain_id:
-            chain_id = 1
-        v_standard = chain_naive_v - V_OFFSET
-        return [nonce, gas_price, max_priority, max_fee, to, value, data, chain_id], [v_standard, r, s]
+        # chain_id, chain_naive_v = eth_account._utils.signing.extract_chain_id(v)
+        # print(chain_id, chain_naive_v)
+        # if not chain_id:
+        # v_standard = chain_naive_v - V_OFFSET
+        return [chain_id, nonce, gas_price, max_priority, max_fee, to, value, data], [v, r, s]
 
     else:
         tx_rlp_list = rlp.decode(tx_rlp_bytes)
@@ -50,16 +51,16 @@ def eth_rlp2list(tx_rlp_bytes):
 def hash_of_eth_tx_list(tx_list):
     print('hash_of_eth_tx_list', tx_list)
     if len(tx_list) == 8:
-        nonce = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
-        gas_price = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
-        max_priority = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
-        max_fee = tx_list[3].to_bytes(math.ceil(tx_list[3].bit_length()/8), 'big')
-        to = bytes.fromhex(tx_list[4].replace('0x', ''))
-        value = tx_list[5].to_bytes(math.ceil(tx_list[5].bit_length()/8), 'big')
-        data = bytes.fromhex(tx_list[6].replace('0x', ''))
-        chain_id = tx_list[7].to_bytes(math.ceil(tx_list[7].bit_length()/8), 'big')
+        chain_id = tx_list[0].to_bytes(math.ceil(tx_list[0].bit_length()/8), 'big')
+        nonce = tx_list[1].to_bytes(math.ceil(tx_list[1].bit_length()/8), 'big')
+        gas_price = tx_list[2].to_bytes(math.ceil(tx_list[2].bit_length()/8), 'big')
+        max_priority = tx_list[3].to_bytes(math.ceil(tx_list[3].bit_length()/8), 'big')
+        max_fee = tx_list[4].to_bytes(math.ceil(tx_list[4].bit_length()/8), 'big')
+        to = bytes.fromhex(tx_list[5].replace('0x', ''))
+        value = tx_list[6].to_bytes(math.ceil(tx_list[6].bit_length()/8), 'big')
+        data = bytes.fromhex(tx_list[7].replace('0x', ''))
         # print([nonce, gas_price, gas, to, value, data, chain_id, 0, 0])
-        rlp_bytes = rlp.encode([b'\x02\x08', nonce, gas_price, max_priority, max_fee, to, value, data, []])
+        rlp_bytes = rlp.encode([chain_id, nonce, gas_price, max_priority, max_fee, to, value, data, []])
         # print('raw', rlp_bytes)
         rlp_hash = eth_utils.keccak(b'\x02'+rlp_bytes)
         # print('hash1', rlp_hash)
