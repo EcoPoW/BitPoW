@@ -433,6 +433,147 @@ erc20_abi = '''[
     }
 ]'''
 
+erc721_abi = '''[
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+            {"name": "", "type": "string"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {"name": "_name", "type": "string"},
+            {"name": "_symbol", "type": "string"},
+            {"name": "_decimals", "type": "uint8"},
+            {"name": "_address", "type": "address"}
+        ],
+        "name": "init",
+        "outputs": [ {"name": "", "type": "bool"} ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {"name": "_spender", "type": "address"},
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "approve",
+        "outputs": [ {"name": "", "type": "bool"} ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+            {"name": "", "type": "uint256"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {"name": "_from", "type": "address"},
+            {"name": "_to", "type": "address"},
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "transferFrom",
+        "outputs": [
+            {"name": "", "type": "bool"}
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+            {"name": "", "type": "uint8"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_owner", "type": "address"}
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {"name": "balance", "type": "uint256"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [
+            {"name": "", "type": "string"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {"name": "_to", "type": "address"},
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "transfer",
+        "outputs": [
+            {"name": "", "type": "bool"}
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_owner", "type": "address"},
+            {"name": "_spender", "type": "address"}
+        ],
+        "name": "allowance",
+        "outputs": [
+            {"name": "", "type": "uint256"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_to", "type": "address"},
+            {"name": "_value", "type": "uint256"}
+        ],
+        "name": "mint",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]'''
+
 
 staking_abi = '''[
     {
@@ -466,6 +607,7 @@ staking_abi = '''[
 erc20 = w3.eth.contract(address='0x0000000000000000000000000000000000000001', abi=erc20_abi)
 staking = w3.eth.contract(address='0x0000000000000000000000000000000000000002', abi=staking_abi)
 erc20u = w3.eth.contract(address='0x0000000000000000000000000000000000000003', abi=erc20_abi)
+erc721 = w3.eth.contract(address='0x0000000000000000000000000000000000000004', abi=erc721_abi)
 
 
 nonce = w3.eth.get_transaction_count(account.address)
@@ -535,6 +677,16 @@ for action in sys.argv[1:]:
 
     elif action == 'mintu':
         unsigned_tx = erc20u.functions.mint(account.address, 10**19).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    elif action == 'mint721':
+        unsigned_tx = erc721.functions.mint(account.address, 10**19).build_transaction({
             'from': account.address,
             'nonce': nonce,
         })
