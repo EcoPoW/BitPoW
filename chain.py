@@ -599,13 +599,13 @@ class GetStateSubchainsHandler(tornado.web.RequestHandler):
         results = {}
         for addr in addrs.split(','):
             # print('addr', addr)
-            results[addr] = None
-            it.seek(('globalsubchain_%s_%s' % (addr, str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
+            results[addr.lower()] = None
+            it.seek(('globalsubchain_%s_%s' % (addr.lower(), str(setting.REVERSED_NO-no).zfill(16))).encode('utf8'))
             for k, v in it:
                 # print('GetStateSubchainsHandler', k, v)
-                if not k.startswith(b'globalsubchain_'):
+                if not k.decode('utf8').startswith('globalsubchain_%s_' % addr.lower()):
                     break
-                results[addr] = tornado.escape.json_decode(v)
+                results[addr.lower()] = tornado.escape.json_decode(v)
                 break
         self.finish(results)
 
@@ -623,11 +623,11 @@ class GetStateContractsHandler(tornado.web.RequestHandler):
         it = db.iteritems()
 
         results = {}
-        # it.seek(('globalstate_%s_' % addr).encode('utf8'))
-        it.seek(('globalstate_%s_' % addr).encode('utf8'))
+        # it.seek(('globalstate_%s_' % addr.lower()).encode('utf8'))
+        it.seek(('globalstate_%s_' % addr.lower()).encode('utf8'))
         for k, v in it:
             # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
-            if not k.startswith(('globalstate_%s_' % addr).encode('utf8')):
+            if not k.decode('utf8').startswith(('globalstate_%s_' % addr.lower())):
                 break
             reversed_no = int(k.decode('utf8').split('_')[4])
             if block_height and setting.REVERSED_NO - reversed_no != no:
@@ -655,7 +655,7 @@ class GetPoolSubchainsHandler(tornado.web.RequestHandler):
                 reversed_height = int(subchain_key_list[2])
                 count = setting.REVERSED_NO - reversed_height
                 #assert count + 1 == tx_nonce
-                results[addr] = [count, subchain_key_list[3]]
+                results[addr.lower()] = [count, subchain_key_list[3]]
                 break
 
         # print('GetPoolSubchainsHandler results', results)
