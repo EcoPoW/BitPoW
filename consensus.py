@@ -142,12 +142,12 @@ def new_block(parent_block_hash, parent_block_number):
 
     for addr in pool_subchains:
         #console.log('current_mining', self.current_mining)
-        console.log('get_pool_subchains addr', addr, pool_subchains[addr])
-        to_no, to_hash = pool_subchains[addr]
-        console.log('get_state_subchains addr', state_subchains[addr])
+        console.log('get_pool_subchains addr', addr, pool_subchains[addr.lower()])
+        to_no, to_hash = pool_subchains[addr.lower()]
+        console.log('get_state_subchains addr', state_subchains[addr.lower()])
         from_no = 0
-        if state_subchains[addr]:
-            from_no = state_subchains[addr]['height']
+        if state_subchains[addr.lower()]:
+            from_no = state_subchains[addr.lower()]['height']
         console.log(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
         req = requests.get(API_ENDPOINT+'/get_pool_blocks?addr=%s&from_no=%s&to_no=%s&to_hash=%s' % (addr, from_no, to_no, to_hash))
         txblocks = req.json()['blocks']
