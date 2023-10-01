@@ -450,8 +450,8 @@ erc721_abi = '''[
         "inputs": [
             {"name": "_name", "type": "string"},
             {"name": "_symbol", "type": "string"},
-            {"name": "_decimals", "type": "uint8"},
-            {"name": "_address", "type": "address"}
+            {"name": "_owner", "type": "address"},
+            {"name": "_baseTokenURI", "type": "string"}
         ],
         "name": "init",
         "outputs": [ {"name": "", "type": "bool"} ],
@@ -685,8 +685,18 @@ for action in sys.argv[1:]:
         # print(signed_tx)
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
+    elif action == 'init721':
+        unsigned_tx = erc721.functions.init('ERC721', 'NFT', '0x0000000000000000000000000000000000000000', 'http://127.0.0.1/').build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
     elif action == 'mint721':
-        unsigned_tx = erc721.functions.mint(account.address, 10**19).build_transaction({
+        unsigned_tx = erc721.functions.mint(account.address, 1).build_transaction({
             'from': account.address,
             'nonce': nonce,
         })
