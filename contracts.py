@@ -8,6 +8,7 @@ import vm
 import console
 
 import contract_erc20
+import contract_erc721
 import contract_staking
 
 
@@ -15,6 +16,7 @@ contract_map = {
     '0x0000000000000000000000000000000000000001': contract_erc20,
     '0x0000000000000000000000000000000000000002': contract_staking,
     '0x0000000000000000000000000000000000000003': contract_erc20,
+    '0x0000000000000000000000000000000000000004': contract_erc721,
 }
 
 interface_map = {}
