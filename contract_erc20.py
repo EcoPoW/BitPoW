@@ -20,52 +20,52 @@ from contract_types import address, string, uint8, uint256, bytes4
 
 
 def init(_name:string, _symbol:string, _decimals:uint8, _owner:address) -> None:
-    name = _get('name', None, _self)
+    name = _get(_self, 'name')
     if not name:
-        _put('name', _name, _self)
+        _put(_self, 'name', _name)
 
-    symbol = _get('symbol', None, _self)
+    symbol = _get(_self, 'symbol')
     if not symbol:
-        _put('symbol', _symbol, _self)
+        _put(_self, 'symbol', _symbol)
 
-    decimals = _get('decimals', None, _self)
+    decimals = _get(_self, 'decimals')
     if not decimals:
-        _put('decimals', _decimals, _self)
+        _put(_self, 'decimals', _decimals)
 
-    owner = _get('owner', None, _self)
+    owner = _get(_self, 'owner')
     if not owner:
-        _put('owner', _owner, _self)
+        _put(_self, 'owner', _owner)
 
 
 def mint(_to:address, _value:uint256) -> bool:
-    owner = _get('owner', None, _self)
+    owner = _get(_self, 'owner')
     print('mint sender owner', _sender, owner)
     if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
         return False
 
-    current_amount = _get('balance', 0, _to)
+    current_amount = _get(_to, 'balance', 0)
     new_amount = current_amount + _value
     print('before mint', current_amount)
     print('mint to', _to, _value)
     print('after mint', new_amount)
-    _put('balance', new_amount, _to)
+    _put(_to, 'balance', new_amount, _to)
 
-    current_total = _get('total', 0, _self)
+    current_total = _get(_self, 'total', 0)
     new_total = current_total + _value
     print('after mint total', new_total)
-    _put('total', new_total, _self)
+    _put(_self, 'total', new_total)
 
     return True
 
 def approve(_spender:address, _value:uint256) -> bool:
-    allowance = _get('allowance', {}, _sender)
+    allowance = _get(_sender, 'allowance', {})
     allowance[_spender] = _value
     print(allowance)
-    _put('allowance', allowance, _sender)
+    _put(_sender, 'allowance', allowance)
     return True
 
 def allowance(_owner:address, _spender:address) -> uint256:
-    allowance = _get('allowance', {}, _owner)
+    allowance = _get(_owner, 'allowance', {})
     print('allowance', allowance)
     value = allowance.get(_spender, 0)
     # return value
@@ -73,47 +73,47 @@ def allowance(_owner:address, _spender:address) -> uint256:
 
 def transfer(_to:address, _value:uint256) -> bool:
     print('transfer to', _sender, _to, _value)
-    sender_amount = _get('balance', 0, _sender)
+    sender_amount = _get(_sender, 'balance', 0)
     print('sender_amount', sender_amount, _value)
     sender_new_amount = sender_amount - _value
     print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _put('balance', sender_new_amount, _sender)
+    _put(_sender, 'balance', sender_new_amount, _sender)
 
-    receiver_amount = _get('balance', 0, _to)
+    receiver_amount = _get(_to, 'balance', 0)
     receiver_new_amount = receiver_amount + _value
     print('after transfer receiver', receiver_new_amount)
-    _put('balance', receiver_new_amount, _to)
+    _put(_to, 'balance', receiver_new_amount, _to)
 
 
 def transferFrom(_from:address, _to:address, _value:uint256) -> bool:
     print('erc20 transferFrom', _from, _to, _self)
 
-    allowance = _get('allowance', {}, _from)
+    allowance = _get(_from, 'allowance', {})
     print('allowance', allowance)
     value = allowance.get(_to, 0)
     print('value', value)
     assert value >= _value
     allowance[_to] = value - _value
-    _put('allowance', allowance, _from)
+    _put(_from, 'allowance', allowance)
 
-    sender_amount = _get('balance', 0, _from)
+    sender_amount = _get(_from, 'balance', 0)
     sender_new_amount = sender_amount - _value
     print('sender_amount', sender_amount, _value)
     print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _put('balance', sender_new_amount, _from)
+    _put(_from, 'balance', sender_new_amount, _from)
 
-    receiver_amount = _get('balance', 0, _to)
+    receiver_amount = _get(_to, 'balance', 0)
     receiver_new_amount = receiver_amount + _value
     print('after transfer receiver', receiver_new_amount)
-    _put('balance', receiver_new_amount, _to)
+    _put(_to, 'balance', receiver_new_amount, _to)
 
 
 def balanceOf(_owner:address) -> uint256:
-    amount = _get('balance', 0, _owner)
+    amount = _get(_owner, 'balance', 0)
     print('balanceOf', _owner, amount)
     return amount
     # return f'0x{amount:0>64x}'
@@ -121,12 +121,12 @@ def balanceOf(_owner:address) -> uint256:
 
 
 def name() -> string:
-    name = _get('name', '', _self)
+    name = _get(_self, 'name', '')
     print('name', name)
     return name
 
 def symbol() -> string:
-    sym = _get('symbol', '', _self)
+    sym = _get(_self, 'symbol', '')
     print('symbol', sym)
     return sym
     # sym = hex(ord('U'))[2:]
@@ -135,13 +135,13 @@ def symbol() -> string:
     # return '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003504f570000000000000000000000000000000000' #POW
 
 def decimals() -> uint8:
-    dec = _get('decimals', 0, _self)
+    dec = _get(_self, 'decimals', 0)
     print('decimals', dec)
     return dec
     #return f'0x{18:0>64x}'
 
 def totalSupply() -> uint256:
-    amount = _get('total', 0, _self)
+    amount = _get(_self, 'total', 0)
     return amount
     # return f'0x{amount:0>64x}'
 
