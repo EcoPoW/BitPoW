@@ -203,13 +203,8 @@ def new_block(parent_block_hash, parent_block_number):
 
     console.log(txbody)
     txbody_json = json.dumps(txbody)
-    # console.log(state.pending_state)
-    it = state.pending_state.iteritems()
-    it.seek_to_first()
-    for k, v in it:
-        console.log(k, v)
-        # _, contract_address, var, block_number, addr = k.split('_')
-        statebody[k.decode('utf8')] = v.decode('utf8')
+    statebody = state.dump()
+    console.log(statebody)
     statebody_json = json.dumps(statebody, sort_keys=True)
 
     txbody_hash = hashlib.sha256(txbody_json.encode('utf8')).hexdigest()
@@ -377,11 +372,8 @@ class MiningClient:
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce, difficulty]
                     self.ws.write_message(json.dumps(message))
 
-                    statebody = {}
-                    it = state.pending_state.iteritems()
-                    it.seek_to_first()
-                    for k, v in it:
-                        statebody[k.decode('utf8')] = v.decode('utf8')
+                    statebody = state.dump()
+                    console.log(statebody)
                     state.merge(block_hash, statebody)
                     # state.pending_state = {}
                     self.current_mining = None
@@ -412,11 +404,8 @@ class MiningClient:
         block_hash = block_hash_obj.hexdigest()
         console.log(block_hash)
 
-        statebody = {}
-        it = state.pending_state.iteritems()
-        it.seek_to_first()
-        for k, v in it:
-            statebody[k.decode('utf8')] = v.decode('utf8')
+        statebody = state.dump()
+        console.log(statebody)
         state.merge(block_hash, statebody)
         # state.pending_state = {}
 

@@ -33,7 +33,7 @@ def put(_owner, _var, _value, _key = None):
     addr = _owner.lower()
     value_json = tornado.escape.json_encode(_value)
     # console.log('globalstate_%s_%s_%s_%s' % (contract_address, var, addr, str(10**15 - block_number).zfill(16)), value_json)
-    k = 'globalstate_%s_%s_%s_%s' % (contract_address, var, block_number, addr)
+    k = 'globalstate_%s_%s_%s_%s' % (contract_address, var, str(10**15 - int(block_number)).zfill(16), addr)
     pending_state.put(k.encode('utf8'), value_json.encode('utf8'))
 
 def get(_var, _default = None, _key = None):
@@ -55,7 +55,7 @@ def get(_var, _default = None, _key = None):
     else:
         var = _var
 
-    k = 'globalstate_%s_%s_%s_' % (contract_address, var, block_number)
+    k = 'globalstate_%s_%s_' % (contract_address, var)
     console.log(k)
     it = pending_state.iteritems()
     for k, value_json in it:
@@ -116,6 +116,19 @@ def merge(_block_hash, _pending_state):
         _, contract_address, var, block_number, addr = k.split('_')
         db.put(('globalstate_%s_%s_%s_%s_%s' % (contract_address, var, str(10**15 - int(block_number)).zfill(16), _block_hash, addr)).encode('utf8'), v.encode('utf8'))
     pending_state = database.get_temp_conn()
+
+
+def dump():
+    global pending_state
+    it = pending_state.iteritems()
+    it.seek_to_first()
+    statebody = {}
+    for k, v in it:
+        console.log(k, v)
+        storage_key, contract_address, var, block_number, addr = k.decode('utf8').split('_')
+        key = '%s_%s_%s_%s_%s' % (storage_key, contract_address, var, 10**15 - int(block_number), addr)
+        statebody[key] = v.decode('utf8')
+    return statebody
 
 # _state = None
 def init_state(d):
