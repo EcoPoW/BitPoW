@@ -131,6 +131,7 @@ def pos(parent_block_hash, parent_block_number):
 
 def new_block(parent_block_hash, parent_block_number):
     txbody = []
+    statebody = {}
     state.block_number = parent_block_number + 1
 
     req = requests.get(API_ENDPOINT+'/get_pool_subchains')
@@ -201,9 +202,16 @@ def new_block(parent_block_hash, parent_block_number):
             txbody.append([addr, last_tx_height, last_tx_hash])
 
     console.log(txbody)
-    console.log(state.pending_state)
     txbody_json = json.dumps(txbody)
-    statebody_json = json.dumps(state.pending_state, sort_keys=True)
+    # console.log(state.pending_state)
+    it = state.pending_state.iteritems()
+    it.seek_to_first()
+    for k, v in it:
+        console.log(k, v)
+        # _, contract_address, var, block_number, addr = k.split('_')
+        statebody[k.decode('utf8')] = v.decode('utf8')
+    statebody_json = json.dumps(statebody, sort_keys=True)
+
     txbody_hash = hashlib.sha256(txbody_json.encode('utf8')).hexdigest()
     statebody_hash = hashlib.sha256(statebody_json.encode('utf8')).hexdigest()
     console.log(txbody_hash)
@@ -270,7 +278,7 @@ class MiningClient:
                 console.log(parent_block_hash, parent_block_number)
 
                 #state.merge(block_hash, state.pending_state)
-                state.pending_state = {}
+                # state.pending_state = {}
                 #self.current_mining = None
 
                 if setting.POW:
@@ -369,8 +377,13 @@ class MiningClient:
                     message = ['NEW_CHAIN_HEADER', block_hash, self.header_data, nonce, difficulty]
                     self.ws.write_message(json.dumps(message))
 
-                    state.merge(block_hash, state.pending_state)
-                    state.pending_state = {}
+                    statebody = {}
+                    it = state.pending_state.iteritems()
+                    it.seek_to_first()
+                    for k, v in it:
+                        statebody[k.decode('utf8')] = v.decode('utf8')
+                    state.merge(block_hash, statebody)
+                    # state.pending_state = {}
                     self.current_mining = None
 
     def pos(self):
@@ -399,8 +412,13 @@ class MiningClient:
         block_hash = block_hash_obj.hexdigest()
         console.log(block_hash)
 
-        state.merge(block_hash, state.pending_state)
-        state.pending_state = {}
+        statebody = {}
+        it = state.pending_state.iteritems()
+        it.seek_to_first()
+        for k, v in it:
+            statebody[k.decode('utf8')] = v.decode('utf8')
+        state.merge(block_hash, statebody)
+        # state.pending_state = {}
 
         user_rank = pos(parent_block_hash, parent_block_number)
         console.log(user_rank)
