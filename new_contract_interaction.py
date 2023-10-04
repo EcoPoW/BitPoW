@@ -652,7 +652,7 @@ for action in sys.argv[1:]:
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
     elif action == 'allowance':
-        allowance = erc20.functions.allowance(account.address, account.address).call()
+        allowance = erc20.functions.allowance(account.address, '0x0000000000000000000000000000000000000002').call()
         print('allowance', allowance)
 
     elif action == 'transfer':

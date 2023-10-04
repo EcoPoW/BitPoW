@@ -58,18 +58,18 @@ def mint(_to:address, _value:uint256) -> bool:
     return True
 
 def approve(_spender:address, _value:uint256) -> bool:
-    allowance = _get('allowance', {})
+    allowance = _get('allowance', {}, _sender)
     allowance[_spender] = _value
     print(allowance)
-    _put(_sender, 'allowance', allowance)
+    _put(_sender, 'allowance', allowance, _sender)
     return True
 
 def allowance(_owner:address, _spender:address) -> uint256:
-    allowance = _get('allowance', {})
+    allowance = _get('allowance', {}, _owner)
     print('allowance', allowance)
     value = allowance.get(_spender, 0)
-    # return value
-    return f'0x{value:0>64x}'
+    return value
+    # return f'0x{value:0>64x}'
 
 def transfer(_to:address, _value:uint256) -> bool:
     print('transfer to', _sender, _to, _value)
