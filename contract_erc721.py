@@ -1,36 +1,36 @@
 from contract_types import address, string, uint256, bytes4
 
 def init(_name: string, _symbol: string, _owner: address, _baseTokenURI: string) -> None:
-    name = _get('name', None, _self)
+    name = _get('name')
     if not name:
-        _put('name', _name, _self)
+        _put(_self, 'name', _name)
 
-    symbol = _get('symbol', None, _self)
+    symbol = _get('symbol')
     if not symbol:
-        _put('symbol', _symbol, _self)
+        _put(_self, 'symbol', _symbol)
 
-    owner = _get('owner', None, _self)
+    owner = _get('owner')
     if not owner:
-        _put('owner', _owner, _self)
+        _put(_self, 'owner', _owner)
 
-    baseTokenURI = _get('baseTokenURI', None, _self)
+    baseTokenURI = _get('baseTokenURI')
     if not baseTokenURI:
-        _put('baseTokenURI', _baseTokenURI, _self)
+        _put(_self, 'baseTokenURI', _baseTokenURI)
 
 def mint(_to: address, _tokenId: uint256) -> bool:
-    owner = _get('owner', None, _self)
+    owner = _get('owner')
     print('mint sender owner', _sender, owner)
     if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
         return False
     
-    current_owner = _get('owners', None, _tokenId)
+    current_owner = _get('owners', None, str(_tokenId))
     if current_owner:
         return False
-    _put('owners', _to, _tokenId)
+    _put(_to, 'owners', _to, str(_tokenId))
 
     current_amount = _get('balance', 0, _to)
     new_amount = current_amount + 1
-    _put('balance', new_amount, _to)
+    _put(_to, 'balance', new_amount, _to)
 
     return True
 
@@ -92,20 +92,21 @@ def isApprovedForAll(_owner: address, _operator: address) -> bool:
     operatorApprovals.get(_operator, False)
 
 def balanceOf(_owner: address) -> uint256:
-    _get('balance', 0, _to)
+    balance = _get('balance', 0, _owner)
+    return balance
 
 def name() -> string:
-    name = _get('name', '', _self)
+    name = _get('name', '')
     print('name', name)
     return name
 
 def symbol() -> string:
-    sym = _get('symbol', '', _self)
+    sym = _get('symbol', '')
     print('symbol', sym)
     return sym
 
 def tokenURI(_tokenId: uint256) -> string:
-    baseURI = _get('baseTokenURI', '', _self)
+    baseURI = _get('baseTokenURI', '')
     URI = baseURI + _tokenId
     print('baseURI', URI)
     return URI
@@ -117,14 +118,3 @@ def supportsInterface(_interfaceId: bytes4) -> bool:
         return True
     return False
 
-
-# hardhat test Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-# Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-if __name__ == '__main__':
-    for i in range(2):
-        mint('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', 1 * i)
-    _sender = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
-    transfer('0x0000000000000000000000000000000000000002', 1)
-    balanceOf('0x0000000000000000000000000000000000000002')
-    print(symbol())

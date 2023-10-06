@@ -629,7 +629,7 @@ class GetStateContractsHandler(tornado.web.RequestHandler):
             # print('GetStateSubchainsHandler', k.decode('utf8').split('_'), v)
             if not k.decode('utf8').startswith(('globalstate_%s_' % addr.lower())):
                 break
-            reversed_no = int(k.decode('utf8').split('_')[4])
+            reversed_no = int(k.decode('utf8').split('_')[3])
             if block_height and setting.REVERSED_NO - reversed_no != no:
                 continue
             self.write(k)

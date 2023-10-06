@@ -1,4 +1,6 @@
 
+import string
+
 import tornado.escape
 import web3
 
@@ -7,49 +9,69 @@ import console
 import database
 
 db = None
-pending_state = {}
+pending_state = database.get_temp_conn()
+
 block_number = 0
 contract_address = None
 sender = None
 
-def put(key, value, _addr):
+def put(_owner, _var, _value, _key = None):
     global pending_state
     global block_number
     global contract_address
     global sender
 
-    addr = _addr.lower()
-    value_json = tornado.escape.json_encode(value)
-    # console.log('globalstate_%s_%s_%s_%s' % (contract_address, key, addr, str(10**15 - block_number).zfill(16)), value_json)
-    pending_state['globalstate_%s_%s_%s_%s' % (contract_address, key, addr, block_number)] = value_json
+    assert type(_var) is str
+    assert set(_var) - set(string.ascii_letters + string.digits + '-.') == set()
+    if _key is not None:
+        assert type(_key) is str
+        assert set(_key) - set(string.ascii_letters + string.digits + '-.') == set()
+        var = '%s[%s]' % (_var, _key)
+    else:
+        var = _var
 
-def get(key, default, _addr):
+    addr = _owner.lower()
+    value_json = tornado.escape.json_encode(_value)
+    # console.log('globalstate_%s_%s_%s_%s' % (contract_address, var, addr, str(10**15 - block_number).zfill(16)), value_json)
+    k = 'globalstate_%s_%s_%s_%s' % (contract_address, var, str(10**15 - int(block_number)).zfill(16), addr)
+    pending_state.put(k.encode('utf8'), value_json.encode('utf8'))
+
+def get(_var, _default = None, _key = None):
     global pending_state
     global block_number
     global contract_address
     global sender
+    #console.log(pending_state)
+    #console.log(block_number)
+    #console.log(contract_address)
 
-    value = default
-    addr = _addr.lower()
-    console.log(block_number)
-    console.log(contract_address)
-    console.log(pending_state)
-    k = 'globalstate_%s_%s_%s_%s' % (contract_address, key, addr, block_number)
+    value = _default
+    assert type(_var) is str
+    assert set(_var) - set(string.ascii_letters + string.digits + '-.') == set()
+    if _key is not None:
+        assert type(_key) is str
+        assert set(_key) - set(string.ascii_letters + string.digits + '-.') == set()
+        var = '%s[%s]' % (_var, _key)
+    else:
+        var = _var
+
+    k = 'globalstate_%s_%s_' % (contract_address, var)
     console.log(k)
-    if k in pending_state:
-        value_json = pending_state[k]
-        # console.log(value_json)
-        value = tornado.escape.json_decode(value_json)
-        return value
+    it = pending_state.iteritems()
+    for k, value_json in it:
+        if k.startswith(('globalstate_%s_%s_' % (contract_address, var)).encode('utf8')):
+            value = tornado.escape.json_decode(value_json)
+            return value
+        break
 
     it = db.iteritems()
-    # console.log(('globalstate_%s_%s_%s' % (contract_address, key, addr)).encode('utf8'))
-    it.seek(('globalstate_%s_%s_%s' % (contract_address, key, addr)).encode('utf8'))
+    # console.log(('globalstate_%s_%s_%s' % (contract_address, var, addr)).encode('utf8'))
+    it.seek(('globalstate_%s_%s_' % (contract_address, var)).encode('utf8'))
 
-    # value_json = _trie.get(b'state_%s_%s' % (contract_address, key.encode('utf8')))
+    # value_json = _trie.get(b'state_%s_%s' % (contract_address, var.encode('utf8')))
     for k, value_json in it:
-        if k.startswith(('globalstate_%s_%s_%s' % (contract_address, key, addr)).encode('utf8')):
-            # block_number = 10**15 - int(k.replace(b'%s_%s_' % (contract_address, key.encode('utf8')), b''))
+        if k.startswith(('globalstate_%s_%s_' % (contract_address, var)).encode('utf8')):
+            # block_number = 10**15 - int(k.replace(b'%s_%s_' % (contract_address, var.encode('utf8')), b''))
             # console.log(k, value_json)
             # try:
             value = tornado.escape.json_decode(value_json)
@@ -91,9 +113,22 @@ def merge(_block_hash, _pending_state):
     # console.log('merge')
     for k, v in _pending_state.items():
         # console.log(k,v)
-        _, contract_address, key, addr, block_number = k.split('_')
-        db.put(('globalstate_%s_%s_%s_%s_%s' % (contract_address, key, addr, str(10**15 - int(block_number)).zfill(16), _block_hash)).encode('utf8'), v.encode('utf8'))
-    pending_state = {}
+        _, contract_address, var, block_number, addr = k.split('_')
+        db.put(('globalstate_%s_%s_%s_%s_%s' % (contract_address, var, str(10**15 - int(block_number)).zfill(16), _block_hash, addr)).encode('utf8'), v.encode('utf8'))
+    pending_state = database.get_temp_conn()
+
+
+def dump():
+    global pending_state
+    it = pending_state.iteritems()
+    it.seek_to_first()
+    statebody = {}
+    for k, v in it:
+        console.log(k, v)
+        storage_key, contract_address, var, block_number, addr = k.decode('utf8').split('_')
+        key = '%s_%s_%s_%s_%s' % (storage_key, contract_address, var, 10**15 - int(block_number), addr)
+        statebody[key] = v.decode('utf8')
+    return statebody
 
 # _state = None
 def init_state(d):
