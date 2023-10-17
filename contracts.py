@@ -7,9 +7,11 @@ import web3
 import vm
 import console
 
+import contract_staking
 import contract_erc20
 import contract_erc721
-import contract_staking
+import contract_erc20_6551
+import contract_erc721_did
 
 
 contract_map = {
@@ -17,6 +19,8 @@ contract_map = {
     '0x0000000000000000000000000000000000000002': contract_staking,
     '0x0000000000000000000000000000000000000003': contract_erc20,
     '0x0000000000000000000000000000000000000004': contract_erc721,
+    '0x0000000000000000000000000000000000000005': contract_erc20_6551,
+    '0x0000000000000000000000000000000000000006': contract_erc721_did,
 }
 
 interface_map = {}
