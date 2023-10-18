@@ -8,6 +8,8 @@ import contracts
 import console
 import database
 
+STATE_KEY_LETTERS = set(string.ascii_letters + string.digits + '-.#')
+
 db = None
 pending_state = database.get_temp_conn()
 
@@ -22,10 +24,10 @@ def put(_owner, _var, _value, _key = None):
     global sender
 
     assert type(_var) is str
-    assert set(_var) - set(string.ascii_letters + string.digits + '-.') == set()
+    assert set(_var) - STATE_KEY_LETTERS == set()
     if _key is not None:
         assert type(_key) is str
-        assert set(_key) - set(string.ascii_letters + string.digits + '-.') == set()
+        assert set(_key) - STATE_KEY_LETTERS == set()
         var = '%s[%s]' % (_var, _key)
     else:
         var = _var
@@ -47,10 +49,10 @@ def get(_var, _default = None, _key = None):
 
     value = _default
     assert type(_var) is str
-    assert set(_var) - set(string.ascii_letters + string.digits + '-.') == set()
+    assert set(_var) - STATE_KEY_LETTERS == set()
     if _key is not None:
         assert type(_key) is str
-        assert set(_key) - set(string.ascii_letters + string.digits + '-.') == set()
+        assert set(_key) - STATE_KEY_LETTERS == set()
         var = '%s[%s]' % (_var, _key)
     else:
         var = _var

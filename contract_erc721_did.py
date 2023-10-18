@@ -1,4 +1,5 @@
-from contract_types import address, string, uint256, bytes4
+# from typing import List
+from contract_types import address, string, uint256, bytes4, bytes32
 
 def init(_name: string, _symbol: string, _owner: address) -> None: #, _baseTokenURI: string
     name = _get('name')
@@ -17,21 +18,21 @@ def init(_name: string, _symbol: string, _owner: address) -> None: #, _baseToken
     #if not baseTokenURI:
     #    _put(_self, 'baseTokenURI', _baseTokenURI)
 
-def mint(_to: address, _tokenId: uint256) -> bool:
+def mint(_to: address, _token_id: uint256) -> bool:
     owner = _get('owner')
     print('mint sender owner', _sender, owner)
     if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
         return False
     
-    current_owner = _get('owners', None, str(_tokenId))
+    current_owner = _get('owners', None, str(_token_id))
     if current_owner:
         return False
     current_addr = _get('addrs', None, _to)
     if current_addr:
         return False
 
-    _put(_to, 'owners', _to, str(_tokenId))
-    _put(_to, 'addrs', str(_tokenId), _to)
+    _put(_to, 'owners', _to, str(_token_id))
+    _put(_to, 'addrs', str(_token_id), _to)
 
     current_amount = _get('balance', 0, _to)
     new_amount = current_amount + 1
@@ -39,15 +40,15 @@ def mint(_to: address, _tokenId: uint256) -> bool:
 
     return True
 
-def transferFrom(_from: address, _to: address, _tokenId: uint256) -> bool:
-    print('transferFrom', _sender, _from, _to, _tokenId)
-    current_owner = ownerOf(_tokenId)
+def transferFrom(_from: address, _to: address, _token_id: uint256) -> bool:
+    print('transferFrom', _sender, _from, _to, _token_id)
+    current_owner = ownerOf(_token_id)
     assert current_owner == _from
     print('current_owner', current_owner)
-    approved_address = getApproved(_tokenId)
+    approved_address = getApproved(_token_id)
     print('approved_address', approved_address)
     assert approved_address == _sender
-    _put('owners', _to, _tokenId)
+    _put('owners', _to, _token_id)
     old_balance = _get('balance', 0, _from)
     _put('balance', old_balance - 1, _from)
 
@@ -55,12 +56,12 @@ def transferFrom(_from: address, _to: address, _tokenId: uint256) -> bool:
     _put('balance', new_balance + 1, _to)
     return True
 
-def transfer(_to: address, _tokenId: uint256) -> bool:
-    print('transfer to', _sender, _to, _tokenId)
-    token_owner = ownerOf(_tokenId)
+def transfer(_to: address, _token_id: uint256) -> bool:
+    print('transfer to', _sender, _to, _token_id)
+    token_owner = ownerOf(_token_id)
     assert token_owner == _sender
     print('token owner', token_owner)
-    _put('owners', _to, _tokenId)
+    _put('owners', _to, _token_id)
     old_balance = _get('balance', 0, _sender)
     _put('balance', old_balance - 1, _sender)
 
@@ -69,19 +70,19 @@ def transfer(_to: address, _tokenId: uint256) -> bool:
     return True
 
 
-def approve(_approved: address, _tokenId: uint256):
-    current_owner = ownerOf(_tokenId)
+def approve(_approved: address, _token_id: uint256):
+    current_owner = ownerOf(_token_id)
     assert  current_owner != _sender 
-    _put('tokenApprovals', _approved, _tokenId)
+    _put('tokenApprovals', _approved, _token_id)
     
-def getApproved(_tokenId: uint256) -> address:
-    current_approved = _put('tokenApprovals', None, _tokenId)
+def getApproved(_token_id: uint256) -> address:
+    current_approved = _put('tokenApprovals', None, _token_id)
     if current_approved is None:
          return '0x0000000000000000000000000000000000000000'
     return current_approved
 
 def setApprovalForAll(_operator: address, _approved: bool) -> None:
-    current_owner = ownerOf(_tokenId)
+    current_owner = ownerOf(_token_id)
     assert  current_owner != _sender 
     operatorApprovals = _get('operatorApprovals', {}, _self)
     operatorApprovals.put(_operator, _approved)
@@ -100,9 +101,9 @@ def symbol() -> string:
     print('symbol', sym)
     return sym
 
-#def tokenURI(_tokenId: uint256) -> string:
+#def tokenURI(_token_id: uint256) -> string:
 #    baseURI = _get('baseTokenURI', '')
-#    URI = baseURI + _tokenId
+#    URI = baseURI + _token_id
 #    print('baseURI', URI)
 #    return URI
 
@@ -116,8 +117,8 @@ def balanceOf(_owner: address) -> uint256:
     balance = _get('balance', 0, _owner)
     return balance
 
-def ownerOf(_tokenId: uint256) -> address:
-    current_owner = _get('owners', None, _tokenId)
+def ownerOf(_token_id: uint256) -> address:
+    current_owner = _get('owners', None, _token_id)
     if current_owner is None:
         return '0x0000000000000000000000000000000000000000'
     return current_owner
@@ -135,5 +136,13 @@ def tokenId(_owner: address) -> uint256:
 #    pass
 
 def setWhitelist(_root: string):
-    pass
+    owner = _get('owner')
+    print('mint sender owner', _sender, owner)
+    if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
+        return False
+
+# def regWhitelist(_proof: List[bytes32], _name: string): # 3.8
+def regWhitelist(_proof: list[bytes32], _name: string): # 3.10
+    print('proof', _proof, 'name', _name)
+
 

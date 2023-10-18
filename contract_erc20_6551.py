@@ -35,16 +35,17 @@ def init(_name: string, _symbol: string, _decimals: uint8, _owner: address) -> N
 
 def mint(_to: address, _value: uint256) -> bool:
     owner = _get('owner')
+    _to_token_id = 0
     print('mint sender owner', _sender, owner)
     if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
         return False
 
-    current_amount = _get('balance', 0, _to)
+    current_amount = _get('balance', 0, '%s#%s' % (_to, _to_token_id))
     new_amount = current_amount + _value
     print('before mint', current_amount)
-    print('mint to', _to, _value)
+    print('mint to', _to, _to_token_id, _value)
     print('after mint', new_amount)
-    _put(_to, 'balance', new_amount, _to)
+    _put(_to, 'balance', new_amount, '%s#%s' % (_to, _to_token_id)) # fix
 
     current_total = _get('total', 0)
     new_total = current_total + _value
@@ -53,64 +54,68 @@ def mint(_to: address, _value: uint256) -> bool:
 
     return True
 
-def approve(_spender: address, _value: uint256) -> bool:
-    allowance = _get('allowance', {}, _sender)
-    allowance[_spender] = _value
+def approve(_spender: address, _value: uint256, _from_token_id: uint256 = 0, _to_token_id: uint256 = 0) -> bool:
+    allowance = _get('allowance', {}, '%s#%s' % (_sender, _from_token_id))
+    allowance['%s#%s' % (_spender, _to_token_id)] = _value
     print(allowance)
-    _put(_sender, 'allowance', allowance, _sender)
+    _put(_sender, 'allowance', allowance, '%s#%s' % (_sender, _from_token_id)) # fix
     return True
 
-def allowance(_owner: address, _spender: address) -> uint256:
-    allowance = _get('allowance', {}, _owner)
+def allowance(_owner: address, _spender: address, _from_token_id: uint256 = 0, _to_token_id: uint256 = 0) -> uint256:
+    allowance = _get('allowance', {}, '%s#%s' % (_owner, _from_token_id))
     print('allowance', allowance)
-    value = allowance.get(_spender, 0)
+    value = allowance.get('%s#%s' % (_spender, _to_token_id), 0)
     return value
     # return f'0x{value:0>64x}'
 
-def transfer(_to: address, _value: uint256, _tokenId: uint256) -> bool:
-    print('transfer to', _sender, _to, _value)
-    sender_amount = _get('balance', 0, _sender)
+def transfer(_to: address, _value: uint256, _from_token_id: uint256 = 0, _to_token_id: uint256 = 0) -> bool:
+    print('transfer to', _sender, _from_token_id, _to, _to_token_id, _value)
+    sender_amount = _get('balance', 0, '%s#%s' % (_sender, _from_token_id))
     print('sender_amount', sender_amount, _value)
     sender_new_amount = sender_amount - _value
     print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _put(_sender, 'balance', sender_new_amount, _sender)
+    _put(_sender, 'balance', sender_new_amount, '%s#%s' % (_sender, _from_token_id)) # fix
 
-    receiver_amount = _get('balance', 0, _to)
+    receiver_amount = _get('balance', 0, '%s#%s' % (_to, _to_token_id))
     receiver_new_amount = receiver_amount + _value
     print('after transfer receiver', receiver_new_amount)
-    _put(_to, 'balance', receiver_new_amount, _to)
+    _put(_to, 'balance', receiver_new_amount, '%s#%s' % (_to, _to_token_id)) # fix
 
 
-def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
-    print('erc20 transferFrom', _from, _to, _self)
+def transferFrom(_from: address, _to: address, _value: uint256, _from_token_id: uint256 = 0, _to_token_id: uint256 = 0) -> bool:
+    assert _from_token_id >= 0
+    assert type(_from_token_id) is int
+    assert _to_token_id >= 0
+    assert type(_to_token_id) is int
+    print('erc20 transferFrom', _from, _from_token_id, _to, _to_token_id, _self)
 
-    allowance = _get('allowance', {}, _from)
+    allowance = _get('allowance', {}, '%s#%s' % (_from, _from_token_id))
     print('allowance', allowance)
-    value = allowance.get(_to, 0)
+    value = allowance.get('%s#%s' % (_to, _to_token_id), 0)
     print('value', value)
     assert value >= _value
-    allowance[_to] = value - _value
-    _put(_from, 'allowance', allowance, _from)
+    allowance['%s#%s' % (_to, _to_token_id)] = value - _value
+    _put(_from, 'allowance', allowance, '%s#%s' % (_from, _from_token_id)) # fix
 
-    sender_amount = _get('balance', 0, _from)
+    sender_amount = _get('balance', 0, '%s#%s' % (_from, _from_token_id))
     sender_new_amount = sender_amount - _value
     print('sender_amount', sender_amount, _value)
     print('sender_new_amount', sender_new_amount)
     assert sender_new_amount >= 0
     print('after transfer sender', sender_new_amount)
-    _put(_from, 'balance', sender_new_amount, _from)
+    _put(_from, 'balance', sender_new_amount, '%s#%s' % (_from, _from_token_id)) # fix
 
-    receiver_amount = _get('balance', 0, _to)
+    receiver_amount = _get('balance', 0, '%s#%s' % (_to, _to_token_id))
     receiver_new_amount = receiver_amount + _value
     print('after transfer receiver', receiver_new_amount)
-    _put(_to, 'balance', receiver_new_amount, _to)
+    _put(_to, 'balance', receiver_new_amount, '%s#%s' % (_to, _to_token_id)) # fix
 
 
-def balanceOf(_owner: address) -> uint256:
-    amount = _get('balance', 0, _owner)
-    print('balanceOf', _owner, amount)
+def balanceOf(_owner: address, _token_id: uint256 = 0) -> uint256:
+    amount = _get('balance', 0, '%s#%s' % (_owner, _token_id))
+    print('balanceOf', _owner, _token_id, amount)
     return amount
 
 
