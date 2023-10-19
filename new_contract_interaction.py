@@ -730,8 +730,6 @@ erc721_did_abi = '''[
     {
         "constant": false,
         "inputs": [
-            {"name": "_name", "type": "string"},
-            {"name": "_symbol", "type": "string"},
             {"name": "_owner", "type": "address"}
         ],
         "name": "init",
@@ -844,10 +842,10 @@ erc721_did_abi = '''[
     {
         "constant": true,
         "inputs": [
-            {"name": "_to", "type": "address"},
-            {"name": "_value", "type": "uint256"}
+            {"name": "_name", "type": "string"},
+            {"name": "_proof", "type": "string"}
         ],
-        "name": "mint",
+        "name": "regWithSigner",
         "outputs": [],
         "payable": false,
         "stateMutability": "view",
@@ -1012,6 +1010,27 @@ for action in sys.argv[1:]:
 
     elif action == 'mint6551':
         unsigned_tx = erc20_6551.functions.mint(account.address, 10**19).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+
+    elif action == 'initdid':
+        unsigned_tx = erc721_did.functions.init('0x0000000000000000000000000000000000000000').build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+        })
+        # print(unsigned_tx)
+        signed_tx = w3.eth.account.sign_transaction(unsigned_tx, private_key=account.key)
+        # print(signed_tx)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    elif action == 'regdid':
+        unsigned_tx = erc721_did.functions.regWithSigner('1', '').build_transaction({
             'from': account.address,
             'nonce': nonce,
         })

@@ -1,14 +1,14 @@
 # from typing import List
 from contract_types import address, string, uint256, bytes4, bytes32
 
-def init(_name: string, _symbol: string, _owner: address) -> None: #, _baseTokenURI: string
-    name = _get('name')
-    if not name:
-        _put(_self, 'name', _name)
+def init(_owner: address) -> None: # _name: string, _symbol: string, _baseTokenURI: string
+    # name = _get('name')
+    # if not name:
+    #     _put(_self, 'name', _name)
 
-    symbol = _get('symbol')
-    if not symbol:
-        _put(_self, 'symbol', _symbol)
+    # symbol = _get('symbol')
+    # if not symbol:
+    #     _put(_self, 'symbol', _symbol)
 
     owner = _get('owner')
     if not owner:
@@ -81,15 +81,15 @@ def getApproved(_token_id: uint256) -> address:
          return '0x0000000000000000000000000000000000000000'
     return current_approved
 
-def setApprovalForAll(_operator: address, _approved: bool) -> None:
-    current_owner = ownerOf(_token_id)
-    assert  current_owner != _sender 
-    operatorApprovals = _get('operatorApprovals', {}, _self)
-    operatorApprovals.put(_operator, _approved)
+# def setApprovalForAll(_operator: address, _approved: bool) -> None:
+#     current_owner = ownerOf(_token_id)
+#     assert  current_owner != _sender 
+#     operatorApprovals = _get('operatorApprovals', {}, _self)
+#     operatorApprovals.put(_operator, _approved)
 
-def isApprovedForAll(_owner: address, _operator: address) -> bool:
-    operatorApprovals = _get('operatorApprovals', {}, _owner)
-    operatorApprovals.get(_operator, False)
+# def isApprovedForAll(_owner: address, _operator: address) -> bool:
+#     operatorApprovals = _get('operatorApprovals', {}, _owner)
+#     operatorApprovals.get(_operator, False)
 
 def name() -> string:
     name = _get('name', '')
@@ -129,20 +129,34 @@ def tokenId(_owner: address) -> uint256:
         return '0x0000000000000000000000000000000000000000'
     return current_owner
 
+# def setWhitelist(_root: string):
+#     owner = _get('owner')
+#     print('mint sender owner', _sender, owner)
+#     if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
+#         return False
+
+# def regWhitelist(_proof: List[bytes32], _name: string): # 3.8
+# def regWhitelist(_proof: list[bytes32], _name: string): # 3.10
+#     print('proof', _proof, 'name', _name)
+
+def setSigner(_signer: string):
+    owner = _get('owner')
+
+def regWithSigner(_name: string, _proof: string): # 3.10
+    print('proof', _proof, 'name', _name)
+
+def setOwner(_owner: string):
+    owner = _get('owner')
+
+def setSuspend(_suspend: bool):
+    owner = _get('owner')
+
+def erc20_transfer(_suspend: bool):
+    owner = _get('owner')
+    _call('0x0000000000000000000000000000000000000005', 'transferFrom', [_sender, _self, _value])
+
 #def resolve(_id: string) -> address:
 #    pass
 
 #def lookup(_addr: address) -> string:
 #    pass
-
-def setWhitelist(_root: string):
-    owner = _get('owner')
-    print('mint sender owner', _sender, owner)
-    if owner != '0x0000000000000000000000000000000000000000' and owner != _sender:
-        return False
-
-# def regWhitelist(_proof: List[bytes32], _name: string): # 3.8
-def regWhitelist(_proof: list[bytes32], _name: string): # 3.10
-    print('proof', _proof, 'name', _name)
-
-
