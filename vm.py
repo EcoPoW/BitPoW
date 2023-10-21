@@ -37,6 +37,8 @@ class VM:
         self.global_vars['set'] = set
         self.global_vars['dict'] = dict
         self.global_vars['list'] = list
+        self.global_vars['range'] = range
+        self.global_vars['len'] = len
         # self.global_vars['open'] = open
         self.global_vars['AssertionError'] = AssertionError
         self.module_object = module_object
@@ -257,9 +259,12 @@ class VM:
                 self.stack.append(n)
             except StopIteration:
                 param = self.co_code[self.pc+1]
-                print('FOR_ITER', param)
+                print('FOR_ITER STOP', param)
                 self.stack.pop()
-                self.pc += param
+                if sys.version_info.minor == 8:
+                    self.pc += param
+                elif sys.version_info.minor == 10:
+                    self.pc += param * 2
             self.pc += 2
 
         elif self.co_code[self.pc] == 0x61: # STORE_GLOBAL
@@ -363,8 +368,11 @@ class VM:
 
         elif self.co_code[self.pc] == 0x71: # JUMP_ABSOLUTE
             param = self.co_code[self.pc+1]
-            # print('JUMP_ABSOLUTE', param)
-            self.pc = param
+            print('JUMP_ABSOLUTE', param)
+            if sys.version_info.minor == 8:
+                self.pc = param
+            elif sys.version_info.minor == 10:
+                self.pc = param * 2
 
         elif self.co_code[self.pc] == 0x72: # POP_JUMP_IF_FALSE
             param = self.co_code[self.pc+1]

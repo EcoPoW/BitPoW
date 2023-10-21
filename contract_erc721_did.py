@@ -34,9 +34,9 @@ def mint(_to: address, _token_id: uint256) -> bool:
     _put(_to, 'owners', _to, str(_token_id))
     _put(_to, 'addrs', str(_token_id), _to)
 
-    current_amount = _get('balance', 0, _to)
-    new_amount = current_amount + 1
-    _put(_to, 'balance', new_amount, _to)
+    #current_amount = _get('balance', 0, _to)
+    #new_amount = current_amount + 1
+    #_put(_to, 'balance', new_amount, _to)
 
     return True
 
@@ -142,8 +142,17 @@ def tokenId(_owner: address) -> uint256:
 def setSigner(_signer: string):
     owner = _get('owner')
 
-def regWithSigner(_name: string, _proof: string): # 3.10
-    print('proof', _proof, 'name', _name)
+def regWithSigner(_handle: string, _proof: string): # 3.10
+    _SYMBOLS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+    print('handle', _handle, 'proof', _proof)
+    token_id = 0
+    for i in range(len(_handle)):
+        j = _SYMBOLS.index(_handle[i])
+        token_id += len(_SYMBOLS)**i * (j+1)
+        print('token_id', token_id)
+    print('token_id all', token_id)
+    print('mint', mint)
+    mint(_sender, token_id)
 
 def setOwner(_owner: string):
     owner = _get('owner')
@@ -160,3 +169,4 @@ def erc20_transfer(_suspend: bool):
 
 #def lookup(_addr: address) -> string:
 #    pass
+
