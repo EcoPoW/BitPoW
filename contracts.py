@@ -50,10 +50,12 @@ for addr, contract in contract_map.items():
 
     v = vm.VM()
     v.import_module(contract)
+    print(contract)
     v.global_vars['print'] = console.prt
+    v.native_vars.add(console.prt)
     # v.global_vars['_call'] = call
     vm_map[addr] = v
 
-print(interface_map)
-print(params_map)
+#print(interface_map)
+#print(params_map)
 

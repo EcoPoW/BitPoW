@@ -51,13 +51,14 @@ class VM:
         self.run([])
 
     def invoke(self, func, args):
-        # print(func, args)
+        print(func, args)
         # dis.dis(func.__code__.co_code)
         if type(func) == type or func in self.native_vars:
             result = functools.partial(func, *args)()
             return result
 
-        assert func.__code__.co_argcount == len(args)
+        print(func.__code__.co_argcount, args)
+        # assert func.__code__.co_argcount == len(args)
         assert func.__code__.co_code
         ctx = Context(func.__code__, args)
 
@@ -91,6 +92,14 @@ class VM:
         self.global_vars['len'] = len
         # self.global_vars['open'] = open
         self.global_vars['AssertionError'] = AssertionError
+        self.native_vars.add(type)
+        self.native_vars.add(int)
+        self.native_vars.add(str)
+        self.native_vars.add(bytes)
+        self.native_vars.add(dict)
+        self.native_vars.add(list)
+        self.native_vars.add(range)
+        self.native_vars.add(len)
 
         assert self.code.co_argcount == len(args)
         assert self.code.co_code
