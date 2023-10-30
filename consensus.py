@@ -180,6 +180,9 @@ def new_block(parent_block_hash, parent_block_number):
             contracts.vm_map[tx_to].global_vars['_sender'] = tx_from.lower()
             state.contract_address = tx_to
             contracts.vm_map[tx_to].global_vars['_self'] = state.contract_address
+            contracts.vm_map[tx_to].native_vars.add(state.call)
+            contracts.vm_map[tx_to].native_vars.add(state.get)
+            contracts.vm_map[tx_to].native_vars.add(state.put)
 
             func_sig = tx_data[:8]
             # print(interface_map[func_sig], tx_data)
